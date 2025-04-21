@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, onUnmounted, watch, computed } from 'vue'
+import { onMounted, ref, onUnmounted, watch, computed, provide } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import axios from 'axios'
@@ -10,6 +10,7 @@ import { useSidebar } from '@/components/ui/sidebar/utils'
 import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import { useMapDraw } from '@/composables/useMapDraw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
+import MapControls from '@/composables/useMapControls'
 
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
 const { open: sidebarOpen } = useSidebar() 
@@ -23,6 +24,13 @@ const mapContainer = ref(null);
 const map = ref(null);
 const mapLoadError = ref(false)
 let mapLoadTimeout: ReturnType<typeof setTimeout> | null = null
+
+const { enableDrawingMode, disableDrawingMode, cancelDrawing } = useMapDraw(map);
+provide('map', map);
+provide('enableDrawingMode', enableDrawingMode);
+provide('disableDrawingMode', disableDrawingMode);
+provide('cancelDrawing', cancelDrawing);
+
 
 const userAreas = ref([])
 const userMapId = 'test'
@@ -90,7 +98,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="mapContainer" class="map-container transition-all duration-300" />
+  <div ref="mapContainer" class="h-[350px] xl:h-[550px] 2xl:h-[600px] rounded transition-all duration-300" />
 </template>
 
 <style scoped>
@@ -101,5 +109,12 @@ onUnmounted(() => {
   width: 100%;
   height: 430px;
   border-radius: 0.5rem;
+}
+
+@media screen and (min-width: 1910px) {
+  .map-container {
+    height: 600px;
+  }
+  
 }
 </style>

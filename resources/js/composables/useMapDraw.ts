@@ -1,103 +1,177 @@
-import { ref } from 'vue'
-import axios from 'axios'
-import MapboxDraw from '@mapbox/mapbox-gl-draw'
-import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
+import { ref, onMounted, onUnmounted } from 'vue';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
 
-interface Feature {
-  id: string
-  geometry: any
-  properties: Record<string, any>
-}
+export function useMapDraw(mapInstance: any) {
+  const draw = ref<MapboxDraw | null>(null); // Reference to the MapboxDraw instance
+  const userAreas = ref<any[]>([]); // Store user-created areas
 
-export function useMapDraw(
-  map: mapboxgl.Map,
-  emit: (event: string, payload: any) => void,
-  userMapId: string | number,
-  userAreas: Ref<any[]>
-) {
-  const draw = new MapboxDraw()
-  async function saveUserArea(feature: Feature, isUpdate = false) {
+  // Initialize the MapboxDraw instance
+  const initializeDraw = () => {
+    if (!mapInstance.value) return;
+
+    draw.value = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        polygon: true,
+        trash: true,
+      },
+      styles: [
+        {
+          id: 'gl-draw-polygon-fill-inactive',
+          type: 'fill',
+          filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon']],
+          paint: {
+            'fill-color': '#3bb2d0',
+            'fill-opacity': 0.4,
+          },
+        },
+        {
+          id: 'gl-draw-polygon-fill-active',
+          type: 'fill',
+          filter: ['all', ['==', 'active', 'true'], ['==', '$type', 'Polygon']],
+          paint: {
+            'fill-color': '#fbb03b',
+            'fill-opacity': 0.6,
+          },
+        },
+        {
+          id: 'gl-draw-line-inactive',
+          type: 'line',
+          filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'LineString']],
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round',
+          },
+          paint: {
+            'line-color': '#3bb2d0',
+            'line-width': 2,
+          },
+        },
+      ],
+    });
+
+    mapInstance.value.addControl(draw.value, 'top-left');
+  };
+
+  // Enable drawing mode
+  const enableDrawingMode = (type: 'polygon' | 'line' | 'point', zoom: number | null = null) => {
+    if (!mapInstance.value || !draw.value) return false;
+
+    if (zoom !== null) {
+      mapInstance.value.setZoom(zoom);
+    }
+
+    if (type === 'polygon') {
+      draw.value.changeMode('draw_polygon');
+    } else if (type === 'line') {
+      draw.value.changeMode('draw_line_string');
+    } else if (type === 'point') {
+      draw.value.changeMode('draw_point');
+    }
+
+    return true;
+  };
+
+  // Disable drawing mode
+  const disableDrawingMode = () => {
+    if (!mapInstance.value || !draw.value) return false;
+
+    draw.value.changeMode('simple_select');
+    return true;
+  };
+
+  // Cancel current drawing
+  const cancelDrawing = () => {
+    if (!mapInstance.value || !draw.value) return false;
+
+    draw.value.trash();
+    draw.value.changeMode('simple_select');
+    return true;
+  };
+
+  // Save a user-created area
+  const saveUserArea = async (feature: any, isUpdate = false) => {
     try {
-      console.log(`${isUpdate ? 'Updating' : 'Saving'} user area:`, feature)
-
       const areaData = {
         feature_id: feature.id,
         name: feature.properties.name || `Area ${new Date().toLocaleString()}`,
-        description: feature.properties.description || '',
         geometry: JSON.stringify(feature.geometry),
         properties: JSON.stringify(feature.properties || {}),
-        user_map_id: userMapId,
-      }
+      };
 
-      let response
-      if (isUpdate) {
-        response = await axios.put(`/api/user-areas/${feature.id}`, areaData)
-      } else {
-        response = await axios.post('/api/user-areas', areaData)
-      }
+      // Simulate API call
+      console.log(`${isUpdate ? 'Updating' : 'Saving'} user area:`, areaData);
 
-      console.log(`Area ${isUpdate ? 'updated' : 'saved'} successfully:`, response.data)
-
-      const areaIndex = userAreas.value.findIndex(area => area.feature_id === feature.id)
+      // Update local state
+      const areaIndex = userAreas.value.findIndex((area) => area.feature_id === feature.id);
       if (areaIndex >= 0) {
-        userAreas.value[areaIndex] = response.data
+        userAreas.value[areaIndex] = areaData;
       } else {
-        userAreas.value.push(response.data)
+        userAreas.value.push(areaData);
       }
 
-      return response.data
+      return areaData;
     } catch (error) {
-      console.error(`Error ${isUpdate ? 'updating' : 'saving'} user area:`, error)
-      alert(`Failed to ${isUpdate ? 'update' : 'save'} area. Please try again.`)
-      return null
+      console.error('Error saving user area:', error);
+      return null;
     }
-  }
+  };
 
-  async function deleteUserArea(featureId: string) {
+  // Delete a user area
+  const deleteUserArea = async (featureId: string) => {
     try {
-      console.log('Deleting user area:', featureId)
-      const response = await axios.delete(`/api/user-areas/${featureId}`)
-      console.log('Area deleted successfully:', response.data)
+      console.log('Deleting user area:', featureId);
 
-      userAreas.value = userAreas.value.filter(area => area.feature_id !== featureId)
-      return true
+      // Simulate API call
+      userAreas.value = userAreas.value.filter((area) => area.feature_id !== featureId);
+
+      return true;
     } catch (error) {
-      console.error('Error deleting user area:', error)
-      alert('Failed to delete area. Please try again.')
-      return false
+      console.error('Error deleting user area:', error);
+      return false;
     }
-  }
+  };
 
-  function handleDrawCreate(e: any) {
-    const features = e.features
-    console.log('Created features:', features)
-    if (features && features.length > 0) {
-      emit('draw-complete', features[0])
-      saveUserArea(features[0])
+  // Display user areas on the map
+  const displayUserAreas = () => {
+    if (!mapInstance.value || !draw.value) return;
+
+    const featuresToAdd = userAreas.value.map((area) => ({
+      id: area.feature_id,
+      type: 'Feature',
+      properties: JSON.parse(area.properties || '{}'),
+      geometry: JSON.parse(area.geometry),
+    }));
+
+    draw.value.add({
+      type: 'FeatureCollection',
+      features: featuresToAdd,
+    });
+  };
+
+  // Clean up on unmount
+  const cleanup = () => {
+    if (mapInstance.value && draw.value) {
+      mapInstance.value.removeControl(draw.value);
     }
-  }
+  };
 
-  function handleDrawUpdate(e: any) {
-    const features = e.features
-    console.log('Updated features:', features)
-    features.forEach(feature => saveUserArea(feature, true))
-  }
+  onMounted(() => {
+    initializeDraw();
+  });
 
-  function handleDrawDelete(e: any) {
-    const features = e.features
-    console.log('Deleted features:', features)
-    features.forEach(feature => deleteUserArea(feature.id))
-  }
-
-  function setupDrawEvents() {
-    map.addControl(draw, 'top-left')
-    map.on('draw.create', handleDrawCreate)
-    map.on('draw.update', handleDrawUpdate)
-    map.on('draw.delete', handleDrawDelete)
-  }
+  onUnmounted(() => {
+    cleanup();
+  });
 
   return {
     draw,
-    setupDrawEvents,
-  }
+    userAreas,
+    enableDrawingMode,
+    disableDrawingMode,
+    cancelDrawing,
+    saveUserArea,
+    deleteUserArea,
+    displayUserAreas,
+  };
 }

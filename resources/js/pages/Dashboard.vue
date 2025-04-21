@@ -46,7 +46,7 @@ const breadcrumbs: BreadcrumbItem[] = [
             <Card class="px-3 py-3 hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300">
                 <apexchart
                     type="area"
-                    height="400px"
+                    height="100%"
                     :options="chartOptions"
                     :series="series"
                 ></apexchart>

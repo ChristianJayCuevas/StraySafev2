@@ -25,11 +25,11 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <CardData title="Animal Pins" :value="10" icon="mapPinned" description="+100% compared to yesterday" />
                 <CardData title="Total Area" :value="100" icon="map" description="+100% compared to yesterday" />
             </div>
-            <div class="grid grid-cols-6 gap-4">
-                <Card class="col-span-5 px-4 py-4 hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300">
+            <div class="grid grid-cols-9 gap-4">
+                <Card class="col-span-7 px-4 py-4 hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300">
                     <Map />
                 </Card>
-                <div class="col-span-1">
+                <div class="col-span-2">
                     <MapControls />
                 </div>
             </div>

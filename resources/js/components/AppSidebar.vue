@@ -4,10 +4,22 @@ import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, Map, Dog, Cctv, Aperture } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import { computed } from 'vue';
 
+//Checking Admin Privileges
+const { auth } = usePage().props;
+const authUser = computed(() => auth.user || null);
+const hasAdminAccess = computed(() => {
+    return authUser.value?.permissions?.includes('manage_roles') || 
+         authUser.value?.permissions?.includes('manage_users') ||
+         authUser.value?.permissions?.includes('manage_referral_codes');
+    
+});
+
+//Main Navigation Tabs
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
@@ -25,20 +37,34 @@ const mainNavItems: NavItem[] = [
         title: 'Stray Map',
         href: '/straymap',
         icon: Map,
-        group: "Management"
+        group: "Stray Management"
     },
     {
         title: 'Registered Pets',
         href: '/registered-pets',
         icon: Dog,
-        group: "Management"
+        group: "Stray Management"
     },
     {
         title: 'Stray Monitor',
         href: '/cctv',
         icon: Cctv,
-        group: "Management"
+        group: "Stray Management"
     },
+    {
+        title: 'User Management',
+        href: '/user-management',
+        icon: LayoutGrid,
+        group: "User Management",
+        hidden: !hasAdminAccess.value,
+    },
+    {
+        title: 'Role Management',
+        href: '/role-management',
+        icon: LayoutGrid,
+        group: "User Management",
+        hidden: !hasAdminAccess.value,
+    }
 ];
 
 const footerNavItems: NavItem[] = [
@@ -74,7 +100,7 @@ const footerNavItems: NavItem[] = [
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
+            <!--<NavFooter :items="footerNavItems" />-->
             <NavUser />
         </SidebarFooter>
     </Sidebar>

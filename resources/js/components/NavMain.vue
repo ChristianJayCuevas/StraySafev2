@@ -12,6 +12,9 @@ const groupedItems = computed(() => {
   const groups: Record<string, NavItem[]> = {}
   for (const item of props.items) {
     const group = item.group || 'General'
+    if (item.hidden) {
+      continue
+    }
     if (!groups[group]) {
       groups[group] = []
     }
