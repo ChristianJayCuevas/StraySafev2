@@ -1,19 +1,34 @@
 <script setup lang="ts">
-import { onMounted, ref, onUnmounted, watch, computed, provide } from 'vue'
+import { onMounted, ref, onUnmounted, watch, computed, provide, defineEmits, defineProps } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import axios from 'axios'
-import { usePage } from '@inertiajs/vue3'
-import { SharedData } from '@/types'
 import { useSidebar } from '@/components/ui/sidebar/utils'
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
 // @ts-ignore
-import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import { useMapDraw } from '@/composables/useMapDraw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
-import MapControls from '@/composables/useMapControls'
+import MapControls from '@/components/map/MapControls.vue'
+import MapCreate from '@/components/map/MapCreate.vue'
+import { useMapCreate } from '@/composables/useMapCreate'
+import { useUserAreas } from '@/composables/useMapArea'
 
+// Token
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
-const { open: sidebarOpen } = useSidebar() 
+
+// Sidebar state
+const { open: sidebarOpen } = useSidebar()
+
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
 if (csrfToken) {
@@ -24,30 +39,60 @@ const mapContainer = ref(null);
 const map = ref(null);
 const mapLoadError = ref(false)
 let mapLoadTimeout: ReturnType<typeof setTimeout> | null = null
+const isDrawing = ref(false)
+const isSaveDialogOpen = ref(false)
+const pendingFeature = ref<any>(null)
 
-const { enableDrawingMode, disableDrawingMode, cancelDrawing } = useMapDraw(map);
+// Function to call the useMapDraw composable
+const {
+  draw,
+  saveUserArea,
+  deleteUserArea,
+  updateUserArea,
+  enableDrawingMode,
+  disableDrawingMode,
+  cancelDrawing,
+} = useMapDraw(map, (feature) => {
+  pendingFeature.value = feature
+  isSaveDialogOpen.value = true
+})
 provide('map', map);
 provide('enableDrawingMode', enableDrawingMode);
 provide('disableDrawingMode', disableDrawingMode);
 provide('cancelDrawing', cancelDrawing);
+const emit = defineEmits<{
+  (e: 'drawing', value: boolean): void
+}>()
 
 
-const userAreas = ref([])
-const userMapId = 'test'
-const emit = defineEmits(['draw-complete'])
+const props = withDefaults(defineProps<{
+  control?: boolean
+  currentMap?: boolean
+  selectMap?: boolean
+}>(), {
+  control: true,
+  currentMap: true,
+  selectMap: true
+})
+//Map state
+const { personalMap, createdMap } = useMapCreate()
+const { areas, loadAreas } = useUserAreas()
+const currentMap = computed(() => {
+  return createdMap.value ?? personalMap.value ?? null
+})
 
 watch(sidebarOpen, () => {
   setTimeout(() => {
     map.value?.resize()
   }, 300)
 })
-
+watch(currentMap, (map) => {
+  if (map?.id) {
+    loadAreas(map.id)
+  }
+}, { immediate: true })
 onMounted(() => {
   initializeMap()
-  map.value.on('load', () => {
-    const { setupDrawEvents } = useMapDraw(map.value, emit, userMapId, userAreas)
-    setupDrawEvents()
-  })
 })
 
 async function initializeMap() {
@@ -72,11 +117,11 @@ async function initializeMap() {
     map.value = new mapboxgl.Map({
       container: mapContainer.value,
       style: 'mapbox://styles/mapbox/dark-v10',
-      center: [120.9842, 14.5995], 
+      center: [120.9842, 14.5995],
       zoom: 12,
       attributionControl: false,
     })
-      
+
   } catch (error) {
     console.error('Error initializing map:', error)
     mapLoadError.value = true
@@ -98,23 +143,55 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="mapContainer" class="h-[350px] xl:h-[550px] 2xl:h-[600px] rounded transition-all duration-300" />
+
+  <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" />
+  <!-- Controls panel -->
+  <!-- Controls panel -->
+<div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
+  <MapControls @drawing="emit('drawing', $event)" />
+</div>
+
+<!-- Current Map Label -->
+<div v-if="props.currentMap" class="absolute top-6 left-1/2 -translate-x-1/2 z-50 text-center">
+  <div
+    v-if="currentMap"
+    class="text-sm font-medium bg-white/80 dark:bg-black/50 px-4 py-1 rounded-full shadow backdrop-blur border"
+  >
+    Current Map: <strong>{{ currentMap.name }}</strong>
+  </div>
+</div>
+
+<!-- Select Map Button -->
+<div v-if="props.selectMap" class="absolute top-6 right-6 z-10">
+  <MapCreate />
+</div>
+  <!-- Confirmation for Saving the Drawn Polygon -->
+  <AlertDialog v-model:open="isSaveDialogOpen">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Save this area?</AlertDialogTitle>
+        <AlertDialogDescription>
+          You’ve finished drawing a shape. Do you want to save it?
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="() => {
+          draw?.delete(pendingFeature.value.id)
+          isSaveDialogOpen = false
+        }">Cancel</AlertDialogCancel>
+        <AlertDialogAction @click="() => {
+          saveUserArea(pendingFeature.value)
+          isSaveDialogOpen = false
+        }">Save</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+
+
 </template>
 
 <style scoped>
 .error {
   border: 2px solid red;
-}
-.map-container {
-  width: 100%;
-  height: 430px;
-  border-radius: 0.5rem;
-}
-
-@media screen and (min-width: 1910px) {
-  .map-container {
-    height: 600px;
-  }
-  
 }
 </style>

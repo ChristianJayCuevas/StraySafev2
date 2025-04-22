@@ -40,3 +40,9 @@ export interface User {
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
+
+export type DrawingMode = 'polygon' | 'line' | 'point'
+
+export type EnableDrawingMode = (type: DrawingMode, zoom?: number | null) => boolean
+export type DisableDrawingMode = () => boolean
+export type CancelDrawing = () => boolean

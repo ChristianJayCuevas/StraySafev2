@@ -52,7 +52,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                 ></apexchart>
             </Card>
             <Card class="px-4 py-4 hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300">
-                <Map />
+              <Map :control="false" :currentMap="false" :selectMap="false" />
             </Card>
             </div>
         </div>

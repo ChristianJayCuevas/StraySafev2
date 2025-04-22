@@ -32,6 +32,11 @@ class RolePermissionSeeder extends Seeder
             'manage_maps' => 'Can manage user maps and access codes',
             'view_analytics' => 'Can view analytics and reports',
             'manage_notifications' => 'Can manage notifications',
+            'view_user_maps' => 'Can view user maps',
+            'create_user_maps' => 'Can create user maps',
+            'edit_user_maps' => 'Can edit user maps',
+            'delete_user_maps' => 'Can delete user maps',
+            'share_user_maps' => 'Can share maps with others',
         ];
 
         // Create or update permissions
@@ -62,6 +67,7 @@ class RolePermissionSeeder extends Seeder
             'viewer' => [
                 'view_animals',
                 'view_cctv',
+                'view_user_maps',
             ],
         ];
 

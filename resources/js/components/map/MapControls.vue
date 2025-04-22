@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { inject } from 'vue'
+import { inject, ref, defineEmits } from 'vue'
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '@/components/ui/collapsible'
 import {
   Pencil,
   Trash,
@@ -16,87 +31,124 @@ import {
   PawPrint,
   MapIcon,
   ZoomIn,
-  CircleX
+  CircleX,
+  ChevronDown,
 } from 'lucide-vue-next'
 
 const map = inject('map');
-const enableDrawingMode = inject('enableDrawingMode');
-const disableDrawingMode = inject('disableDrawingMode');
-const cancelDrawing = inject('cancelDrawing');
+
+type EnableDrawingFn = (type: 'polygon' | 'line' | 'point', zoom?: number | null) => boolean
+type DrawingFn = () => boolean
+
+const enableDrawingMode = inject<EnableDrawingFn>('enableDrawingMode')
+const disableDrawingMode = inject<DrawingFn>('disableDrawingMode')
+const cancelDrawing = inject<DrawingFn>('cancelDrawing')
+
+const isDrawing = ref(false)
+const isDialogOpen = ref(false)
+const isCollapsibleOpen = ref(false)
+
+const emit = defineEmits<{
+  (e: 'drawing', value: boolean): void
+}>()
 
 function handleEnableDrawing() {
-  enableDrawingMode('polygon'); // Enable polygon drawing mode
+  enableDrawingMode?.('polygon')
+  isDrawing.value = true
+  isDialogOpen.value = true
+  isCollapsibleOpen.value = false
+  emit('drawing', true)
 }
 
 function handleDisableDrawing() {
-  disableDrawingMode(); // Disable drawing mode
+  disableDrawingMode?.()
 }
 
 function handleCancelDrawing() {
-  cancelDrawing(); // Cancel the current drawing
+  cancelDrawing?.()
+  isDrawing.value = false
+  isDialogOpen.value = false
+  isCollapsibleOpen.value = true
+  emit('drawing', false)
 }
 </script>
 
 <template>
-  <Card class="transition-all duration-300 card-wrapper">
-    <CardHeader>
-      <CardTitle>Map Controls</CardTitle>
-    </CardHeader>
+  <Collapsible v-model:open="isCollapsibleOpen" class="transition-all duration-300">
+    <Card class="py-2 rounded-sm">
+      <CardHeader class="flex flex-row items-center justify-between space-y-0">
+        <CardTitle class="text-lg font-medium">Map Controls</CardTitle>
+        <CollapsibleTrigger as-child>
+          <Button variant="ghost" size="sm" class="w-9 p-0">
+            <ChevronDown :class="isCollapsibleOpen ? 'rotate-180 transition-transform' : 'transition-transform'"
+              class="h-4 w-4" />
+          </Button>
+        </CollapsibleTrigger>
+      </CardHeader>
 
-    <CardContent class="space-y-6">
-      <!-- Section: Creating User Area -->
-      <div>
-        <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Creating User Area</h3>
-        <div class="space-y-2">
-          <Button variant="default" class="w-full flex items-center gap-2 cursor-pointer">
-            <Pencil class="w-4 h-4" /> Start Drawing
-          </Button>
-          <Button v-if="enableDrawingMode" variant="outline" class="w-full flex items-center gap-2 cursor-pointer" @click="handleCancelDrawing">
-            <CircleX class="w-4 h-4" /> Cancel Drawing
-          </Button>
-          <Button variant="secondary" class="w-full flex items-center gap-2 cursor-pointer">
-            <Trash class="w-4 h-4" /> Clear Drawing
-          </Button>
-        </div>
-      </div>
+      <CollapsibleContent class="space-y-6 px-6 pb-2">
+        <!-- Section: Creating User Area -->
+        <div>
+          <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Creating User Area</h3>
+          <div class="space-y-2">
+            <Button @click="handleEnableDrawing" variant="default"
+              class="w-full flex items-center gap-2 cursor-pointer">
+              <Pencil class="w-4 h-4" /> Start Drawing
+            </Button>
 
-      <!-- Section: Pin Management -->
-      <div>
-        <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Pin Management</h3>
-        <div class="space-y-2">
-          <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
-            <Video class="w-4 h-4" /> Add Camera Pin
-          </Button>
-          <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
-            <PawPrint class="w-4 h-4" /> Add Animal Pin
-          </Button>
+            <Button v-if="isDrawing" @click="handleCancelDrawing" variant="outline"
+              class="w-full flex items-center gap-2 cursor-pointer">
+              <CircleX class="w-4 h-4" /> Cancel Drawing
+            </Button>
+            <Button @click="handleDisableDrawing" variant="secondary" class="w-full flex items-center gap-2 cursor-pointer">
+              <Trash class="w-4 h-4" /> Clear Drawing
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <!-- Section: Map Options -->
-      <div>
-        <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Map Options</h3>
-        <div class="space-y-2">
-          <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
-            <MapIcon class="w-4 h-4" /> Create New Map
-          </Button>
-          <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
-            <ZoomIn class="w-4 h-4" /> Zoom to Fit
-          </Button>
+        <!-- Section: Pin Management -->
+        <div>
+          <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Pin Management</h3>
+          <div class="space-y-2">
+            <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
+              <Video class="w-4 h-4" /> Add Camera Pin
+            </Button>
+            <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
+              <PawPrint class="w-4 h-4" /> Add Animal Pin
+            </Button>
+          </div>
         </div>
-      </div>
-    </CardContent>
-  </Card>
+
+        <!-- Section: Map Options -->
+        <!-- <div>
+          <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Map Options</h3>
+          <div class="space-y-2">
+            <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
+              <MapIcon class="w-4 h-4" /> Create New Map
+            </Button>
+            <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
+              <ZoomIn class="w-4 h-4" /> Zoom to Fit
+            </Button>
+          </div>
+        </div> -->
+      </CollapsibleContent>
+    </Card>
+  </Collapsible>
+  <AlertDialog v-model:open="isDialogOpen">
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>How to draw an area</AlertDialogTitle>
+      <AlertDialogDescription>
+        Click on the map to set points. Double-click to finish the shape. You can cancel anytime.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel @click="isDialogOpen = false">Close</AlertDialogCancel>
+      <AlertDialogAction @click="() => {
+        handleEnableDrawing()
+        isDialogOpen = false
+      }">Start</AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 </template>
-<style scoped>
-.card-wrapper {
-  width: 100%;
-  height: 465px;
-  transition: all 0.3s ease;
-}
-@media screen and (min-width: 1910px) {
-  .card-wrapper {
-    height: 635px;
-  }
-}
-</style>

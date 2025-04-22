@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\UserMap;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -45,4 +46,50 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('super_admin'); // Assuming "admin" was a typo
+    }
+
+    public function userAreas()
+    {
+        return $this->hasMany(UserArea::class);
+    }
+
+    public function mapsOwned(): HasMany
+{
+    return $this->hasMany(UserMap::class, 'owner_id');
+}
+
+public function mapsSharedWithMe(): BelongsToMany
+{
+    return $this->belongsToMany(UserMap::class, 'user_map_access', 'user_id', 'user_map_id')
+                ->withPivot('role')
+                ->withTimestamps();
+}
+
+public function mapsAccessible()
+{
+    return UserMap::where(function ($query) {
+        $query->where('owner_id', $this->id)
+              ->orWhere(function ($q) {
+                  $q->whereHas('viewers', fn ($q2) => $q2->where('user_id', $this->id));
+              })
+              ->orWhere('is_public', true);
+    })->get();
+}
+
+public function shareMap(UserMap $map, string $role = 'viewer'): bool
+{
+    if ($map->owner_id === $this->id) {
+        return false; // Can't share with self
+    }
+
+    $map->viewers()->syncWithoutDetaching([
+        $this->id => ['role' => $role]
+    ]);
+
+    return true;
+}
+    
 }
