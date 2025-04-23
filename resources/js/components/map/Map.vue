@@ -173,11 +173,11 @@ onUnmounted(() => {
   <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" />
   <!-- Controls panel -->
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
-    <MapControls @drawing="emit('drawing', $event)" />
+    <MapControls @drawing="emit('drawing', $event)" :isdrawing="isSaveDialogOpen"/>
   </div>
 
   <!-- Current Map Label -->
-  <div v-if="props.currentMap" class="absolute top-6 left-1/2 -translate-x-1/2 z-50 text-center">
+  <div v-if="props.currentMap" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 text-center">
     <div v-if="selectedMap"
       class="text-sm font-medium bg-white/80 dark:bg-black/50 px-4 py-1 rounded-full shadow backdrop-blur border">
       Current Map: <strong>{{ selectedMap.name }}</strong>

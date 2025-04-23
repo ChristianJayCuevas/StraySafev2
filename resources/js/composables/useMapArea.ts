@@ -1,11 +1,13 @@
 import { ref } from 'vue'
 import axios from 'axios'
-
+import * as turf from '@turf/turf';
+import mapboxgl from 'mapbox-gl';
 export function useUserAreas(drawRef: any, mapInstance: any) {
   const areas = ref([])
   const isLoading = ref(false)
   const error = ref(null)
   const userAreas = ref<any[]>([]);
+  const labelMarkers = ref<mapboxgl.Marker[]>([]);
   const saveUserArea = async (feature: any, isUpdate = false, userMapId?: number, userAreaName?: any) => {
     console.log('Drawing completed, saving area:', feature)
     console.log('ID in composable:', userMapId)
@@ -101,12 +103,20 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       return;
     }
   
-    const featuresToAdd = areas.value.map(area => ({
-      id: area.feature_id,
-      type: 'Feature',
-      properties: JSON.parse(area.properties || '{}'),
-      geometry: JSON.parse(area.geometry),
-    }));
+    const featuresToAdd = areas.value.map(area => {
+      const geometry = JSON.parse(area.geometry);
+      const properties = {
+        ...(JSON.parse(area.properties || '{}')),
+        name: area.name, // Inject the name here for display
+      };
+  
+      return {
+        id: area.feature_id,
+        type: 'Feature',
+        properties,
+        geometry,
+      };
+    });
   
     // Add features to draw control
     drawRef.value.add({
@@ -114,38 +124,27 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       features: featuresToAdd
     });
   
-    // ✅ Add/update the floating label layer
-    if (!mapInstance.value.getSource('user-area-labels')) {
-      mapInstance.value.addSource('user-area-labels', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: featuresToAdd,
-        },
-      });
+    // 🧼 Remove previous label markers
+    labelMarkers.value.forEach(marker => marker.remove());
+    labelMarkers.value = [];
   
-      mapInstance.value.addLayer({
-        id: 'user-area-label-layer',
-        type: 'symbol',
-        source: 'user-area-labels',
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-font': ['Open Sans Bold'],
-          'text-size': 12,
-          'text-offset': [0, 0.5],
-          'text-anchor': 'top',
-        },
-        paint: {
-          'text-color': '#FFFFFF',
-        },
-      });
-    } else {
-      const source = mapInstance.value.getSource('user-area-labels') as mapboxgl.GeoJSONSource;
-      source.setData({
-        type: 'FeatureCollection',
-        features: featuresToAdd,
-      });
-    }
+    // 🧱 Add new HTML markers as labels
+    featuresToAdd.forEach(feature => {
+      const center = turf.centroid(feature).geometry.coordinates;
+  
+      const labelEl = document.createElement('div');
+      labelEl.className = 'rounded-label';
+      labelEl.innerText = feature.properties.name;
+  
+      const marker = new mapboxgl.Marker({
+        element: labelEl,
+        anchor: 'center'
+      })
+        .setLngLat(center as [number, number])
+        .addTo(mapInstance.value);
+  
+      labelMarkers.value.push(marker);
+    });
   };
   
   

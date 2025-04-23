@@ -37,6 +37,13 @@ import {
 
 const map = inject('map');
 
+const props = withDefaults(defineProps<{
+  isdrawing?: boolean
+}>(), {
+  isdrawing: true,
+})
+
+
 type EnableDrawingFn = (type: 'polygon' | 'line' | 'point', zoom?: number | null) => boolean
 type DrawingFn = () => boolean
 
@@ -95,12 +102,12 @@ function handleCancelDrawing() {
         <div>
           <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Creating User Area</h3>
           <div class="space-y-2">
-            <Button @click="openDialog" variant="default" :disabled="isDrawing"
+            <Button @click="openDialog" variant="default" :disabled="props.isdrawing"
               class="w-full flex items-center gap-2 cursor-pointer">
               <Pencil class="w-4 h-4" /> Start Drawing
             </Button>
 
-            <Button v-if="isDrawing" @click="handleCancelDrawing" variant="secondary"
+            <Button v-if="props.isdrawing" @click="handleCancelDrawing" variant="secondary"
               class="w-full flex items-center gap-2 cursor-pointer">
               <CircleX class="w-4 h-4" /> Cancel Drawing
             </Button>
