@@ -41,7 +41,6 @@ type EnableDrawingFn = (type: 'polygon' | 'line' | 'point', zoom?: number | null
 type DrawingFn = () => boolean
 
 const enableDrawingMode = inject<EnableDrawingFn>('enableDrawingMode')
-const disableDrawingMode = inject<DrawingFn>('disableDrawingMode')
 const cancelDrawing = inject<DrawingFn>('cancelDrawing')
 
 const isDrawing = ref(false)
@@ -52,17 +51,22 @@ const emit = defineEmits<{
   (e: 'drawing', value: boolean): void
 }>()
 
+function openDialog() {
+  isDialogOpen.value = true
+}
+
+function closeDialog() {
+  isDialogOpen.value = false
+}
+
 function handleEnableDrawing() {
   enableDrawingMode?.('polygon')
   isDrawing.value = true
-  isDialogOpen.value = true
   isCollapsibleOpen.value = false
   emit('drawing', true)
 }
 
-function handleDisableDrawing() {
-  disableDrawingMode?.()
-}
+
 
 function handleCancelDrawing() {
   cancelDrawing?.()
@@ -91,18 +95,18 @@ function handleCancelDrawing() {
         <div>
           <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Creating User Area</h3>
           <div class="space-y-2">
-            <Button @click="handleEnableDrawing" variant="default"
+            <Button @click="openDialog" variant="default" :disabled="isDrawing"
               class="w-full flex items-center gap-2 cursor-pointer">
               <Pencil class="w-4 h-4" /> Start Drawing
             </Button>
 
-            <Button v-if="isDrawing" @click="handleCancelDrawing" variant="outline"
+            <Button v-if="isDrawing" @click="handleCancelDrawing" variant="secondary"
               class="w-full flex items-center gap-2 cursor-pointer">
               <CircleX class="w-4 h-4" /> Cancel Drawing
             </Button>
-            <Button @click="handleDisableDrawing" variant="secondary" class="w-full flex items-center gap-2 cursor-pointer">
+            <!-- <Button @click="handleDisableDrawing" variant="secondary" class="w-full flex items-center gap-2 cursor-pointer">
               <Trash class="w-4 h-4" /> Clear Drawing
-            </Button>
+            </Button> -->
           </div>
         </div>
 
@@ -143,7 +147,7 @@ function handleCancelDrawing() {
       </AlertDialogDescription>
     </AlertDialogHeader>
     <AlertDialogFooter>
-      <AlertDialogCancel @click="isDialogOpen = false">Close</AlertDialogCancel>
+      <AlertDialogCancel @click="closeDialog">Close</AlertDialogCancel>
       <AlertDialogAction @click="() => {
         handleEnableDrawing()
         isDialogOpen = false

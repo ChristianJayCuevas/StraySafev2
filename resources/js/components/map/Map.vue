@@ -15,6 +15,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
+
 // @ts-ignore
 import { useMapDraw } from '@/composables/useMapDraw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
@@ -22,7 +23,8 @@ import MapControls from '@/components/map/MapControls.vue'
 import MapCreate from '@/components/map/MapCreate.vue'
 import { useMapCreate } from '@/composables/useMapCreate'
 import { useUserAreas } from '@/composables/useMapArea'
-
+import type { Feature } from 'geojson'
+import { area } from '@unovis/ts/components/area/style'
 // Token
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
 
@@ -39,27 +41,36 @@ const mapContainer = ref(null);
 const map = ref(null);
 const mapLoadError = ref(false)
 let mapLoadTimeout: ReturnType<typeof setTimeout> | null = null
-const isDrawing = ref(false)
+
 const isSaveDialogOpen = ref(false)
-const pendingFeature = ref<any>(null)
+const pendingFeature = ref<Feature | null>(null)
+const areaName = ref(null);
 
 // Function to call the useMapDraw composable
 const {
   draw,
-  saveUserArea,
-  deleteUserArea,
-  updateUserArea,
+  mainMap,
   enableDrawingMode,
-  disableDrawingMode,
   cancelDrawing,
+  finishDrawing,
 } = useMapDraw(map, (feature) => {
   pendingFeature.value = feature
   isSaveDialogOpen.value = true
+  console.log('Feature drawn:', feature)
 })
+const {
+  areas,
+  fetchUserAreas,
+  displayUserAreas,
+  saveUserArea,
+  deleteUserArea,
+  updateUserArea,
+} = useUserAreas(draw, mainMap)
+
 provide('map', map);
 provide('enableDrawingMode', enableDrawingMode);
-provide('disableDrawingMode', disableDrawingMode);
 provide('cancelDrawing', cancelDrawing);
+
 const emit = defineEmits<{
   (e: 'drawing', value: boolean): void
 }>()
@@ -74,23 +85,38 @@ const props = withDefaults(defineProps<{
   currentMap: true,
   selectMap: true
 })
+
 //Map state
 const { personalMap, createdMap } = useMapCreate()
-const { areas, loadAreas } = useUserAreas()
-const currentMap = computed(() => {
+const selectedMap = computed(() => {
   return createdMap.value ?? personalMap.value ?? null
 })
 
+const handleSaveArea = async () => {
+  if (!pendingFeature.value) {
+    console.warn('⛔ No feature to save!');
+    return;
+  }
+  console.log('✅ Saving feature:', pendingFeature.value);
+  console.log('Selected Map:', selectedMap.value.id);
+  console.log('Area Name:', areaName.value);
+  await saveUserArea(pendingFeature.value, false, selectedMap.value.id, areaName.value);
+  areaName.value = null
+  isSaveDialogOpen.value = false;
+  emit('drawing', false)
+  finishDrawing();
+};
 watch(sidebarOpen, () => {
   setTimeout(() => {
     map.value?.resize()
   }, 300)
 })
-watch(currentMap, (map) => {
+watch(selectedMap, (map) => {
   if (map?.id) {
-    loadAreas(map.id)
+    fetchUserAreas(map.id)
   }
 }, { immediate: true })
+
 onMounted(() => {
   initializeMap()
 })
@@ -146,32 +172,30 @@ onUnmounted(() => {
 
   <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" />
   <!-- Controls panel -->
-  <!-- Controls panel -->
-<div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
-  <MapControls @drawing="emit('drawing', $event)" />
-</div>
-
-<!-- Current Map Label -->
-<div v-if="props.currentMap" class="absolute top-6 left-1/2 -translate-x-1/2 z-50 text-center">
-  <div
-    v-if="currentMap"
-    class="text-sm font-medium bg-white/80 dark:bg-black/50 px-4 py-1 rounded-full shadow backdrop-blur border"
-  >
-    Current Map: <strong>{{ currentMap.name }}</strong>
+  <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
+    <MapControls @drawing="emit('drawing', $event)" />
   </div>
-</div>
 
-<!-- Select Map Button -->
-<div v-if="props.selectMap" class="absolute top-6 right-6 z-10">
-  <MapCreate />
-</div>
+  <!-- Current Map Label -->
+  <div v-if="props.currentMap" class="absolute top-6 left-1/2 -translate-x-1/2 z-50 text-center">
+    <div v-if="selectedMap"
+      class="text-sm font-medium bg-white/80 dark:bg-black/50 px-4 py-1 rounded-full shadow backdrop-blur border">
+      Current Map: <strong>{{ selectedMap.name }}</strong>
+    </div>
+  </div>
+
+  <!-- Select Map Button -->
+  <div v-if="props.selectMap" class="absolute top-6 right-6 z-10">
+    <MapCreate />
+  </div>
   <!-- Confirmation for Saving the Drawn Polygon -->
   <AlertDialog v-model:open="isSaveDialogOpen">
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Save this area?</AlertDialogTitle>
         <AlertDialogDescription>
-          You’ve finished drawing a shape. Do you want to save it?
+          Please name the area and save it.
+          <input v-model="areaName" type="text" placeholder="Area Name" class="border rounded p-2 mt-2 w-full" />
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
@@ -179,10 +203,7 @@ onUnmounted(() => {
           draw?.delete(pendingFeature.value.id)
           isSaveDialogOpen = false
         }">Cancel</AlertDialogCancel>
-        <AlertDialogAction @click="() => {
-          saveUserArea(pendingFeature.value)
-          isSaveDialogOpen = false
-        }">Save</AlertDialogAction>
+        <AlertDialogAction @click="handleSaveArea">Save</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>

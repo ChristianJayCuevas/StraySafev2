@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { toast } from 'vue-sonner'
-
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 const name = ref('')
 const isPublic = ref(false)
 const isDialogOpen = ref(false)
@@ -62,17 +63,23 @@ const handleCreate = async () => {
         </AlertDialogHeader>
 
         <div class="space-y-3">
-          <input
+          <Input
             v-model="name"
             type="text"
             placeholder="Map name"
-            class="w-full border p-2 rounded-md"
             required
           />
-          <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="isPublic" />
-            Public map
-          </label>
+          <div class="items-top flex gap-x-2">
+            <Checkbox v-model="isPublic" id="PublicMap" class="border-black dark:border-white ml-2" />
+            <div class="grid gap-1.5 leading-none">
+            <label for="PublicMap" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Make this Map public
+            </label>
+            <p class="text-xs text-muted-foreground">
+              You agree to make this Map public and other users can see it.
+            </p>
+            </div>
+          </div>
         </div>
         <div v-if="allMaps.length" class="my-4 space-y-2 max-h-[200px] overflow-y-auto">
         <p class="font-semibold text-sm text-muted-foreground mb-1">Your Maps:</p>

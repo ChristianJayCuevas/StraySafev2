@@ -131,7 +131,7 @@
 .dark {
   --background: #010409;
   --foreground: hsl(0 0% 98%);
-  --card: #0d1117;
+  --card: #010409;
   --card-foreground: hsl(0 0% 98%);
   --popover: #010409;
   --popover-foreground: 0 0% 98%;
@@ -145,7 +145,7 @@
   --accent-foreground: hsl(0 0% 98%);
   --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(0 0% 20.9%);
+  --border: hsl(0 0% 30%);
   --input: hsl(0 0% 14.9%);
   --ring: hsl(0 0% 83.1%);
   --chart-1: hsl(220 70% 50%);
@@ -159,7 +159,7 @@
   --sidebar-primary-foreground: hsl(0, 0%, 100%);     /* White text on primary */
   --sidebar-accent: hsl(0, 0%, 22%);                  /* Slightly lighter than background */
   --sidebar-accent-foreground: hsl(0, 0%, 100%);       /* Soft light gray for text/icons */
-  --sidebar-border: hsl(0, 0%, 24%);                  /* Subtle border contrast */
+  --sidebar-border: hsl(0, 0%, 80%);                  /* Subtle border contrast */
   --sidebar-ring: hsl(220, 90%, 60%);                 /* Vivid electric blue ring */
   --sidebar: hsl(0, 0%, 16%); 
 
