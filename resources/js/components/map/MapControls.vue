@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { inject, ref, defineEmits } from 'vue'
+import { inject, ref, defineEmits, Ref } from 'vue'
 import {
   Card,
   CardContent,
@@ -34,25 +34,29 @@ import {
   CircleX,
   ChevronDown,
 } from 'lucide-vue-next'
+import { Input } from '@/components/ui/input'
 
 const map = inject('map');
-
-const props = withDefaults(defineProps<{
-  isdrawing?: boolean
-}>(), {
-  isdrawing: true,
-})
-
-
+const isDrawing = inject('isDrawing') as Ref<boolean>
 type EnableDrawingFn = (type: 'polygon' | 'line' | 'point', zoom?: number | null) => boolean
 type DrawingFn = () => boolean
-
+  
 const enableDrawingMode = inject<EnableDrawingFn>('enableDrawingMode')
 const cancelDrawing = inject<DrawingFn>('cancelDrawing')
 
-const isDrawing = ref(false)
+const isAddPinMode = inject<() => boolean>('isAddPinMode')
+const enableAddPinMode = inject<() => boolean>('enableAddPinMode')
+const onPinLocationSelected = inject<Ref<(() => void) | null>>('onPinLocationSelected')
+const cancelAddPinMode = inject<() => boolean>('cancelAddPinMode')
+const saveCameraPin = inject<({name, description, hls}: {name: string, description:string, hls:string}) => Promise<void>>('saveCameraPin')
+
 const isDialogOpen = ref(false)
 const isCollapsibleOpen = ref(false)
+
+const isPinDialogOpen = ref(false)
+const pinName = ref('')
+const pinDetails = ref('')
+const pinCameraLink = ref('')
 
 const emit = defineEmits<{
   (e: 'drawing', value: boolean): void
@@ -66,14 +70,27 @@ function closeDialog() {
   isDialogOpen.value = false
 }
 
+function openPinDialog()
+{
+  isPinDialogOpen.value = true
+}
+
+function closePinDialog()
+{
+  isPinDialogOpen.value = false
+}
+
+if (onPinLocationSelected) {
+  onPinLocationSelected.value = () => {
+    isPinDialogOpen.value = true
+  }
+}
 function handleEnableDrawing() {
   enableDrawingMode?.('polygon')
   isDrawing.value = true
   isCollapsibleOpen.value = false
   emit('drawing', true)
 }
-
-
 
 function handleCancelDrawing() {
   cancelDrawing?.()
@@ -82,6 +99,27 @@ function handleCancelDrawing() {
   isCollapsibleOpen.value = true
   emit('drawing', false)
 }
+
+function handleAddPin() {
+  enableAddPinMode?.();
+  isCollapsibleOpen.value = false
+  emit('drawing', true)
+}
+
+function handleSavePin(){
+  saveCameraPin?.({name: pinName.value, description: pinDetails.value, hls: pinCameraLink.value})
+  isPinDialogOpen.value = false
+  emit('drawing', false)
+}
+function handleCancelPin() {
+  cancelAddPinMode?.()
+  isDrawing.value = false
+  isDialogOpen.value = false
+  isCollapsibleOpen.value = true
+  emit('drawing', false)
+}
+
+
 </script>
 
 <template>
@@ -102,12 +140,12 @@ function handleCancelDrawing() {
         <div>
           <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Creating User Area</h3>
           <div class="space-y-2">
-            <Button @click="openDialog" variant="default" :disabled="props.isdrawing"
+            <Button @click="openDialog" variant="default" :disabled="isDrawing"
               class="w-full flex items-center gap-2 cursor-pointer">
               <Pencil class="w-4 h-4" /> Start Drawing
             </Button>
 
-            <Button v-if="props.isdrawing" @click="handleCancelDrawing" variant="secondary"
+            <Button v-if="isDrawing" @click="handleCancelDrawing" variant="secondary"
               class="w-full flex items-center gap-2 cursor-pointer">
               <CircleX class="w-4 h-4" /> Cancel Drawing
             </Button>
@@ -121,12 +159,16 @@ function handleCancelDrawing() {
         <div>
           <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Pin Management</h3>
           <div class="space-y-2">
-            <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
+            <Button :disable="isAddPinMode" variant="outline" class="w-full flex items-center gap-2 cursor-pointer" @click="handleAddPin">
               <Video class="w-4 h-4" /> Add Camera Pin
             </Button>
-            <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
-              <PawPrint class="w-4 h-4" /> Add Animal Pin
+            <Button v-if="isAddPinMode" @click="handleCancelPin" variant="secondary"
+              class="w-full flex items-center gap-2 cursor-pointer">
+              <CircleX class="w-4 h-4" /> Cancel Add Pin
             </Button>
+            <!-- <Button variant="outline" class="w-full flex items-center gap-2 cursor-pointer">
+              <PawPrint class="w-4 h-4" /> Add Animal Pin
+            </Button> -->
           </div>
         </div>
 
@@ -162,4 +204,28 @@ function handleCancelDrawing() {
     </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
+
+<AlertDialog v-model:open="isPinDialogOpen">
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Pin Details</AlertDialogTitle>
+      <AlertDialogDescription>
+        Fill up the details for the pin below.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <Input v-model="pinName" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
+    <Input v-model="pinDetails" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
+    <Input v-model="pinCameraLink" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
+    <AlertDialogFooter>
+      <AlertDialogCancel @click="closePinDialog">Close</AlertDialogCancel>
+      <AlertDialogAction @click="() => {
+        handleSavePin()
+        isPinDialogOpen = false
+      }">Save</AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+
+
 </template>

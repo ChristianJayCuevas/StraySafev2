@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\Map\UserMapController;
 use App\Http\Controllers\Map\UserAreaController;
+use App\Http\Controllers\Map\CameraPinsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
@@ -14,4 +15,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/user-areas/{id}', [UserAreaController::class, 'show']);
     Route::put('/user-areas/{id}', [UserAreaController::class, 'update']);
     Route::delete('/user-areas/{id}', [UserAreaController::class, 'destroy']);
+
+    Route::get('/camera-pins', [CameraPinsController::class, 'index']);
+    Route::post('/camera-pins', [CameraPinsController::class, 'store']);
 });

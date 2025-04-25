@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Map;
 
+use App\Http\Controllers\Controller;
 use App\Models\CameraPins;
 use Illuminate\Http\Request;
 
@@ -27,9 +28,21 @@ class CameraPinsController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
-        //
-    }
+{
+    $validated = $request->validate([
+        'camera_name' => 'nullable|string|max:255',
+        'hls_url' => 'nullable|string|max:255',
+        'camera_description' => 'nullable|string',
+        'latitude' => 'required|numeric',
+        'longitude' => 'required|numeric',
+        'user_map_id' => 'nullable|exists:user_maps,id'
+    ]);
+
+    $pin = \App\Models\CameraPins::create($validated);
+
+    return response()->json(['success' => true, 'pin' => $pin]);
+}
+
 
     /**
      * Display the specified resource.

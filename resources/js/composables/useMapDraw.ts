@@ -19,7 +19,7 @@ export function useMapDraw(mapInstance: any, onDrawComplete?: (feature: any) => 
   )
   // Initialize the MapboxDraw instance
   const initializeDraw = () => {
-    if (!mapInstance.value) return;
+    if (!mapInstance.value || draw.value) return;
 
     draw.value = new MapboxDraw({
       displayControlsDefault: false,
@@ -116,7 +116,8 @@ export function useMapDraw(mapInstance: any, onDrawComplete?: (feature: any) => 
       ]
     });
 
-    mapInstance.value.addControl(draw.value);
+    mapInstance.value.addControl(draw.value, 'top-left');
+    console.log('Draw control added');
 
     mapInstance.value.on('draw.create', (e: any) => {
       const feature = e.features[0];
@@ -125,91 +126,9 @@ export function useMapDraw(mapInstance: any, onDrawComplete?: (feature: any) => 
       onDrawComplete?.(feature);
 
     });
-  
-    // Show popup on click (once map is loaded)
-    mapInstance.value.on('load', () => {
-      // Add click handler to show popup on area click
-      mapInstance.value.on('click', (e: any) => {
-        const features = mapInstance.value.queryRenderedFeatures(e.point, {
-          layers: ['gl-draw-polygon-fill-inactive', 'gl-draw-polygon-fill-active'],
-        });
-      
-        if (features.length && draw.value) {
-          const feature = features[0];
-      
-          // Remove existing popups
-          document.querySelectorAll('.map-popup').forEach((el) => el.remove());
-      
-          const popupNode = document.createElement('div');
-          popupNode.className = 'map-popup bg-white shadow-md rounded p-2 text-sm';
-          popupNode.innerHTML = `
-            <strong>${feature.properties?.name || 'Unnamed Area'}</strong><br />
-            <button id="edit-area-btn" class="text-blue-600 hover:underline">Edit</button> |
-            <button id="delete-area-btn" class="text-red-600 hover:underline">Delete</button>
-          `;
-      
-          const popup = new mapboxgl.Popup({ closeOnClick: true })
-            .setLngLat(e.lngLat)
-            .setDOMContent(popupNode)
-            .addTo(mapInstance.value);
-      
-          // ✅ Add event listeners after DOM is attached
-          popupNode.querySelector('#edit-area-btn')?.addEventListener('click', () => {
-            draw.value?.changeMode('direct_select', { featureId: feature.id });
-            popup.remove();
-          });
-      
-          popupNode.querySelector('#delete-area-btn')?.addEventListener('click', () => {
-            draw.value?.delete(feature.id);
-            userAreas.value = userAreas.value.filter(f => f.id !== feature.id);
-            updateFloatingLabels();
-            popup.remove();
-          });
-        }
-      });
-  
-      // Hide popup on map move
-      mapInstance.value.on('move', () => {
-        document.querySelectorAll('.map-popup').forEach((el) => el.remove());
-      });
-    });
     
   };
 
-  const updateFloatingLabels = () => {
-    if (!mapInstance.value.getSource('user-area-labels')) {
-      mapInstance.value.addSource('user-area-labels', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: userAreas.value,
-        },
-      });
-  
-      mapInstance.value.addLayer({
-        id: 'user-area-label-layer',
-        type: 'symbol',
-        source: 'user-area-labels',
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-font': ['Open Sans Bold'],
-          'text-size': 12,
-          'text-offset': [0, 0.5],
-          'text-anchor': 'top',
-        },
-        paint: {
-          'text-color': '#FFFFFF',
-        },
-      });
-    } else {
-      const source = mapInstance.value.getSource('user-area-labels') as mapboxgl.GeoJSONSource;
-      source.setData({
-        type: 'FeatureCollection',
-        features: userAreas.value,
-      });
-    }
-  };
-  // Enable drawing mode
   const enableDrawingMode = (type: 'polygon' | 'line' | 'point', zoom: number | null = null) => {
     if (!mapInstance.value || !draw.value){ 
       console.warn('Map or draw is not ready')
@@ -267,6 +186,7 @@ export function useMapDraw(mapInstance: any, onDrawComplete?: (feature: any) => 
     userAreas,
     enableDrawingMode,
     cancelDrawing,
+    initializeDraw,
     finishDrawing
   };
 }

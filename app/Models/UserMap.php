@@ -43,47 +43,47 @@ class UserMap extends Model
      * @return string
      */
     public static function generateAccessCode(): string
-{
-    do {
-        $code = strtoupper(Str::random(6));
-    } while (self::where('access_code', $code)->exists());
+    {
+        do {
+            $code = strtoupper(Str::random(6));
+        } while (self::where('access_code', $code)->exists());
 
-    return $code;
-}
-
-public function owner(): BelongsTo
-{
-    return $this->belongsTo(User::class, 'owner_id');
-}
-
-public function viewers(): BelongsToMany
-{
-    return $this->belongsToMany(User::class, 'user_map_access')
-                ->withPivot('role')
-                ->withTimestamps();
-}
-
-public function canBeAccessedBy(User $user): bool
-{
-    return $user->id === $this->owner_id
-        || $this->is_public
-        || $this->viewers()->where('users.id', $user->id)->exists();
-}
-
-public function assignUser(User $user, string $role = 'viewer'): void
-{
-    $this->viewers()->syncWithoutDetaching([
-        $user->id => ['role' => $role]
-    ]);
-}
-
-public function getUserRole(User $user): ?string
-{
-    if ($user->id === $this->owner_id) {
-        return 'owner';
+        return $code;
     }
 
-    $access = $this->viewers()->where('users.id', $user->id)->first();
-    return $access?->pivot->role;
-}
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function viewers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'user_map_access')
+                    ->withPivot('role')
+                    ->withTimestamps();
+    }
+
+    public function canBeAccessedBy(User $user): bool
+    {
+        return $user->id === $this->owner_id
+            || $this->is_public
+            || $this->viewers()->where('users.id', $user->id)->exists();
+    }
+
+    public function assignUser(User $user, string $role = 'viewer'): void
+    {
+        $this->viewers()->syncWithoutDetaching([
+            $user->id => ['role' => $role]
+        ]);
+    }
+
+    public function getUserRole(User $user): ?string
+    {
+        if ($user->id === $this->owner_id) {
+            return 'owner';
+        }
+
+        $access = $this->viewers()->where('users.id', $user->id)->first();
+        return $access?->pivot->role;
+    }
 }

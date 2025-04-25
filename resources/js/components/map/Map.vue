@@ -23,14 +23,15 @@ import MapControls from '@/components/map/MapControls.vue'
 import MapCreate from '@/components/map/MapCreate.vue'
 import { useMapCreate } from '@/composables/useMapCreate'
 import { useUserAreas } from '@/composables/useMapArea'
+import { useMapPins } from '@/composables/useMapPin'
 import type { Feature } from 'geojson'
 import { area } from '@unovis/ts/components/area/style'
+import { toast } from 'vue-sonner'
 // Token
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
 
 // Sidebar state
 const { open: sidebarOpen } = useSidebar()
-
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
 if (csrfToken) {
@@ -45,14 +46,20 @@ let mapLoadTimeout: ReturnType<typeof setTimeout> | null = null
 const isSaveDialogOpen = ref(false)
 const pendingFeature = ref<Feature | null>(null)
 const areaName = ref(null);
-
+const isDrawing = ref(false)
 // Function to call the useMapDraw composable
+const { personalMap, createdMap } = useMapCreate()
+const selectedMap = computed(() => {
+  return createdMap.value ?? personalMap.value ?? null
+})
+
 const {
   draw,
   mainMap,
   enableDrawingMode,
   cancelDrawing,
   finishDrawing,
+  initializeDraw
 } = useMapDraw(map, (feature) => {
   pendingFeature.value = feature
   isSaveDialogOpen.value = true
@@ -67,9 +74,33 @@ const {
   updateUserArea,
 } = useUserAreas(draw, mainMap)
 
+const {
+  isAddPinMode,
+  cameraPins,
+  enableAddPinMode,
+  cancelAddPinMode,
+  fetchCameraPins,
+  displayCameraPins,
+  onPinLocationSelected,
+  saveCameraPin
+} = useMapPins(mainMap, selectedMap.value?.id)
+
+provide('isAddPinMode', isAddPinMode);
+provide('enableAddPinMode', enableAddPinMode);
+provide('cancelAddPinMode', cancelAddPinMode);
+provide('cameraPins', cameraPins);
+provide('fetchCameraPins', fetchCameraPins);
+provide('displayCameraPins', displayCameraPins);
+provide('onPinLocationSelected', onPinLocationSelected);
+provide('saveCameraPin', saveCameraPin);
+
 provide('map', map);
 provide('enableDrawingMode', enableDrawingMode);
 provide('cancelDrawing', cancelDrawing);
+provide('isDrawing', isDrawing)
+provide('areas', areas);
+provide('fetchUserAreas', fetchUserAreas);
+
 
 const emit = defineEmits<{
   (e: 'drawing', value: boolean): void
@@ -87,23 +118,29 @@ const props = withDefaults(defineProps<{
 })
 
 //Map state
-const { personalMap, createdMap } = useMapCreate()
-const selectedMap = computed(() => {
-  return createdMap.value ?? personalMap.value ?? null
-})
+
 
 const handleSaveArea = async () => {
   if (!pendingFeature.value) {
     console.warn('⛔ No feature to save!');
     return;
   }
-  console.log('✅ Saving feature:', pendingFeature.value);
-  console.log('Selected Map:', selectedMap.value.id);
-  console.log('Area Name:', areaName.value);
   await saveUserArea(pendingFeature.value, false, selectedMap.value.id, areaName.value);
-  areaName.value = null
+  areaName.value = null;
+  toast.success('Area saved successfully!');
+  isDrawing.value = false;
   isSaveDialogOpen.value = false;
-  emit('drawing', false)
+  emit('drawing', false);
+  fetchUserAreas(selectedMap.value.id);
+  finishDrawing();
+};
+
+const handleCancelArea = async () => {
+  cancelDrawing();
+  toast.warning('Drawing cancelled!');
+  isDrawing.value = false;
+  isSaveDialogOpen.value = false;
+  emit('drawing', false);
   finishDrawing();
 };
 watch(sidebarOpen, () => {
@@ -114,6 +151,11 @@ watch(sidebarOpen, () => {
 watch(selectedMap, (map) => {
   if (map?.id) {
     fetchUserAreas(map.id)
+  }
+}, { immediate: true })
+watch(selectedMap, (map) => {
+  if (map?.id) {
+    fetchCameraPins(map.id)
   }
 }, { immediate: true })
 
@@ -129,13 +171,13 @@ async function initializeMap() {
   }
 
   // Timeout check in case map fails to load
-  mapLoadTimeout = setTimeout(() => {
-    if (!map.value || !map.value.loaded()) {
-      console.error('Map failed to load after timeout')
-      mapLoadError.value = true
-      mapContainer.value?.classList.add('error')
-    }
-  }, 10000)
+  // mapLoadTimeout = setTimeout(() => {
+  //   if (!map.value || !map.value.loaded()) {
+  //     console.error('Map failed to load after timeout')
+  //     mapLoadError.value = true
+  //     mapContainer.value?.classList.add('error')
+  //   }
+  // }, 10000)
 
   try {
     mapboxgl.accessToken = mapboxToken
@@ -147,6 +189,9 @@ async function initializeMap() {
       zoom: 12,
       attributionControl: false,
     })
+    map.value.on('load', () => {
+  initializeDraw(); // ✅ Ensure draw is initialized after map is ready
+});
 
   } catch (error) {
     console.error('Error initializing map:', error)
@@ -166,6 +211,7 @@ onUnmounted(() => {
     map.value = null
   }
 })
+const selectedAreaId = ref('')
 </script>
 
 <template>
@@ -173,7 +219,7 @@ onUnmounted(() => {
   <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" />
   <!-- Controls panel -->
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
-    <MapControls @drawing="emit('drawing', $event)" :isdrawing="isSaveDialogOpen"/>
+    <MapControls @drawing="emit('drawing', $event)"/>
   </div>
 
   <!-- Current Map Label -->
@@ -183,9 +229,8 @@ onUnmounted(() => {
       Current Map: <strong>{{ selectedMap.name }}</strong>
     </div>
   </div>
-
   <!-- Select Map Button -->
-  <div v-if="props.selectMap" class="absolute top-6 right-6 z-10">
+  <div v-if="props.selectMap" class="flex flex-col gap-2 absolute top-6 right-6 z-10">
     <MapCreate />
   </div>
   <!-- Confirmation for Saving the Drawn Polygon -->
@@ -199,10 +244,7 @@ onUnmounted(() => {
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel @click="() => {
-          draw?.delete(pendingFeature.value.id)
-          isSaveDialogOpen = false
-        }">Cancel</AlertDialogCancel>
+        <AlertDialogCancel @click="handleCancelArea">Cancel</AlertDialogCancel>
         <AlertDialogAction @click="handleSaveArea">Save</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>

@@ -2,12 +2,14 @@ import { ref } from 'vue'
 import axios from 'axios'
 import * as turf from '@turf/turf';
 import mapboxgl from 'mapbox-gl';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 export function useUserAreas(drawRef: any, mapInstance: any) {
   const areas = ref([])
   const isLoading = ref(false)
   const error = ref(null)
   const userAreas = ref<any[]>([]);
   const labelMarkers = ref<mapboxgl.Marker[]>([]);
+  
   const saveUserArea = async (feature: any, isUpdate = false, userMapId?: number, userAreaName?: any) => {
     console.log('Drawing completed, saving area:', feature)
     console.log('ID in composable:', userMapId)
@@ -51,7 +53,7 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
     try {
       await axios.delete(`/user-areas/${featureId}`);
       userAreas.value = userAreas.value.filter((a) => a.feature_id !== featureId);
-      draw.value?.delete(featureId);
+      drawRef.value?.delete(featureId);
       return true;
     } catch (error) {
       console.error('❌ Error deleting user area:', error);
@@ -81,7 +83,7 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       return null;
     }
   };
-    const fetchUserAreas = async (mapId: number) => {
+  const fetchUserAreas = async (mapId: number) => {
     isLoading.value = true
     try {
       const response = await axios.get('/user-areas', {
@@ -89,13 +91,13 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       })
       areas.value = response.data
       displayUserAreas() // Display immediately after fetch
+
     } catch (err: any) {
       error.value = err?.response?.data?.message || 'Failed to load areas.'
     } finally {
       isLoading.value = false
     }
   }
-
   // Display on map
   const displayUserAreas = () => {
     if (!drawRef.value || !mapInstance.value) {
