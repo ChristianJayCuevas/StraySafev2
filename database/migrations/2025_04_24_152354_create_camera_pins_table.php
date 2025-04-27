@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('camera_description')->nullable();
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
+            $table->integer('direction');
             $table->foreignId('user_map_id')->nullable()->constrained('user_maps')->nullOnDelete();
             $table->index('user_map_id');
             $table->timestamps();

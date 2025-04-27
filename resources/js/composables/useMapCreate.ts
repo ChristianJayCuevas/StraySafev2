@@ -24,18 +24,25 @@ export function useMapCreate() {
     error.value = null
     try {
       const response = await axios.get('/user-maps')
+      console.log('🛰️ /user-maps response:', response.data)
+  
       ownedMaps.value = response.data.owned_maps || []
       accessibleMaps.value = response.data.accessible_maps || []
+  
+      console.log('✅ Owned maps:', ownedMaps.value)
+      console.log('✅ Accessible maps:', accessibleMaps.value)
+  
       if (ownedMaps.value.length > 0) {
         personalMap.value = ownedMaps.value[0]
       }
     } catch (err: any) {
+      console.error('❌ Error loading user maps:', err)
       error.value = err?.response?.data?.message || 'Failed to load maps.'
     } finally {
       isLoading.value = false
     }
   }
-
+  
   const createMap = async ({
     name,
     description = '',
@@ -73,6 +80,34 @@ export function useMapCreate() {
       isLoading.value = false
     }
   }
+  const deleteMap = async ({mapId}:{mapId: number}) => {
+  
+    try {
+      const response = await axios.delete(`/user-maps/${mapId}`)
+  
+      // If the deleted map is the current one, clear it
+      if (personalMap.value?.id === mapId) {
+        personalMap.value = null
+        createdMap.value = null
+        localStorage.removeItem('current_map')
+      }
+
+      if (response.data.success) {
+        await loadUserMaps()
+        return true
+      }
+      else {
+        error.value = response.data.message || 'Map deletion failed.'
+        return false
+      }
+        // Refresh the map list
+  
+    } catch (err: any) {
+      error.value = err?.response?.data?.message || 'Map creation failed.'
+      return false
+    }
+  }
+  
   watch(createdMap, (val) => {
     if (val) {
       localStorage.setItem('current_map', JSON.stringify(val))
@@ -94,6 +129,8 @@ export function useMapCreate() {
     accessibleMaps,
     allMaps,
     loadUserMaps,
-    createMap
+    createMap,
+    deleteMap
+    
   }
 }

@@ -41,48 +41,50 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
         userAreas.value.push(savedArea);
       }
   
+      // 🧹 ✅ After saving, immediately re-fetch and re-display as static
+      if (userMapId) {
+        await fetchUserAreas(userMapId);
+      }
+  
       return savedArea;
     } catch (error) {
       console.error('❌ Failed to save user area:', error);
       return null;
     }
   };
+  
 
   // Delete a user area
-  const deleteUserArea = async (featureId: string) => {
+  const deleteUserArea = async ({ featureId }: { featureId: string }) => {
     try {
       await axios.delete(`/user-areas/${featureId}`);
+      
+      // Remove from areas list
       userAreas.value = userAreas.value.filter((a) => a.feature_id !== featureId);
+      
+      // Delete the polygon
       drawRef.value?.delete(featureId);
+  
+      // 🧹 Delete the matching floating label
+      const markerIndex = labelMarkers.value.findIndex(marker => {
+        const markerLngLat = marker.getLngLat();
+        // Compare marker position if needed, or better: store `featureId` in marker itself
+        return marker.getElement()?.dataset?.featureId === featureId;
+      });
+  
+      if (markerIndex !== -1) {
+        labelMarkers.value[markerIndex].remove(); // Remove from map
+        labelMarkers.value.splice(markerIndex, 1); // Remove from array
+      }
+  
       return true;
     } catch (error) {
       console.error('❌ Error deleting user area:', error);
       return false;
     }
   };
-  const updateUserArea = async (feature: any) => {
-    try {
-      const payload = {
-        name: feature.properties.name || `Area ${new Date().toLocaleString()}`,
-        description: feature.properties.description || '',
-        geometry: JSON.stringify(feature.geometry),
-        properties: JSON.stringify(feature.properties || {}),
-      };
   
-      const response = await axios.put(`/user-areas/${feature.id}`, payload);
-      const updatedArea = response.data;
-  
-      const index = userAreas.value.findIndex((a) => a.feature_id === feature.id);
-      if (index >= 0) {
-        userAreas.value[index] = updatedArea;
-      }
-  
-      return updatedArea;
-    } catch (error) {
-      console.error('❌ Failed to update user area:', error);
-      return null;
-    }
-  };
+
   const fetchUserAreas = async (mapId: number) => {
     isLoading.value = true
     try {
@@ -90,8 +92,8 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
         params: { user_map_id: mapId }
       })
       areas.value = response.data
-      displayUserAreas() // Display immediately after fetch
-
+      displayUserAreas()
+      return areas
     } catch (err: any) {
       error.value = err?.response?.data?.message || 'Failed to load areas.'
     } finally {
@@ -105,11 +107,20 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       return;
     }
   
+    const map = mapInstance.value;
+  
+    // 🧹 Remove previous saved areas layer if exists
+    if (map.getSource('saved-areas')) {
+      map.removeLayer('saved-areas-fill');
+      map.removeLayer('saved-areas-outline');
+      map.removeSource('saved-areas');
+    }
+  
     const featuresToAdd = areas.value.map(area => {
       const geometry = JSON.parse(area.geometry);
       const properties = {
         ...(JSON.parse(area.properties || '{}')),
-        name: area.name, // Inject the name here for display
+        name: area.name,
       };
   
       return {
@@ -120,20 +131,58 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       };
     });
   
-    // Add features to draw control
-    drawRef.value.add({
-      type: 'FeatureCollection',
-      features: featuresToAdd
+    if (featuresToAdd.length === 0) return;
+  
+    // 🗺️ Add as STATIC layer
+    map.addSource('saved-areas', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: featuresToAdd
+      }
     });
   
-    // 🧼 Remove previous label markers
+    // 🔵 Area fill
+    map.addLayer({
+      id: 'saved-areas-fill',
+      type: 'fill',
+      source: 'saved-areas',
+      paint: {
+        'fill-color': '#00BCD4',
+        'fill-opacity': 0.3
+      }
+    });
+  
+    // 🔵 Area border
+    map.addLayer({
+      id: 'saved-areas-outline',
+      type: 'line',
+      source: 'saved-areas',
+      paint: {
+        'line-color': '#00ACC1',
+        'line-width': 2
+      }
+    });
+  
+    // 🛬 Zoom to first feature
+    const firstFeature = featuresToAdd[0];
+    const center = turf.centroid(firstFeature).geometry.coordinates;
+  
+    map.flyTo({
+      center: center as [number, number],
+      zoom: 16,
+      speed: 1.2,
+      curve: 1,
+      easing(t) { return t; }
+    });
+  
+    // 🧹 Remove previous floating labels
     labelMarkers.value.forEach(marker => marker.remove());
     labelMarkers.value = [];
   
-    // 🧱 Add new HTML markers as labels
+    // 🧱 Add floating labels
     featuresToAdd.forEach(feature => {
       const center = turf.centroid(feature).geometry.coordinates;
-  
       const labelEl = document.createElement('div');
       labelEl.className = 'rounded-label';
       labelEl.innerText = feature.properties.name;
@@ -143,11 +192,15 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
         anchor: 'center'
       })
         .setLngLat(center as [number, number])
-        .addTo(mapInstance.value);
+        .addTo(map);
   
+      labelEl.dataset.featureId = feature.id;
       labelMarkers.value.push(marker);
     });
   };
+  
+  
+  
   
   
   
@@ -159,6 +212,5 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
     displayUserAreas,
     saveUserArea,
     deleteUserArea,
-    updateUserArea,
   }
 }

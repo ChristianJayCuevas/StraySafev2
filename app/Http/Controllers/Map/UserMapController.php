@@ -15,16 +15,16 @@ class UserMapController extends Controller
      * Display a listing of the user's maps.
      */
     public function index()
-    {
-        $user = Auth::user();
-        $ownedMaps = $user->ownedMaps;
-        $accessibleMaps = $user->accessibleMaps;
-        
-        return response()->json([
-            'owned_maps' => $ownedMaps,
-            'accessible_maps' => $accessibleMaps
-        ]);
-    }
+{
+    $user = Auth::user();
+    $ownedMaps = $user->mapsOwned()->get(); // use correct relationship
+    $accessibleMaps = $user->mapsAccessible();
+
+    return response()->json([
+        'owned_maps' => $ownedMaps,
+        'accessible_maps' => $accessibleMaps,
+    ]);
+}
 
     /**
      * Store a newly created map.
@@ -34,12 +34,13 @@ class UserMapController extends Controller
         $user = Auth::user();
         
         // Check if user already has a personal map
-        if (!$user->isAdmin()) {
+        if (!$user->isAdmin() && $user->mapsOwned()->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'You already have a personal map. Please use the existing one or delete it before creating a new one.'
             ], 422);
         }
+        
         
         // Validate request
         $validated = $request->validate([

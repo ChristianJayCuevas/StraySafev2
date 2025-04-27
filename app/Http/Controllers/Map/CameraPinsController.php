@@ -11,9 +11,17 @@ class CameraPinsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $userMapId = $request->query('user_map_id');
+
+        if (!$userMapId) {
+            return response()->json(['error' => 'Missing user_map_id'], 400);
+        }
+
+        $pins = CameraPins::where('user_map_id', $userMapId)->get();
+
+        return response()->json($pins); // or ['pins' => $pins]
     }
 
     /**
@@ -35,6 +43,7 @@ class CameraPinsController extends Controller
         'camera_description' => 'nullable|string',
         'latitude' => 'required|numeric',
         'longitude' => 'required|numeric',
+        'direction' => 'required|numeric',
         'user_map_id' => 'nullable|exists:user_maps,id'
     ]);
 

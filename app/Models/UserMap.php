@@ -86,4 +86,10 @@ class UserMap extends Model
         $access = $this->viewers()->where('users.id', $user->id)->first();
         return $access?->pivot->role;
     }
+
+    public function pinsAssociated(): HasMany
+    {
+        return $this->hasMany(CameraPins::class, 'user_map_id');
+    }
+    
 }

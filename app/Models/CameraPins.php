@@ -13,6 +13,7 @@ class CameraPins extends Model
         'camera_description',
         'latitude',
         'longitude',
+        'direction',
         'user_map_id'
     ];
     protected $casts = [

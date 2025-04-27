@@ -48,7 +48,7 @@ const isAddPinMode = inject<() => boolean>('isAddPinMode')
 const enableAddPinMode = inject<() => boolean>('enableAddPinMode')
 const onPinLocationSelected = inject<Ref<(() => void) | null>>('onPinLocationSelected')
 const cancelAddPinMode = inject<() => boolean>('cancelAddPinMode')
-const saveCameraPin = inject<({name, description, hls}: {name: string, description:string, hls:string}) => Promise<void>>('saveCameraPin')
+const saveCameraPin = inject<({name, description, hls, mapId, direction}: {name: string, description:string, hls:string, mapId:number, direction:number}) => Promise<void>>('saveCameraPin')
 
 const isDialogOpen = ref(false)
 const isCollapsibleOpen = ref(false)
@@ -57,6 +57,13 @@ const isPinDialogOpen = ref(false)
 const pinName = ref('')
 const pinDetails = ref('')
 const pinCameraLink = ref('')
+const pinDirection = ref()
+
+const props = defineProps<{
+  selectedMap: any
+  selectedMapId: number | undefined;
+}>()
+
 
 const emit = defineEmits<{
   (e: 'drawing', value: boolean): void
@@ -107,7 +114,17 @@ function handleAddPin() {
 }
 
 function handleSavePin(){
-  saveCameraPin?.({name: pinName.value, description: pinDetails.value, hls: pinCameraLink.value})
+  if (props.selectedMapId !== undefined) {
+  saveCameraPin?.({
+    name: pinName.value,
+    description: pinDetails.value,
+    hls: pinCameraLink.value,
+    mapId: props.selectedMapId,
+    direction: pinDirection.value
+  })
+} else {
+  console.error('❌ No selected map ID provided');
+}
   isPinDialogOpen.value = false
   emit('drawing', false)
 }
@@ -140,7 +157,7 @@ function handleCancelPin() {
         <div>
           <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Creating User Area</h3>
           <div class="space-y-2">
-            <Button @click="openDialog" variant="default" :disabled="isDrawing"
+            <Button @click="openDialog" variant="default" :disabled="isDrawing || !props.selectedMap"
               class="w-full flex items-center gap-2 cursor-pointer">
               <Pencil class="w-4 h-4" /> Start Drawing
             </Button>
@@ -159,7 +176,7 @@ function handleCancelPin() {
         <div>
           <h3 class="text-sm font-semibold mb-2 text-muted-foreground">Pin Management</h3>
           <div class="space-y-2">
-            <Button :disable="isAddPinMode" variant="outline" class="w-full flex items-center gap-2 cursor-pointer" @click="handleAddPin">
+            <Button :disabled="isAddPinMode || !props.selectedMap || isDrawing" variant="default" class="w-full flex items-center gap-2 cursor-pointer" @click="handleAddPin">
               <Video class="w-4 h-4" /> Add Camera Pin
             </Button>
             <Button v-if="isAddPinMode" @click="handleCancelPin" variant="secondary"
@@ -214,8 +231,8 @@ function handleCancelPin() {
       </AlertDialogDescription>
     </AlertDialogHeader>
     <Input v-model="pinName" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
-    <Input v-model="pinDetails" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
-    <Input v-model="pinCameraLink" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
+    <Input v-model="pinDetails" type="text" placeholder="Pin Details" class="border rounded p-2 mt-2 w-full" />
+    <Input v-model="pinCameraLink" type="text" placeholder="Pin Camera Link" class="border rounded p-2 mt-2 w-full" />
     <AlertDialogFooter>
       <AlertDialogCancel @click="closePinDialog">Close</AlertDialogCancel>
       <AlertDialogAction @click="() => {
