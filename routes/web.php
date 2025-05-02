@@ -15,6 +15,9 @@ Route::get('straymap', function () {
     return Inertia::render('management/StrayMap');
 })->middleware(['auth', 'verified'])->name('straymap');
 
+Route::get('detections', function(){
+    return Inertia::render('Detections');
+})->middleware(['auth', 'verified'])->name('detections');
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';

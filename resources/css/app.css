@@ -153,7 +153,7 @@
   --chart-3: hsl(30 80% 55%);
   --chart-4: hsl(280 65% 60%);
   --chart-5: hsl(340 75% 55%);
-  --sidebar-background: #0d1117;              /* #282828 — Dark graphite */
+  --sidebar-background: #0c0c27;              /* #282828 — Dark graphite */
   --sidebar-foreground: hsl(0, 0%, 90%);              /* Light gray text for good contrast */
   --sidebar-primary: hsl(220, 100%, 65%);             /* Bright blue for buttons/icons */
   --sidebar-primary-foreground: hsl(0, 0%, 100%);     /* White text on primary */
