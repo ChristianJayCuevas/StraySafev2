@@ -39,6 +39,14 @@ export interface User {
     updated_at: string;
 }
 
+export interface Detection {
+    id: number
+    name: string
+    type: string
+    detected_at: string
+    image: string
+}
+
 export type BreadcrumbItemType = BreadcrumbItem;
 
 export type DrawingMode = 'polygon' | 'line' | 'point'

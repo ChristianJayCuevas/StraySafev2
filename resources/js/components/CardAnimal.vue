@@ -12,21 +12,21 @@ import { defineProps } from 'vue'
 
 defineProps<{
   title: string
-  imagelink: string
+  imagelink?: string
   description?: string
-  isStray: boolean
-  hasOwnerMatch: boolean
+  isStray?: boolean
+  hasOwnerMatch?: boolean
 }>()
 </script>
 
 <template>
-  <Card class="hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300 h-[340px] 2xl:h-[440px] text-[14px] 2xl:text-[18px] overflow-hidden py-0">
+  <Card class="hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300 h-[280px] 2xl:h-[320px] text-[14px] 2xl:text-[18px] overflow-hidden py-0">
 
     <!-- Image flush to top -->
     <div class="relative">
       <img
         :src="imagelink"
-        class="h-[200px] 2xl:h-[260px] w-full object-cover bg-black dark:bg-white"
+        class="h-[140px] 2xl:h-[200px] w-full object-cover bg-black dark:bg-white"
         alt="Animal"
       />
       <!-- Status Tags -->

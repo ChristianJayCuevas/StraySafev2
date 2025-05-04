@@ -57,8 +57,32 @@ const isPinDialogOpen = ref(false)
 const pinName = ref('')
 const pinDetails = ref('')
 const pinCameraLink = ref('')
-const pinDirection = ref()
+const pinDirection = ref(0)
+const compass = ref(null)
+let rotating = false
 
+function startRotation(event) {
+  rotating = true
+  rotateNeedle(event)
+}
+
+function stopRotation() {
+  rotating = false
+}
+
+function rotateNeedle(event) {
+  if (!rotating || !compass.value) return
+
+  const rect = compass.value.getBoundingClientRect()
+  const centerX = rect.left + rect.width / 2
+  const centerY = rect.top + rect.height / 2
+
+  const dx = event.clientX - centerX
+  const dy = centerY - event.clientY
+  const angle = Math.atan2(dx, dy) * (180 / Math.PI)
+
+  pinDirection.value = (angle + 360) % 360
+}
 const props = defineProps<{
   selectedMap: any
   selectedMapId: number | undefined;
@@ -223,26 +247,45 @@ function handleCancelPin() {
 </AlertDialog>
 
 <AlertDialog v-model:open="isPinDialogOpen">
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Pin Details</AlertDialogTitle>
-      <AlertDialogDescription>
-        Fill up the details for the pin below.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <Input v-model="pinName" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
-    <Input v-model="pinDetails" type="text" placeholder="Pin Details" class="border rounded p-2 mt-2 w-full" />
-    <Input v-model="pinCameraLink" type="text" placeholder="Pin Camera Link" class="border rounded p-2 mt-2 w-full" />
-    <AlertDialogFooter>
-      <AlertDialogCancel @click="closePinDialog">Close</AlertDialogCancel>
-      <AlertDialogAction @click="() => {
-        handleSavePin()
-        isPinDialogOpen = false
-      }">Save</AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Pin Details</AlertDialogTitle>
+        <AlertDialogDescription>
+          Fill up the details for the pin below.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
 
+      <Input v-model="pinName" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
+      <Input v-model="pinDetails" type="text" placeholder="Pin Details" class="border rounded p-2 mt-2 w-full" />
+      <Input v-model="pinCameraLink" type="text" placeholder="Pin Camera Link" class="border rounded p-2 mt-2 w-full" />
+
+      <!-- Direction Selector -->
+      <div class="mt-4 flex flex-col items-center">
+        <label class="mb-2 text-sm font-medium">Camera Direction ({{ pinDirection }}°)</label>
+        <div
+          class="relative w-32 h-32 rounded-full border border-gray-300"
+          @mousedown="startRotation"
+          @mousemove="rotateNeedle"
+          @mouseup="stopRotation"
+          @mouseleave="stopRotation"
+          ref="compass"
+        >
+          <div
+            class="absolute left-1/2 top-1/2 w-1 h-16 bg-blue-600 origin-bottom rounded"
+            :style="{ transform: `translate(-50%, -100%) rotate(${pinDirection}deg)` }"
+          ></div>
+        </div>
+      </div>
+
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="closePinDialog">Close</AlertDialogCancel>
+        <AlertDialogAction @click="() => {
+          handleSavePin()
+          isPinDialogOpen = false
+        }">Save</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 
 
 </template>
