@@ -2,12 +2,25 @@ import { ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import axios from 'axios'
 
+interface AnimalPin {
+  id: number;
+  animal_type: string;
+  stray_status: string;
+  animal_name: string;
+  camera_pin_id: number;
+  user_map_id: number;
+  latitude: number;
+  longitude: number;
+}
+
 export function useMapPins(mapInstance: any) {
   const isAddPinMode = ref(false)
   const cameraPins = ref<any[]>([])
+  const animalPins = ref<AnimalPin[]>([])
   const onPinLocationSelected = ref<(() => void) | null>(null)
   const selectedLocation = ref<{ lat: number, lng: number } | null>(null)
-  const markerRefs = ref<mapboxgl.Marker[]>([])
+  const markerRefs = ref<{ [key: string]: mapboxgl.Marker }>({})
+  const animalMarkerRefs = ref<{ [key: string]: mapboxgl.Marker }>({})
 
   const enableAddPinMode = () => {
     isAddPinMode.value = true
@@ -153,42 +166,109 @@ export function useMapPins(mapInstance: any) {
         .setPopup(
           new mapboxgl.Popup({ offset: [0, -30], anchor: 'bottom' })
             .setHTML(`
-              <div style="
+              <div class="popup-content" style="
                 font-family: 'Segoe UI', sans-serif;
-                min-width: 200px;
-                padding: 12px;
+                min-width: 280px;
+                padding: 0;
                 background-color: #fff;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                overflow: hidden;
               ">
-                <h3 style="
-                  margin: 0 0 6px;
-                  font-size: 16px;
-                  color: #00223f;
+                <!-- Thumbnail Section -->
+                <div style="
+                  width: 100%;
+                  height: 160px;
+                  background-color: #f5f5f5;
+                  position: relative;
+                  overflow: hidden;
                 ">
-                  ${pin.camera_name}
-                </h3>
-                <p style="
-                  margin: 0 0 12px;
-                  font-size: 14px;
-                  color: #555;
-                ">
-                  ${pin.camera_description}
-                </p>
-                <button 
-                  onclick="deleteCameraPin('${pin.id}')"
-                  style="
-                    padding: 6px 12px;
-                    font-size: 13px;
-                    background-color: #e74c3c;
+                  <img 
+                    src="${pin.thumbnail_url || '/images/camera-placeholder.jpg'}" 
+                    alt="CCTV Feed"
+                    style="
+                      width: 100%;
+                      height: 100%;
+                      object-fit: cover;
+                    "
+                  />
+                  <div style="
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    background-color: rgba(0, 34, 63, 0.8);
                     color: white;
-                    border: none;
+                    padding: 4px 8px;
                     border-radius: 4px;
-                    cursor: pointer;
-                  "
-                >
-                  Delete
-                </button>
+                    font-size: 12px;
+                    font-weight: 500;
+                  ">
+                    Live Feed
+                  </div>
+                </div>
+
+                <!-- Content Section -->
+                <div style="padding: 16px;">
+                  <h3 style="
+                    margin: 0 0 8px;
+                    font-size: 18px;
+                    color: #00223f;
+                    font-weight: 600;
+                  ">
+                    ${pin.camera_name}
+                  </h3>
+                  <p style="
+                    margin: 0 0 16px;
+                    font-size: 14px;
+                    color: #555;
+                    line-height: 1.5;
+                  ">
+                    ${pin.camera_description}
+                  </p>
+
+                  <!-- Action Buttons -->
+                  <div style="
+                    display: flex;
+                    gap: 8px;
+                    margin-top: 16px;
+                  ">
+                    <button 
+                      onclick="viewCameraFeed('${pin.id}')"
+                      style="
+                        flex: 1;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        background-color: #0068e7;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                      "
+                      onmouseover="this.style.backgroundColor='#0056c3'"
+                      onmouseout="this.style.backgroundColor='#0068e7'"
+                    >
+                      View Feed
+                    </button>
+                    <button 
+                      onclick="deleteCameraPin('${pin.id}')"
+                      style="
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        background-color: #e74c3c;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                      "
+                      onmouseover="this.style.backgroundColor='#c0392b'"
+                      onmouseout="this.style.backgroundColor='#e74c3c'"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             `)
         )
@@ -239,6 +319,10 @@ export function useMapPins(mapInstance: any) {
   
     console.log('📍 Displaying pins:', cameraPins.value)
   
+    // Remove all existing markers
+    Object.values(markerRefs.value).forEach(marker => marker.remove())
+    markerRefs.value = {}
+
     cameraPins.value.forEach(pin => {
       const angle = ((pin.direction + 180) % 360 + 360) % 360;
 
@@ -329,9 +413,9 @@ export function useMapPins(mapInstance: any) {
       cameraMarker.appendChild(cameraIcon)
       
       // Create and add the marker to the map
-      new mapboxgl.Marker({
+      const marker = new mapboxgl.Marker({
         element: cameraMarker,
-        anchor: 'center' // Changed from 'bottom' to 'center' for better positioning
+        anchor: 'center'
       })
         .setLngLat([pin.longitude, pin.latitude])
         .setPopup(
@@ -340,65 +424,321 @@ export function useMapPins(mapInstance: any) {
               <div class="popup-content" style="
                 font-family: 'Segoe UI', sans-serif;
                 min-width: 200px;
-                padding: 12px;
+                padding: 0;
                 background-color: #fff;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                overflow: hidden;
               ">
-                <h3 style="
-                  margin: 0 0 6px;
-                  font-size: 16px;
-                  color: #00223f;
+                <!-- Thumbnail Section -->
+                <div style="
+                  width: 100%;
+                  height: 160px;
+                  background-color: #f5f5f5;
+                  position: relative;
+                  overflow: hidden;
                 ">
-                  ${pin.camera_name}
-                </h3>
-                <p style="
-                  margin: 0 0 12px;
-                  font-size: 14px;
-                  color: #555;
-                ">
-                  ${pin.camera_description}
-                </p>
-                <button 
-                  onclick="deleteCameraPin('${pin.id}')"
-                  style="
-                    padding: 6px 12px;
-                    font-size: 13px;
-                    background-color: #e74c3c;
+                  <img 
+                    src="${pin.thumbnail_url || '/images/camera-placeholder.jpg'}" 
+                    alt="CCTV Feed"
+                    style="
+                      width: 100%;
+                      height: 100%;
+                      object-fit: cover;
+                    "
+                  />
+                  <div style="
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    background-color: rgba(0, 34, 63, 0.8);
                     color: white;
-                    border: none;
+                    padding: 4px 8px;
                     border-radius: 4px;
-                    cursor: pointer;
-                  "
-                >
-                  Delete
-                </button>
+                    font-size: 12px;
+                    font-weight: 500;
+                  ">
+                    Live Feed
+                  </div>
+                </div>
+
+                <!-- Content Section -->
+                <div style="padding: 16px;">
+                  <h3 style="
+                    margin: 0 0 8px;
+                    font-size: 18px;
+                    color: #00223f;
+                    font-weight: 600;
+                  ">
+                    ${pin.camera_name}
+                  </h3>
+                  <p style="
+                    margin: 0 0 16px;
+                    font-size: 14px;
+                    color: #555;
+                    line-height: 1.5;
+                  ">
+                    ${pin.camera_description}
+                  </p>
+
+                  <!-- Action Buttons -->
+                  <div style="
+                    display: flex;
+                    gap: 8px;
+                    margin-top: 16px;
+                  ">
+                    <button 
+                      onclick="viewCameraFeed('${pin.id}')"
+                      style="
+                        flex: 1;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        background-color: #0068e7;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                      "
+                      onmouseover="this.style.backgroundColor='#0056c3'"
+                      onmouseout="this.style.backgroundColor='#0068e7'"
+                    >
+                      View Feed
+                    </button>
+                    <button 
+                      onclick="deleteCameraPin('${pin.id}')"
+                      style="
+                        padding: 8px 16px;
+                        font-size: 14px;
+                        background-color: #e74c3c;
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                      "
+                      onmouseover="this.style.backgroundColor='#c0392b'"
+                      onmouseout="this.style.backgroundColor='#e74c3c'"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             `)
         )
         
         .addTo(mapInstance.value)
+
+      // Store marker reference with pin ID
+      markerRefs.value[pin.id] = marker
     })
   }
   (window as any).deleteCameraPin = async (pinId: string) => {
     try {
       await axios.delete(`/camera-pins/${pinId}`)
+      
+      // Remove marker from map
+      if (markerRefs.value[pinId]) {
+        markerRefs.value[pinId].remove()
+        delete markerRefs.value[pinId]
+      }
+      
+      // Update camera pins array
       cameraPins.value = cameraPins.value.filter(pin => pin.id !== pinId)
-      displayCameraPins()
     } catch (error) {
       console.error('❌ Failed to delete pin:', error)
     }
   }
 
+  const saveAnimalPin = async ({
+    animalType,
+    strayStatus,
+    animalName,
+    cameraPinId,
+    mapId,
+  }: {
+    animalType: string
+    strayStatus: string
+    animalName: string
+    cameraPinId: number
+    mapId: number
+  }) => {
+    if (!selectedLocation.value) {
+      console.warn('⚠️ No location selected.');
+      return;
+    }
+
+    const payload = {
+      animal_type: animalType,
+      stray_status: strayStatus,
+      animal_name: animalName,
+      camera_pin_id: cameraPinId,
+      user_map_id: mapId,
+      latitude: selectedLocation.value.lat,
+      longitude: selectedLocation.value.lng,
+    };
+
+    try {
+      const response = await axios.post('/animal-pins', payload);
+      const pin = response.data.pin;
+      animalPins.value.push(pin);
+      displayAnimalPins();
+      selectedLocation.value = null;
+    } catch (error) {
+      console.error('❌ Failed to save animal pin:', error);
+    }
+  };
+
+  const fetchAnimalPins = async (userMapId: number) => {
+    try {
+      if (!userMapId) {
+        console.warn('No userMapId provided to fetchAnimalPins');
+        return;
+      }
+
+      const response = await axios.get('/animal-pins', {
+        params: { user_map_id: userMapId }
+      });
+
+      console.log('🐾 Animal Pins Fetched:', response.data);
+
+      const pins = Array.isArray(response.data) ? response.data : response.data.pins ?? [];
+      animalPins.value = pins;
+      displayAnimalPins();
+    } catch (error) {
+      console.error('❌ Failed to fetch animal pins:', error);
+      animalPins.value = [];
+    }
+  };
+
+  const displayAnimalPins = () => {
+    if (!mapInstance.value) {
+      console.warn('⚠️ Map not ready');
+      return;
+    }
+
+    // Remove existing animal markers
+    Object.values(animalMarkerRefs.value).forEach(marker => marker.remove());
+    animalMarkerRefs.value = {};
+
+    // Group animal pins by camera_pin_id for clustering
+    const pinsByCamera = animalPins.value.reduce<Record<string, AnimalPin[]>>((acc, pin) => {
+      if (!acc[pin.camera_pin_id]) {
+        acc[pin.camera_pin_id] = [];
+      }
+      acc[pin.camera_pin_id].push(pin);
+      return acc;
+    }, {});
+
+    // Create markers for each camera's animal pins
+    Object.entries(pinsByCamera).forEach(([cameraId, pins]) => {
+      const cameraPin = cameraPins.value.find(cp => cp.id === parseInt(cameraId));
+      if (!cameraPin) return;
+
+      const angle = ((cameraPin.direction + 180) % 360 + 360) % 360;
+      const radius = 50; // Distance from camera center
+      const offsetX = radius * Math.cos((angle * Math.PI) / 180);
+      const offsetY = radius * Math.sin((angle * Math.PI) / 180);
+
+      // Create a container for the animal pins
+      const animalMarker = document.createElement('div');
+      animalMarker.style.position = 'absolute';
+      animalMarker.style.transform = 'translate(-50%, -50%)';
+
+      // Create the animal icon
+      const animalIcon = document.createElement('div');
+      animalIcon.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2c-1.5 0-3 1.5-3 3v2c0 1.5 1.5 3 3 3s3-1.5 3-3V5c0-1.5-1.5-3-3-3z"/>
+          <path d="M12 10c-1.5 0-3 1.5-3 3v2c0 1.5 1.5 3 3 3s3-1.5 3-3v-2c0-1.5-1.5-3-3-3z"/>
+          <path d="M12 18c-1.5 0-3 1.5-3 3v2c0 1.5 1.5 3 3 3s3-1.5 3-3v-2c0-1.5-1.5-3-3-3z"/>
+        </svg>
+      `;
+
+      // Add count badge if multiple animals
+      if (pins.length > 1) {
+        const badge = document.createElement('div');
+        badge.style.position = 'absolute';
+        badge.style.top = '-8px';
+        badge.style.right = '-8px';
+        badge.style.backgroundColor = '#e74c3c';
+        badge.style.color = 'white';
+        badge.style.borderRadius = '50%';
+        badge.style.width = '20px';
+        badge.style.height = '20px';
+        badge.style.display = 'flex';
+        badge.style.alignItems = 'center';
+        badge.style.justifyContent = 'center';
+        badge.style.fontSize = '12px';
+        badge.style.fontWeight = 'bold';
+        badge.textContent = pins.length.toString();
+        animalIcon.appendChild(badge);
+      }
+
+      animalMarker.appendChild(animalIcon);
+
+      // Calculate position based on camera direction
+      const marker = new mapboxgl.Marker({
+        element: animalMarker,
+        anchor: 'center'
+      })
+        .setLngLat([
+          cameraPin.longitude + offsetX / 111320, // Convert meters to degrees
+          cameraPin.latitude + offsetY / 111320
+        ])
+        .setPopup(
+          new mapboxgl.Popup({ offset: [0, -30], anchor: 'bottom' })
+            .setHTML(`
+              <div class="popup-content" style="
+                font-family: 'Segoe UI', sans-serif;
+                min-width: 200px;
+                padding: 16px;
+                background-color: #fff;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+              ">
+                <h3 style="margin: 0 0 8px; font-size: 18px; color: #00223f; font-weight: 600;">
+                  Animals Detected
+                </h3>
+                <div style="max-height: 200px; overflow-y: auto;">
+                  ${pins.map((pin: AnimalPin) => `
+                    <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eee;">
+                      <p style="margin: 0 0 4px; font-size: 14px; color: #555;">
+                        <strong>Name:</strong> ${pin.animal_name || 'Unknown'}
+                      </p>
+                      <p style="margin: 0 0 4px; font-size: 14px; color: #555;">
+                        <strong>Type:</strong> ${pin.animal_type}
+                      </p>
+                      <p style="margin: 0; font-size: 14px; color: #555;">
+                        <strong>Status:</strong> ${pin.stray_status}
+                      </p>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `)
+        )
+        .addTo(mapInstance.value);
+
+      animalMarkerRefs.value[cameraId] = marker;
+    });
+  };
+
   return {
     isAddPinMode,
     cameraPins,
+    animalPins,
     enableAddPinMode,
     saveCameraPin,
+    saveAnimalPin,
     cancelAddPinMode,
     fetchCameraPins,
+    fetchAnimalPins,
     displayCameraPins,
-    onPinLocationSelected, // ✅ expose this
-    markerRefs
+    displayAnimalPins,
+    onPinLocationSelected,
+    markerRefs,
+    animalMarkerRefs
   }
 }

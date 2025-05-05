@@ -10,9 +10,17 @@ class AnimalPinsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $userMapId = $request->query('user_map_id');
+
+        if (!$userMapId) {
+            return response()->json(['error' => 'Missing user_map_id'], 400);
+        }
+
+        $pins = AnimalPins::where('user_map_id', $userMapId)->get();
+
+        return response()->json($pins);
     }
 
     /**
@@ -28,7 +36,19 @@ class AnimalPinsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'animal_type' => 'required|string|max:255',
+            'stray_status' => 'required|string|max:255',
+            'animal_name' => 'nullable|string|max:255',
+            'camera_pin_id' => 'required|exists:camera_pins,id',
+            'user_map_id' => 'required|exists:user_maps,id',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $pin = AnimalPins::create($validated);
+
+        return response()->json(['success' => true, 'pin' => $pin]);
     }
 
     /**
@@ -58,8 +78,9 @@ class AnimalPinsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(AnimalPins $animalPins)
+    public function destroy(AnimalPins $animalPin)
     {
-        //
+        $animalPin->delete();
+        return response()->json(['success' => true]);
     }
 }

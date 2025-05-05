@@ -2,6 +2,7 @@
 use App\Http\Controllers\Map\UserMapController;
 use App\Http\Controllers\Map\UserAreaController;
 use App\Http\Controllers\Map\CameraPinsController;
+use App\Http\Controllers\Map\AnimalPinsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
@@ -20,4 +21,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/camera-pins', [CameraPinsController::class, 'index']);
     Route::post('/camera-pins', [CameraPinsController::class, 'store']);
     Route::delete('/camera-pins/{id}', [CameraPinsController::class, 'destroy']);
+
+    Route::get('/animal-pins', [AnimalPinsController::class, 'index']);
+    Route::post('/animal-pins', [AnimalPinsController::class, 'store']);
+    Route::delete('/animal-pins/{id}', [AnimalPinsController::class, 'destroy']);
 });
