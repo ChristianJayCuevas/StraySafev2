@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Map;
 use App\Http\Controllers\Controller;
 use App\Models\CameraPins;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Log;
 class CameraPinsController extends Controller
 {
     /**
@@ -80,8 +80,43 @@ class CameraPinsController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(CameraPins $cameraPins)
+    public function destroy($id)
     {
-        //
+        try {
+            Log::info('Camera pin deletion request received', ['id' => $id]);
+            
+            // Find the pin by ID, ensuring it's a camera pin
+            $pin = CameraPins::where('id', $id)
+                ->first();
+                
+            if (!$pin) {
+                Log::warning('Camera pin not found or not a camera', ['id' => $id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Camera pin not found'
+                ], 404);
+            }
+            
+            // Delete the pin
+            $pin->delete();
+            
+            Log::info('Camera pin deleted successfully', ['id' => $id]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Camera pin deleted successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to delete camera pin', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete camera pin: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

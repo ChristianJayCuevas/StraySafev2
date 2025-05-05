@@ -19,5 +19,5 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/camera-pins', [CameraPinsController::class, 'index']);
     Route::post('/camera-pins', [CameraPinsController::class, 'store']);
-    // Route::delete('/camera-pins', [CameraPinsController::class, 'destroy']);
+    Route::delete('/camera-pins/{id}', [CameraPinsController::class, 'destroy']);
 });

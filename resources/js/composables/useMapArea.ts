@@ -149,7 +149,7 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       source: 'saved-areas',
       paint: {
         'fill-color': '#00BCD4',
-        'fill-opacity': 0.3
+        'fill-opacity': 0.2
       }
     });
   

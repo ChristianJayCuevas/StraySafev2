@@ -201,3 +201,20 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   pointer-events: none;
 }
+
+/* pins animation */
+.popup-content {
+  animation: popupFadeIn 0.5s ease-out;
+}
+
+/* Define the fade-in and slide-up animation */
+@keyframes popupFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
