@@ -27,6 +27,7 @@ import { useMapPins } from '@/composables/useMapPin'
 import type { Feature } from 'geojson'
 import { area } from '@unovis/ts/components/area/style'
 import { toast } from 'vue-sonner'
+import AnimalPinTest from './AnimalPinTest.vue'
 // Token
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
 
@@ -225,6 +226,7 @@ const selectedAreaId = ref('')
   <!-- Controls panel -->
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
     <MapControls @drawing="emit('drawing', $event)" :selected-map="selectedMap" :selected-map-id="selectedMap?.id"/>
+    <AnimalPinTest />
   </div>
 
   <!-- Current Map Label -->
