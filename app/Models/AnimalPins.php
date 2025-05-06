@@ -10,9 +10,10 @@ class AnimalPins extends Model
         'animal_type',
         'stray_status',
         'camera',
-        'animal_name',
         'user_map_id',
-        'camera_pin_id'
+        'camera_pin_id',
+        'latitude',
+        'longitude',
     ];
 
     protected $hidden = [

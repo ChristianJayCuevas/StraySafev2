@@ -3,6 +3,7 @@ import { onMounted, ref, onUnmounted, watch, computed, provide, defineEmits, def
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import axios from 'axios'
+import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/ui/sidebar/utils'
 import {
   AlertDialog,
@@ -24,10 +25,10 @@ import MapCreate from '@/components/map/MapCreate.vue'
 import { useMapCreate } from '@/composables/useMapCreate'
 import { useUserAreas } from '@/composables/useMapArea'
 import { useMapPins } from '@/composables/useMapPin'
+import { useAnimalPinSimulator } from '@/composables/useAnimalPinSimulator'
 import type { Feature } from 'geojson'
 import { area } from '@unovis/ts/components/area/style'
 import { toast } from 'vue-sonner'
-import AnimalPinTest from './AnimalPinTest.vue'
 // Token
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
 
@@ -86,6 +87,15 @@ const {
   saveCameraPin
 } = useMapPins(mainMap)
 
+const {
+  cameraPins2,
+  simulateAnimalPin,
+  fetchCameraPins2,
+  error,
+  fetchAnimalPins
+} = useAnimalPinSimulator(mainMap)
+
+
 provide('isAddPinMode', isAddPinMode);
 provide('enableAddPinMode', enableAddPinMode);
 provide('cancelAddPinMode', cancelAddPinMode);
@@ -123,6 +133,13 @@ const props = withDefaults(defineProps<{
 
 //Map state
 
+const simulateStrayDog = async () => {
+  await simulateAnimalPin({
+    animal_type: 'dog',
+    stray_status: 'stray',
+    cameraName: 'Camera 1',
+  })
+}
 
 const handleSaveArea = async () => {
   if (!pendingFeature.value) {
@@ -159,12 +176,13 @@ watch(selectedMap, (map) => {
 }, { immediate: true })
 watch(selectedMap, (map) => {
   if (map?.id) {
-    fetchCameraPins()
+    fetchCameraPins(map.id)
   }
 }, { immediate: true })
 
 onMounted(() => {
   initializeMap()
+
 })
 
 async function initializeMap() {
@@ -197,6 +215,9 @@ async function initializeMap() {
   initializeDraw(); // ✅ Ensure draw is initialized after map is ready
   fetchCameraPins(selectedMap.value.id); // 🛬 Fetch pins only after map load
       fetchUserAreas(selectedMap.value.id);
+      fetchCameraPins2(selectedMap.value.id);
+      fetchAnimalPins(selectedMap.value.id);
+
 });
 
   } catch (error) {
@@ -226,9 +247,9 @@ const selectedAreaId = ref('')
   <!-- Controls panel -->
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
     <MapControls @drawing="emit('drawing', $event)" :selected-map="selectedMap" :selected-map-id="selectedMap?.id"/>
-    <AnimalPinTest />
+   
   </div>
-
+  <Button variant="default" @click="simulateStrayDog" />
   <!-- Current Map Label -->
   <div v-if="props.currentMap" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 text-center">
     <div v-if="selectedMap"

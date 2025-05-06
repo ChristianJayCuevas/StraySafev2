@@ -54,3 +54,30 @@ export type DrawingMode = 'polygon' | 'line' | 'point'
 export type EnableDrawingMode = (type: DrawingMode, zoom?: number | null) => boolean
 export type DisableDrawingMode = () => boolean
 export type CancelDrawing = () => boolean
+export interface CameraPin {
+    id: number
+    camera_name: string
+    hls_url: string
+    camera_description: string
+    latitude: number
+    longitude: number
+    direction: number
+    user_map_id: number
+  }
+  
+  export interface AnimalPinInput {
+    animal_type: string
+    stray_status: string
+    cameraName: string
+  }
+  
+  export interface AnimalPin {
+    id: number
+    animal_type: string
+    stray_status: string
+    latitude: number
+    longitude: number
+    camera_pin_id?: number
+    user_map_id?: number
+  }
+  

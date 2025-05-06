@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('animal_type')->nullable();
             $table->string('stray_status')->nullable();
             $table->text('camera')->nullable();
-            $table->string('animal_name')->nullable();
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->foreignId('user_map_id')->nullable()->constrained('user_maps')->nullOnDelete();
             $table->foreignId('camera_pin_id')->nullable()->constrained('camera_pins')->nullOnDelete();
             $table->index('camera_pin_id');

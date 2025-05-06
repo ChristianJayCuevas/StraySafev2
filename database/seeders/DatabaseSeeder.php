@@ -14,9 +14,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolePermissionSeeder::class,
             UserSeeder::class,
-            UserMapSeeder::class,
-            CameraPinSeeder::class,
-            AnimalPinSeeder::class,
+            // UserMapSeeder::class,
+            // CameraPinSeeder::class,
+            // AnimalPinSeeder::class,
         ]);
     }
 }

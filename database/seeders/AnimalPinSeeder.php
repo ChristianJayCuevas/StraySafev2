@@ -22,7 +22,6 @@ class AnimalPinSeeder extends Seeder
                 AnimalPins::create([
                     'animal_type' => $this->getRandomAnimalType(),
                     'stray_status' => $this->getRandomStrayStatus(),
-                    'animal_name' => $this->getRandomAnimalName(),
                     'camera_pin_id' => $cameraPin->id,
                     'user_map_id' => $cameraPin->user_map_id,
                     'latitude' => $cameraPin->latitude + (rand(-50, 50) / 111320), // Random offset within ~50 meters
@@ -42,11 +41,5 @@ class AnimalPinSeeder extends Seeder
     {
         $statuses = ['Stray', 'Owned', 'Unknown'];
         return $statuses[array_rand($statuses)];
-    }
-
-    private function getRandomAnimalName(): string
-    {
-        $names = ['Rex', 'Luna', 'Max', 'Bella', 'Charlie', 'Lucy', 'Cooper', 'Daisy', 'Buddy', 'Molly'];
-        return $names[array_rand($names)];
     }
 } 
