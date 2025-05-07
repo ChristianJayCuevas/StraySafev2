@@ -36,7 +36,7 @@ class CameraPinsController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-{
+    {
     $validated = $request->validate([
         'camera_name' => 'nullable|string|max:255',
         'hls_url' => 'nullable|string|max:255',
@@ -50,7 +50,7 @@ class CameraPinsController extends Controller
     $pin = \App\Models\CameraPins::create($validated);
 
     return response()->json(['success' => true, 'pin' => $pin]);
-}
+    }
 
 
     /**

@@ -18,6 +18,11 @@ Route::get('straymap', function () {
 Route::get('detections', function(){
     return Inertia::render('Detections');
 })->middleware(['auth', 'verified'])->name('detections');
+
+Route::get('cctv', function(){
+    return Inertia::render('management/CCTVManagement');
+})->middleware(['auth', 'verified'])->name('cctv');
+
 Route::get('/animalpins', [AnimalPinsController::class, 'index'])->name('animal-pins.index');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/animalpins', [AnimalPinsController::class, 'store'])->name('animal-pins.store');
