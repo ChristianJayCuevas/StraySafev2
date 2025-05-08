@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<!-- <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 </script>
 
@@ -784,4 +784,26 @@ import { Head, Link } from '@inertiajs/vue3';
         </div>
         <div class="h-14.5 hidden lg:block"></div>
     </div>
+</template> -->
+<script setup lang="ts">
+import Navbar from "./welcome/Navbar.vue";
+import Hero from "./welcome/Hero.vue";
+
+</script>
+
+<template>
+  <Navbar />
+  <Hero />
+  <!-- <Sponsors />
+  <Benefits />
+  <Features />
+  <Services />
+  <HowItWorks />
+  <Testimonials />
+  <Team />
+  <Community />
+  <Pricing />
+  <Contact />
+  <FAQ />
+  <Footer /> -->
 </template>
