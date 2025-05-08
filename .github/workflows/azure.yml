@@ -71,3 +71,10 @@ jobs:
           rsync -av -e "ssh -v -o UserKnownHostsFile=~/.ssh/known_hosts -p ${{ secrets.SSH_PORT }}" \
           --rsync-path="sudo rsync" \
           ${{ github.workspace }}/public/build/ ${{ secrets.AZURE_USERNAME }}@${{ secrets.AZURE_HOST }}:/var/www/Stray-SafeV2/public/build/
+
+      - name: Copy Storage Directory to Azure Server
+        run: |
+          ssh-keyscan -t rsa -p ${{ secrets.SSH_PORT }} ${{ secrets.AZURE_HOST }} >> ~/.ssh/known_hosts # Ensure host key is present
+          rsync -av -e "ssh -v -o UserKnownHostsFile=~/.ssh/known_hosts -p ${{ secrets.SSH_PORT }}" \
+          --rsync-path="sudo rsync" \
+          ${{ github.workspace }}/storage/app/public/ ${{ secrets.AZURE_USERNAME }}@${{ secrets.AZURE_HOST }}:/var/www/Stray-SafeV2/storage/app/public/
