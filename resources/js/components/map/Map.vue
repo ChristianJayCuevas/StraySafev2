@@ -249,7 +249,7 @@ const selectedAreaId = ref('')
     <MapControls @drawing="emit('drawing', $event)" :selected-map="selectedMap" :selected-map-id="selectedMap?.id"/>
    
   </div>
-  <Button variant="default" @click="simulateStrayDog" />
+  <!-- <Button variant="default" @click="simulateStrayDog" /> -->
   <!-- Current Map Label -->
   <div v-if="props.currentMap" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 text-center">
     <div v-if="selectedMap"

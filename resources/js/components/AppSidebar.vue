@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Map, Dog, Cctv, Aperture } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Map, Dog, Cctv, Aperture, MonitorPlay } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { computed } from 'vue';
 
@@ -49,6 +49,12 @@ const mainNavItems: NavItem[] = [
         title: 'Stray Monitor',
         href: '/cctv',
         icon: Cctv,
+        group: "Stray Management"
+    },
+    {
+        title: 'CCTV View',
+        href: '/cctvmonitor',
+        icon: MonitorPlay,
         group: "Stray Management"
     },
     {

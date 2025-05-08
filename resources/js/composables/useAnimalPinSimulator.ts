@@ -17,9 +17,35 @@ export function useAnimalPinSimulator(mapInstance: any) {
 
     // Inject your custom SVG here
     el.innerHTML = `
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="red" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="10" stroke="black" stroke-width="2" fill="red"/>
-      </svg>
+      <?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140" width="100" height="140">
+  <!-- Pin Base -->
+  <path d="M50,140c0,0-50-60-50-90c0-27.6,22.4-50,50-50s50,22.4,50,50C100,80,50,140,50,140z" fill="#FF5733"/>
+  
+  <!-- Dog Face -->
+  <g transform="translate(15, 15)">
+    <!-- Head -->
+    <circle cx="35" cy="35" r="28" fill="#8B4513"/>
+    
+    <!-- Ears -->
+    <path d="M12,20 Q5,5 15,15 Z" fill="#663300"/> <!-- Left Ear -->
+    <path d="M58,20 Q65,5 55,15 Z" fill="#663300"/> <!-- Right Ear -->
+    
+    <!-- Eyes -->
+    <ellipse cx="25" cy="30" rx="5" ry="6" fill="white"/> <!-- Left Eye -->
+    <ellipse cx="45" cy="30" rx="5" ry="6" fill="white"/> <!-- Right Eye -->
+    <circle cx="25" cy="31" r="3" fill="black"/> <!-- Left Pupil -->
+    <circle cx="45" cy="31" r="3" fill="black"/> <!-- Right Pupil -->
+    
+    <!-- Nose and Mouth -->
+    <ellipse cx="35" cy="42" rx="8" ry="5" fill="#333"/> <!-- Nose -->
+    <path d="M35,47 L35,53 M35,53 Q28,58 25,53 M35,53 Q42,58 45,53" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round"/> <!-- Mouth -->
+    
+    <!-- Spots (Optional) -->
+    <path d="M15,45 Q20,55 30,50 Q25,40 15,45 Z" fill="#663300"/> <!-- Left Cheek Spot -->
+    <path d="M55,45 Q50,55 40,50 Q45,40 55,45 Z" fill="#663300"/> <!-- Right Cheek Spot -->
+  </g>
+</svg>
     `
 
     const marker = new mapboxgl.Marker(el)

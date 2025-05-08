@@ -22,5 +22,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/camera-pins', [CameraPinsController::class, 'store']);
     Route::delete('/camera-pins/{id}', [CameraPinsController::class, 'destroy']);
 
-
+    Route::get('/animalpins', [AnimalPinsController::class, 'index'])->name('animal-pins.index');
+    Route::post('/animalpins', [AnimalPinsController::class, 'store'])->name('animal-pins.store');
+    Route::delete('/animalpins/{id}', [AnimalPinsController::class, 'destroy']);
 });

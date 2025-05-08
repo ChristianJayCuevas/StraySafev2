@@ -23,11 +23,10 @@ Route::get('cctv', function(){
     return Inertia::render('management/CCTVManagement');
 })->middleware(['auth', 'verified'])->name('cctv');
 
-Route::get('/animalpins', [AnimalPinsController::class, 'index'])->name('animal-pins.index');
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::post('/animalpins', [AnimalPinsController::class, 'store'])->name('animal-pins.store');
-});
-Route::delete('/animalpins/{id}', [AnimalPinsController::class, 'destroy']);
+Route::get('cctvmonitor', function(){
+    return Inertia::render('management/CCTVMonitoring');
+})->middleware(['auth', 'verified'])->name('cctvmonitor');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';
