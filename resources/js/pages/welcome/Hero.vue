@@ -8,9 +8,9 @@ import { ArrowRight } from "lucide-vue-next";
   <section class="w-full max-w-screen-xl mx-auto px-4 py-20 md:py-32">
     <div class="grid place-items-center gap-8">
       <div class="text-center space-y-8">
-        <Badge variant="outline" class="text-sm py-2">
+        <Badge variant="outline" class="text-sm py-2 rounded-2xl">
           <span class="mr-2 text-primary">
-            <Badge>new</Badge>
+            <Badge class="rounded-2xl">new</Badge>
           </span>
           <span> Version 2 is out now! </span>
         </Badge>
