@@ -21,12 +21,12 @@ const currentLabel = computed(() => appearance.value === 'light' ? 'Light' : 'Da
 
 
 <template>
-  <div :class="['inline-flex rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800', containerClass]">
+
     <button
-      @click="toggleAppearance"
-      class="flex items-center rounded-md px-1.5 py-1.5 transition-colors bg-white shadow-xs dark:bg-neutral-700 dark:text-neutral-100"
-    >
-      <component :is="currentIcon" class="h-4 w-4" />
-    </button>
-  </div>
+  @click="toggleAppearance"
+  class="flex items-center rounded-md px-1.5 py-1.5 transition-colors text-neutral-700 dark:text-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+>
+  <component :is="currentIcon" class="h-4 w-4" />
+</button>
+
 </template>

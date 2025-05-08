@@ -99,10 +99,8 @@ const isOpen = ref<boolean>(false);
                     href="/"
                     class="flex items-center"
                   >
-                    <ChevronsDown
-                      class="bg-gradient-to-tr from-primary/70 via-primary to-primary/70 rounded-lg size-9 mr-2 border text-white"
-                    />
-                    ShadcnVue
+                      
+    <AppLogo />
                   </a>
                 </SheetTitle>
               </SheetHeader>
