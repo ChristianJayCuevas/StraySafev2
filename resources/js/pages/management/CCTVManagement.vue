@@ -124,7 +124,7 @@ const dummyData: CCTVCamera[] = [
     id: 1,
     name: 'Main Entrance',
     location: 'Front Gate',
-    streamUrl: 'https://skynewsau-live.akamaized.net/hls/live/2002689/skynewsau-extra1/master.m3u8',
+    streamUrl: 'https://www.youtube.com/embed/i3w7qZVSAsY',
     status: 'live',
     lastUpdated: '2025-05-07 14:30',
     hasPlayback: true
@@ -133,7 +133,7 @@ const dummyData: CCTVCamera[] = [
     id: 2,
     name: 'Parking Area',
     location: 'North Lot',
-    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    streamUrl: 'https://www.youtube.com/embed/p0Qhe4vhYLQ',
     status: 'demo',
     lastUpdated: '2025-05-07 14:15',
     hasPlayback: true
@@ -142,7 +142,7 @@ const dummyData: CCTVCamera[] = [
     id: 3,
     name: 'Back Entrance',
     location: 'Loading Bay',
-    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    streamUrl: 'https://www.youtube.com/embed/pBlUgEr6cvQ',
     status: 'live',
     lastUpdated: '2025-05-07 13:45',
     hasPlayback: false
@@ -151,7 +151,7 @@ const dummyData: CCTVCamera[] = [
     id: 4,
     name: 'Side Alley',
     location: 'East Wing',
-    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    streamUrl: 'https://www.youtube.com/embed/q5_YIpEuMsI',
     status: 'offline',
     lastUpdated: '2025-05-06 23:10',
     hasPlayback: true
@@ -634,13 +634,22 @@ const getStatusBadgeVariant = (status: string) => {
               </div>
             </div>
             <div v-else class="relative aspect-video bg-black">
-              <video 
+              <iframe
+    v-if="camera.streamUrl.includes('youtube.com') || camera.streamUrl.includes('youtu.be')"
+    class="w-full h-full object-cover"
+    :src="`${camera.streamUrl}?autoplay=1&mute=1&playsinline=1`"
+    frameborder="0"
+    allow="autoplay; encrypted-media"
+    allowfullscreen
+  ></iframe>
+            
+              <!-- <video 
                 :ref="el => handleVideoRef(el, camera.id)" 
                 class="w-full h-full object-cover" 
                 muted
                 playsinline
                 autoplay
-              ></video>
+              ></video> -->
               <div class="absolute top-2 right-2">
                 <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
                   <div :class="['h-2 w-2 rounded-full animate-pulse', getStatusColor(camera.status)]"></div>

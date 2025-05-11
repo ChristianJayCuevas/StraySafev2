@@ -53,14 +53,14 @@ import { ArrowRight } from "lucide-vue-next";
         <img
           src="/storage/images/hero-image-light.png"
           alt="dashboard using shadcn-vue"
-          class="w-full rounded-lg border border-t-2 border-t-primary/30 img-border-animation dark:hidden"
+          class="w-full rounded-lg border border-t-2 border-t-emerald-400/30 img-border-animation dark:hidden"
         />
 
         <!-- Dark mode image -->
         <img
           src="/storage/images/hero-image-dark.png"
           alt="dashboard using shadcn-vue"
-          class="w-full rounded-lg border border-t-2 border-t-primary/30 img-border-animation hidden dark:block"
+          class="w-full rounded-lg border border-t-2 border-t-emerald-400/30 img-border-animation hidden dark:block"
         />
 
         <!-- gradient effect -->
@@ -95,7 +95,7 @@ import { ArrowRight } from "lucide-vue-next";
     border-top-color: rgba(59, 130, 246, 0.1);
   }
   to {
-    border-top-color: rgba(59, 130, 246, 0.6);
+    border-top-color: rgba(13, 250, 171, 0.6);
   }
 }
 </style>

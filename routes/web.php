@@ -27,6 +27,10 @@ Route::get('cctvmonitor', function(){
     return Inertia::render('management/CCTVMonitoring');
 })->middleware(['auth', 'verified'])->name('cctvmonitor');
 
+Route::get('registered-pets', function(){
+    return Inertia::render('RegisteredPets');
+})->middleware(['auth', 'verified'])->name('registeredpets');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';
