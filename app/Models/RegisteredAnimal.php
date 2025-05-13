@@ -18,8 +18,4 @@ class RegisteredAnimal extends Model
         'breed',
         'pet_name'
     ];
-    public function images()
-    {
-        return $this->hasMany(AnimalImage::class, 'registered_animal_id');
-    }
 }
