@@ -39,6 +39,23 @@ Route::patch('/cameras/{id}/status', [CameraController::class, 'updateStatus']);
 Route::patch('/cameras/{id}/mode', [CameraController::class, 'updateMode']);
 Route::delete('/cameras/{id}', [CameraController::class, 'destroy']);
 
+Route::middleware([ValidateStaticToken::class])->group(function () {
+    Route::post('/api/user/image', [UserController::class, 'updateProfileImage']);
+    Route::post('/api/user/signup', [UserController::class, 'register']);
+    Route::post('/api/mobilelogin', [UserController::class, 'login']);
+    Route::get('/api/mobileusers', [UserController::class, 'fetchUsers']);
+    Route::get('api/mobileuser/me', [UserController::class, 'fetchLoggedInUser']);
+    Route::get('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'fetchRegisteredAnimals']);
+    Route::post('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/api/animal-pins', [AnimalPinsController::class, 'index']);
+    Route::post('/api/animal-pins', [AnimalPinsController::class, 'store']);
+    Route::delete('/api/animal-pins/{id}', [AnimalPinsController::class, 'destroy']);
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';
+require __DIR__.'/api.php';
