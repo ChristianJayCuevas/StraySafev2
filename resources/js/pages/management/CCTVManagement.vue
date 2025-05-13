@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
+import axios from 'axios';
 import { 
   Card, 
   CardHeader, 
@@ -39,10 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import { toast } from 'vue-sonner';
-import axios from 'axios';
-import Hls from 'hls.js';
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -59,17 +57,14 @@ interface CCTVCamera {
   streamUrl: string;
   status: 'live' | 'demo' | 'offline';
   lastUpdated: string;
-  hasPlayback?: boolean; // Whether the camera has playback capability
+  mode: 'highquality' | 'lowquality'; // Added camera mode property
 }
 
 // State variables
 const isLoading = ref(true);
 const cameras = ref<CCTVCamera[]>([]);
-const videoRefs = ref<{ [key: number]: HTMLVideoElement | null }>({});
-const activeHls = ref<{ [key: number]: Hls | null }>({});
 const gridLayout = ref('grid-cols-2'); // Default 2 columns
-const displayMode = ref('grid'); // 'grid' or 'list'
-const searchQuery = ref(''); // Added search query
+const searchQuery = ref('');
 
 // Column layout options
 const columnOptions = [
@@ -79,17 +74,6 @@ const columnOptions = [
   { value: 'grid-cols-4', label: '4 Columns' },
 ];
 
-// Playback controls state
-const videoControls = ref<{ [key: number]: {
-  isPlaying: boolean;
-  showControls: boolean;
-  playbackRate: number;
-  loop: boolean;
-  volume: number;
-  currentTime: number;
-  duration: number;
-} }>({});
-
 // Form state
 const showAddDialog = ref(false);
 const newCamera = ref<Partial<CCTVCamera>>({
@@ -97,14 +81,15 @@ const newCamera = ref<Partial<CCTVCamera>>({
   location: '',
   streamUrl: '',
   status: 'demo',
-  hasPlayback: true
+  mode: 'highquality', // Changed from 'ai' to 'highquality'
 });
-
 // Dashboard stats
 const totalCameras = computed(() => cameras.value.length);
 const onlineCameras = computed(() => cameras.value.filter(cam => cam.status !== 'offline').length);
 const offlineCameras = computed(() => cameras.value.filter(cam => cam.status === 'offline').length);
 const liveCameras = computed(() => cameras.value.filter(cam => cam.status === 'live').length);
+const aiCameras = computed(() => cameras.value.filter(cam => cam.mode === 'highquality').length);
+const directCameras = computed(() => cameras.value.filter(cam => cam.mode === 'lowquality').length);
 
 // Filter cameras based on search query
 const filteredCameras = computed(() => {
@@ -114,9 +99,30 @@ const filteredCameras = computed(() => {
   return cameras.value.filter(camera => 
     camera.name.toLowerCase().includes(query) || 
     camera.location.toLowerCase().includes(query) || 
-    camera.status.toLowerCase().includes(query)
+    camera.status.toLowerCase().includes(query) ||
+    camera.mode.toLowerCase().includes(query)
   );
 });
+
+// Generate player URL for each camera based on mode
+const getPlayerUrl = (camera: CCTVCamera) => {
+  if (!camera || !camera.streamUrl) return '';
+
+  // Extract camera number
+  const cameraMatch = camera.streamUrl.match(/cam-(\d+)/);
+  const cameraNumber = cameraMatch ? cameraMatch[1] : '1';
+
+  // Adjust URL for low quality mode
+  let streamUrl = camera.streamUrl;
+  if (camera.mode === 'lowquality') {
+    streamUrl = `https://straysafe.me/hls2/cam${cameraNumber}/index.m3u8`;
+  }
+
+  // Encode the stream URL to be used as a parameter
+  const encodedUrl = encodeURIComponent(streamUrl);
+  return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
+};
+
 
 // Mock data for development
 const dummyData: CCTVCamera[] = [
@@ -124,141 +130,60 @@ const dummyData: CCTVCamera[] = [
     id: 1,
     name: 'Main Entrance',
     location: 'Front Gate',
-    streamUrl: 'https://www.youtube.com/embed/i3w7qZVSAsY',
+    streamUrl: 'https://straysafe.me/hls/cam-1/playlist.m3u8',
     status: 'live',
     lastUpdated: '2025-05-07 14:30',
-    hasPlayback: true
+    mode: 'highquality',
   },
   {
     id: 2,
     name: 'Parking Area',
     location: 'North Lot',
-    streamUrl: 'https://www.youtube.com/embed/p0Qhe4vhYLQ',
-    status: 'demo',
+    streamUrl: 'https://straysafe.me/hls/cam-2/playlist.m3u8',
+    status: 'live',
     lastUpdated: '2025-05-07 14:15',
-    hasPlayback: true
+    mode: 'highquality',
   },
   {
     id: 3,
     name: 'Back Entrance',
     location: 'Loading Bay',
-    streamUrl: 'https://www.youtube.com/embed/pBlUgEr6cvQ',
+    streamUrl: 'https://straysafe.me/hls/cam-3/playlist.m3u8',
     status: 'live',
     lastUpdated: '2025-05-07 13:45',
-    hasPlayback: false
+    mode: 'highquality',
   },
   {
     id: 4,
     name: 'Side Alley',
     location: 'East Wing',
-    streamUrl: 'https://www.youtube.com/embed/q5_YIpEuMsI',
-    status: 'offline',
+    streamUrl: 'https://straysafe.me/hls/static-demo1/processed_playlist.m3u8',
+    status: 'live',
     lastUpdated: '2025-05-06 23:10',
-    hasPlayback: true
+    mode: 'highquality',
+  },
+  {
+    id: 4,
+    name: 'Side Alley',
+    location: 'East Wing',
+    streamUrl: 'https://straysafe.me/hls/static-demo2/processed_playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-06 23:10',
+    mode: 'highquality',
+  },
+  {
+    id: 4,
+    name: 'Side Alley',
+    location: 'East Wing',
+    streamUrl: 'https://straysafe.me/hls/static-demo3/processed_playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-06 23:10',
+    mode: 'highquality',
   }
 ];
 
 // Fetch cameras from API
-const fetchCameras = async () => {
-  try {
-    // In a real app, you would fetch from your API
-    // const response = await axios.get('/api/cameras');
-    // cameras.value = response.data;
-    
-    // Using dummy data for development
-    cameras.value = dummyData;
-  } catch (error) {
-    console.error('Failed to fetch cameras:', error);
-    cameras.value = dummyData;
-  } finally {
-    isLoading.value = false;
-  }
-};
 
-// Initialize HLS on each video element
-const initializeVideoPlayers = () => {
-  filteredCameras.value.forEach(camera => {
-    if (camera.status !== 'offline' && videoRefs.value[camera.id]) {
-      const videoElement = videoRefs.value[camera.id];
-      
-      // Initialize video controls state if not already set
-      if (!videoControls.value[camera.id]) {
-        videoControls.value[camera.id] = {
-          isPlaying: false,
-          showControls: false,
-          playbackRate: 1.0,
-          loop: false,
-          volume: 1.0,
-          currentTime: 0,
-          duration: 0
-        };
-      }
-      
-      // Set up event listeners for video element
-      if (videoElement) {
-        videoElement.loop = videoControls.value[camera.id].loop;
-        videoElement.volume = videoControls.value[camera.id].volume;
-        videoElement.playbackRate = videoControls.value[camera.id].playbackRate;
-        
-        // Event listeners for updating video control state
-        videoElement.addEventListener('loadedmetadata', () => {
-          videoControls.value[camera.id].duration = videoElement.duration;
-        });
-        
-        videoElement.addEventListener('timeupdate', () => {
-          videoControls.value[camera.id].currentTime = videoElement.currentTime;
-        });
-        
-        videoElement.addEventListener('play', () => {
-          videoControls.value[camera.id].isPlaying = true;
-        });
-        
-        videoElement.addEventListener('pause', () => {
-          videoControls.value[camera.id].isPlaying = false;
-        });
-      }
-      
-      // Destroy existing HLS instance if it exists
-      if (activeHls.value[camera.id]) {
-        activeHls.value[camera.id]?.destroy();
-      }
-      
-      if (videoElement && Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          debug: false,
-        });
-        
-        hls.loadSource(camera.streamUrl);
-        hls.attachMedia(videoElement);
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (videoControls.value[camera.id].isPlaying) {
-            videoElement.play().catch(err => {
-              console.warn('Auto-play was prevented:', err);
-            });
-          }
-        });
-        
-        activeHls.value[camera.id] = hls;
-      } else if (videoElement && videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        // For Safari which has native HLS support
-        videoElement.src = camera.streamUrl;
-        if (videoControls.value[camera.id].isPlaying) {
-          videoElement.play().catch(err => {
-            console.warn('Auto-play was prevented:', err);
-          });
-        }
-      }
-    }
-  });
-};
-
-// Change grid layout
-const setGridLayout = (cols: string) => {
-  gridLayout.value = cols;
-};
 
 // Clear search query
 const clearSearch = () => {
@@ -266,6 +191,39 @@ const clearSearch = () => {
 };
 
 // Add a new camera
+const transformCameraData = (apiCamera) => {
+  return {
+    id: apiCamera.id,
+    name: apiCamera.name,
+    location: apiCamera.location,
+    streamUrl: apiCamera.stream_url,
+    status: apiCamera.status,
+    mode: apiCamera.mode,
+    lastUpdated: apiCamera.last_updated || new Date(apiCamera.updated_at).toLocaleString()
+  };
+};
+
+// Update your fetchCameras function
+const fetchCameras = async () => {
+  isLoading.value = true;
+  try {
+    const response = await axios.get('/cameras');
+    
+    // Transform each camera from the API response
+    cameras.value = response.data.map(camera => transformCameraData(camera));
+  } catch (error) {
+    console.error('Failed to fetch cameras:', error);
+    toast.error('Failed to load cameras');
+    // Fallback to dummy data only in development
+    if (import.meta.env.DEV) {
+      cameras.value = dummyData;
+    }
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Update your addCamera function to handle the response correctly
 const addCamera = async () => {
   if (!newCamera.value.name || !newCamera.value.location || !newCamera.value.streamUrl) {
     toast.error('Please fill all required fields');
@@ -273,33 +231,21 @@ const addCamera = async () => {
   }
   
   try {
-    // In a real app, you would send to your API
-    // const response = await axios.post('/api/cameras', newCamera.value);
-    // const addedCamera = response.data;
-    
-    // Mock adding for development
-    const addedCamera: CCTVCamera = {
-      id: cameras.value.length + 1,
-      name: newCamera.value.name || '',
-      location: newCamera.value.location || '',
-      streamUrl: newCamera.value.streamUrl || '',
-      status: newCamera.value.status as 'live' | 'demo' | 'offline' || 'demo',
-      lastUpdated: new Date().toLocaleString(),
-      hasPlayback: true
+    // Convert frontend property names to backend format
+    const cameraData = {
+      name: newCamera.value.name,
+      location: newCamera.value.location,
+      stream_url: newCamera.value.streamUrl,
+      status: newCamera.value.status,
+      mode: newCamera.value.mode,
     };
     
-    cameras.value.push(addedCamera);
+    const response = await axios.post('/cameras', cameraData);
     
-    // Initialize video controls state for this camera
-    videoControls.value[addedCamera.id] = {
-      isPlaying: false,
-      showControls: false,
-      playbackRate: 1.0,
-      loop: false,
-      volume: 1.0,
-      currentTime: 0,
-      duration: 0
-    };
+    // Transform the response data and add to local state
+    if (response.data.camera) {
+      cameras.value.push(transformCameraData(response.data.camera));
+    }
     
     toast.success('Camera added successfully');
     
@@ -308,100 +254,82 @@ const addCamera = async () => {
       name: '',
       location: '',
       streamUrl: '',
-      status: 'demo'
+      status: 'demo',
+      mode: 'highquality',
     };
-    
-    // Initialize the new player after a short delay
-    setTimeout(() => {
-      if (videoRefs.value[addedCamera.id]) {
-        initializeVideoPlayers();
-      }
-    }, 100);
-    
   } catch (error) {
     console.error('Failed to add camera:', error);
-    toast.error('Failed to add camera');
+    toast.error(error.response?.data?.message || 'Failed to add camera');
   }
 };
 
 // Remove a camera
-const removeCamera = async (id: number) => {
+const removeCamera = async (id) => {
   try {
-    // In a real app, you would call your API
-    // await axios.delete(`/api/cameras/${id}`);
+    await axios.delete(`/cameras/${id}`);
     
-    // Destroy HLS instance if it exists
-    if (activeHls.value[id]) {
-      activeHls.value[id]?.destroy();
-      delete activeHls.value[id];
-    }
-    
-    // Filter out the camera
+    // Filter out the camera from local state
     cameras.value = cameras.value.filter(camera => camera.id !== id);
     
     toast.success('Camera removed successfully');
   } catch (error) {
     console.error('Failed to remove camera:', error);
-    toast.error('Failed to remove camera');
+    toast.error(error.response?.data?.message || 'Failed to remove camera');
   }
 };
 
-// Toggle camera status (for demo purposes)
-const toggleCameraStatus = (camera: CCTVCamera) => {
-  const statusMap: { [key: string]: 'live' | 'demo' | 'offline' } = {
+// Toggle camera status
+const toggleCameraStatus = async (camera) => {
+  const statusMap = {
     'live': 'demo',
     'demo': 'offline',
     'offline': 'live'
   };
   
-  camera.status = statusMap[camera.status];
-  camera.lastUpdated = new Date().toLocaleString();
+  const newStatus = statusMap[camera.status];
   
-  // Reinitialize player if needed
-  if (camera.status !== 'offline' && videoRefs.value[camera.id]) {
-    initializeVideoPlayers();
-  } else if (camera.status === 'offline' && activeHls.value[camera.id]) {
-    activeHls.value[camera.id]?.destroy();
-    delete activeHls.value[camera.id];
+  try {
+    await axios.patch(`/cameras/${camera.id}/status`, {
+      status: newStatus
+    });
+    
+    // Update local state
+    camera.status = newStatus;
+    camera.last_updated = new Date().toLocaleString();
+    
+    toast(`Camera ${camera.name} is now ${camera.status}`, {
+      icon: camera.status === 'live' ? '🟢' : camera.status === 'demo' ? '🟡' : '🔴'
+    });
+  } catch (error) {
+    console.error('Failed to update camera status:', error);
+    toast.error(error.response?.data?.message || 'Failed to update camera status');
   }
+};
+
+// Toggle camera mode
+const toggleCameraMode = async (camera) => {
+  const newMode = camera.mode === 'highquality' ? 'lowquality' : 'highquality';
   
-  toast(`Camera ${camera.name} is now ${camera.status}`, {
-    icon: camera.status === 'live' ? '🟢' : camera.status === 'demo' ? '🟡' : '🔴'
-  });
+  try {
+    await axios.patch(`/cameras/${camera.id}/mode`, {
+      mode: newMode
+    });
+    
+    // Update local state
+    camera.mode = newMode;
+    camera.last_updated = new Date().toLocaleString();
+    
+    toast.success(`Camera ${camera.name} mode changed to ${camera.mode === 'highquality' ? 'High Quality' : 'Low Quality'}`);
+  } catch (error) {
+    console.error('Failed to update camera mode:', error);
+    toast.error(error.response?.data?.message || 'Failed to update camera mode');
+  }
 };
-
-// Clean up HLS instances on unmount
-const cleanupPlayers = () => {
-  Object.values(activeHls.value).forEach(hls => {
-    if (hls) {
-      hls.destroy();
-    }
-  });
-  activeHls.value = {};
-};
-
-// Watch for search query changes to reinitialize video players
-watch(searchQuery, () => {
-  // Wait for DOM to update before initializing players
-  setTimeout(() => {
-    initializeVideoPlayers();
-  }, 100);
-});
 
 // Lifecycle hooks
 onMounted(() => {
-  fetchCameras().then(() => {
-    setTimeout(() => {
-      initializeVideoPlayers();
-    }, 100);
-  });
+  fetchCameras();
 });
-
-const handleVideoRef = (el: HTMLVideoElement | null, id: number) => {
-  if (el) {
-    videoRefs.value[id] = el;
-  }
-};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -420,19 +348,20 @@ const getStatusBadgeVariant = (status: string) => {
     default: return 'outline';
   }
 };
+
+const getModeBadgeVariant = (mode: string) => {
+  return mode === 'highquality' ? 'secondary' : 'primary';
+};
 </script>
 
 <template>
   <Head title="CCTV Management" />
   <AppLayout :breadcrumbs="breadcrumbs">
-    <!-- Make sure to add the Toaster component from vue-sonner at the application level -->
     <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-6 bg-background">
-      <!-- Page Header with improved styling -->
-
       <!-- Stats Cards -->
       <div class="grid auto-rows-min gap-4 md:grid-cols-4">
         <template v-if="isLoading">
-          <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 4" :key="i" />
+          <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 6" :key="i" />
         </template>
         <template v-else>
           <CardData 
@@ -486,7 +415,6 @@ const getStatusBadgeVariant = (status: string) => {
         <!-- Column Layout Control -->
         <div class="flex space-x-4 items-center">
           <div class="flex items-center space-x-2">
-
             <Select v-model="gridLayout" class="w-40">
               <SelectTrigger id="grid-layout">
                 <SelectValue placeholder="Select columns" />
@@ -537,6 +465,18 @@ const getStatusBadgeVariant = (status: string) => {
                       <SelectItem value="live">Live</SelectItem>
                       <SelectItem value="demo">Demo</SelectItem>
                       <SelectItem value="offline">Offline</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label for="mode" class="text-right">Camera Mode</Label>
+                  <Select v-model="newCamera.mode">
+                    <SelectTrigger class="col-span-3">
+                      <SelectValue placeholder="Select mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="highquality">High Quality CCTV</SelectItem>
+                      <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -601,6 +541,9 @@ const getStatusBadgeVariant = (status: string) => {
                 <Badge :variant="getStatusBadgeVariant(camera.status)">
                   {{ camera.status.toUpperCase() }}
                 </Badge>
+                <Badge :variant="getModeBadgeVariant(camera.mode)">
+                  {{ camera.mode === 'highquality' ? 'HIGH QUALITY' : 'LOW QUALITY' }}
+                </Badge>
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Button variant="ghost" size="icon" class="h-8 w-8">
@@ -611,6 +554,10 @@ const getStatusBadgeVariant = (status: string) => {
                     <DropdownMenuItem @click="toggleCameraStatus(camera)">
                       <Icon name="refresh" class="mr-2 h-4 w-4" />
                       Change Status
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @click="toggleCameraMode(camera)">
+                      <Icon name="switch" class="mr-2 h-4 w-4" />
+                      Toggle Mode ({{ camera.mode === 'highquality' ? 'Low Quality' : 'High Quality' }})
                     </DropdownMenuItem>
                     <DropdownMenuItem @click="removeCamera(camera.id)" class="text-destructive">
                       <Icon name="trash" class="mr-2 h-4 w-4" />
@@ -634,26 +581,24 @@ const getStatusBadgeVariant = (status: string) => {
               </div>
             </div>
             <div v-else class="relative aspect-video bg-black">
-              <iframe
-    v-if="camera.streamUrl.includes('youtube.com') || camera.streamUrl.includes('youtu.be')"
-    class="w-full h-full object-cover"
-    :src="`${camera.streamUrl}?autoplay=1&mute=1&playsinline=1`"
-    frameborder="0"
-    allow="autoplay; encrypted-media"
-    allowfullscreen
-  ></iframe>
-            
-              <!-- <video 
-                :ref="el => handleVideoRef(el, camera.id)" 
-                class="w-full h-full object-cover" 
-                muted
-                playsinline
-                autoplay
-              ></video> -->
+              <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width:100%;">
+                <iframe 
+                  style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" 
+                  webkitAllowFullScreen mozallowfullscreen allowfullscreen 
+                  width="640" height="360" frameborder="0" allow="autoplay"
+                  :src="getPlayerUrl(camera)"
+                ></iframe>
+              </div>
               <div class="absolute top-2 right-2">
-                <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
-                  <div :class="['h-2 w-2 rounded-full animate-pulse', getStatusColor(camera.status)]"></div>
-                  <span>{{ camera.status === 'live' ? 'LIVE' : 'DEMO' }}</span>
+                <div class="flex space-x-2">
+                  <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                    <div :class="['h-2 w-2 rounded-full animate-pulse', getStatusColor(camera.status)]"></div>
+                    <span>{{ camera.status === 'live' ? 'LIVE' : 'DEMO' }}</span>
+                  </div>
+                  <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                    <Icon :name="camera.mode === 'highquality' ? 'brain' : 'eye'" class="h-3 w-3 mr-1" />
+                    <span>{{ camera.mode === 'highquality' ? 'High Quality' : 'Low Quality' }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -666,7 +611,7 @@ const getStatusBadgeVariant = (status: string) => {
                 {{ camera.location }}
               </span>
             </div>
-            <span class="text-xs text-muted-foreground">Updated: {{ camera.lastUpdated }}</span>
+            <!-- <span class="text-xs text-muted-foreground">Updated: {{ camera.lastUpdated }}</span> -->
           </CardFooter>
         </Card>
       </div>

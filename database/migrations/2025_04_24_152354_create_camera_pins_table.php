@@ -20,6 +20,7 @@ return new class extends Migration
             $table->decimal('longitude', 10, 7);
             $table->integer('direction');
             $table->foreignId('user_map_id')->nullable()->constrained('user_maps')->nullOnDelete();
+            $table->string('image_link')->nullable();
             $table->index('user_map_id');
             $table->timestamps();
         });

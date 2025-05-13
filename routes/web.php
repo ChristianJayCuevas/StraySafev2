@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Map\AnimalPinsController;
+use App\Http\Controllers\CameraController;
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
@@ -30,6 +31,13 @@ Route::get('cctvmonitor', function(){
 Route::get('registered-pets', function(){
     return Inertia::render('RegisteredPets');
 })->middleware(['auth', 'verified'])->name('registeredpets');
+
+Route::get('/cameras', [CameraController::class, 'getCameras']);
+Route::post('/cameras', [CameraController::class, 'store']);
+Route::put('/cameras/{id}', [CameraController::class, 'update']);
+Route::patch('/cameras/{id}/status', [CameraController::class, 'updateStatus']);
+Route::patch('/cameras/{id}/mode', [CameraController::class, 'updateMode']);
+Route::delete('/cameras/{id}', [CameraController::class, 'destroy']);
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

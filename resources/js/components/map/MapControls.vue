@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { inject, ref, defineEmits, Ref } from 'vue'
+import axios from 'axios';
+import { inject, ref, defineEmits, Ref, onMounted } from 'vue'
 import {
   Card,
   CardContent,
@@ -34,6 +35,8 @@ import {
   CircleX,
   ChevronDown,
 } from 'lucide-vue-next'
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 
 const map = inject('map');
@@ -52,15 +55,62 @@ const saveCameraPin = inject<({name, description, hls, mapId, direction}: {name:
 
 const isDialogOpen = ref(false)
 const isCollapsibleOpen = ref(false)
-
+const isLoading = ref(false);
+const loadError = ref<string | null>(null);
+  const selectedCameraId = ref<number | null>(null);
 const isPinDialogOpen = ref(false)
 const pinName = ref('')
 const pinDetails = ref('')
 const pinCameraLink = ref('')
 const pinDirection = ref(0)
 const compass = ref(null)
-let rotating = false
+interface Camera {
+  id: number;
+  name: string;
+  location: string;
+  stream_url: string;
+  status: 'live' | 'demo' | 'offline';
+  mode: 'highquality' | 'lowquality';
+  last_updated: string;
+}
 
+const cameras = ref<Camera[]>([]);
+let rotating = false
+async function fetchCameras() {
+  isLoading.value = true;
+  loadError.value = null;
+  
+  try {
+    const response = await axios.get('/cameras');
+    cameras.value = response.data;
+  } catch (error) {
+    console.error('Error fetching cameras:', error);
+    loadError.value = 'Failed to load cameras. Please try again.';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// Handle camera selection change
+function handleCameraSelection(cameraId: number) {
+  selectedCameraId.value = cameraId;
+  const selectedCamera = cameras.value.find(camera => camera.id === cameraId);
+  
+  if (selectedCamera) {
+    // Auto-fill pin fields based on selected camera
+    pinName.value = selectedCamera.name;
+    pinDetails.value = selectedCamera.location;
+    pinCameraLink.value = selectedCamera.stream_url;
+  }
+}
+
+// Load cameras when component mounts
+onMounted(() => {
+  fetchCameras();
+});
+function handleManualUrlChange(value: string) {
+  pinCameraLink.value = value;
+}
 function startRotation(event) {
   rotating = true
   rotateNeedle(event)
@@ -104,6 +154,7 @@ function closeDialog() {
 if (onPinLocationSelected) {
   onPinLocationSelected.value = () => {
     isPinDialogOpen.value = true
+    fetchCameras();
   }
 }
 function handleEnableDrawing() {
@@ -247,7 +298,34 @@ function handleCancelPin() {
 
       <Input v-model="pinName" type="text" placeholder="Pin Name" class="border rounded p-2 mt-2 w-full" />
       <Input v-model="pinDetails" type="text" placeholder="Pin Details" class="border rounded p-2 mt-2 w-full" />
-      <Input v-model="pinCameraLink" type="text" placeholder="Pin Camera Link" class="border rounded p-2 mt-2 w-full" />
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-1">Select Camera</label>
+        <Select v-model="selectedCameraId" @update:modelValue="handleCameraSelection">
+          <SelectTrigger class="w-full">
+            <SelectValue placeholder="Select a camera or enter URL manually" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem :value="null">Manual Entry</SelectItem>
+            <SelectItem v-for="camera in cameras" :key="camera.id" :value="camera.id">
+              {{ camera.name }} ({{ camera.status }})
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <div v-if="isLoading" class="mt-2 text-sm text-blue-600">Loading cameras...</div>
+        <div v-if="loadError" class="mt-2 text-sm text-red-600">{{ loadError }}</div>
+        
+        <!-- Manual URL input (shown when no camera selected or as fallback) -->
+        <div class="mt-2">
+          <Input 
+            v-model="pinCameraLink" 
+            type="text" 
+            placeholder="Camera Stream URL" 
+            class="border rounded p-2 w-full"
+            @input="handleManualUrlChange" 
+          />
+        </div>
+      </div>
 
       <!-- Direction Selector -->
       <div class="mt-4 flex flex-col items-center">

@@ -353,7 +353,7 @@ onBeforeUnmount(() => {
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="h-full w-full relative overflow-hidden bg-background">
       <!-- Controls overlay -->
-      <div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-2 bg-gray-950/80 backdrop-blur-sm">
+      <div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-2 backdrop-blur-sm">
         <div class="flex items-center space-x-2">
           <TooltipProvider>
             <Tooltip>
@@ -376,7 +376,7 @@ onBeforeUnmount(() => {
         <div class="flex items-center space-x-3">
           <div class="flex items-center space-x-1">
             <Select v-model="gridCols" class="w-40">
-              <SelectTrigger class="h-8 border-gray-800 bg-gray-900 text-gray-300 text-xs">
+              <SelectTrigger class="h-8 border-gray-800 text-gray-300 text-xs">
                 <SelectValue placeholder="Column layout" />
               </SelectTrigger>
               <SelectContent>

@@ -57,20 +57,6 @@ const mainNavItems: NavItem[] = [
         icon: MonitorPlay,
         group: "Stray Management"
     },
-    {
-        title: 'User Management',
-        href: '/user-management',
-        icon: LayoutGrid,
-        group: "User Management",
-        hidden: !hasAdminAccess.value,
-    },
-    {
-        title: 'Role Management',
-        href: '/role-management',
-        icon: LayoutGrid,
-        group: "User Management",
-        hidden: !hasAdminAccess.value,
-    }
 ];
 
 const footerNavItems: NavItem[] = [
