@@ -6,7 +6,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
-
+if (!defined('API_ACCESS_TOKEN')) {
+    define('API_ACCESS_TOKEN', 'StraySafeTeam3'); // Replace with your desired token
+}
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
