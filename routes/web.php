@@ -4,6 +4,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Map\AnimalPinsController;
 use App\Http\Controllers\CameraController;
+use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\MobileRegisteredAnimalController;
+use App\Http\Middleware\ValidateStaticToken;
+
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
