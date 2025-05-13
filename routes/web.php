@@ -53,6 +53,10 @@ Route::middleware([ValidateStaticToken::class])->group(function () {
     Route::get('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'fetchRegisteredAnimals']);
     Route::post('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
 });
+Route::get('/registered-animals', [RegisteredAnimalController::class, 'index']);
+Route::post('/registered-animals', [RegisteredAnimalController::class, 'store']);
+Route::put('/registered-animals/{id}', [RegisteredAnimalController::class, 'update']);
+Route::delete('/registered-animals/{id}', [RegisteredAnimalController::class, 'destroy']);
 
 Route::middleware('auth')->group(function () {
     Route::get('/api/animal-pins', [AnimalPinsController::class, 'index']);

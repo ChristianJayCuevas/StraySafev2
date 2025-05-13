@@ -197,7 +197,7 @@ onMounted(() => {
 
 const fetchPets = async () => {
   try {
-    const response = await axios.get('/api/mobileregisteredanimals');
+    const response = await axios.get('/registered-animals');
     if (response.data && Array.isArray(response.data)) {
       newpets.value = response.data;
     } else if (response.data) {
