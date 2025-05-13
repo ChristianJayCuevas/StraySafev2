@@ -89,13 +89,15 @@ onMounted(() => {
             <Skeleton class="h-[600px] w-full rounded-md" />
           </template>
           <template v-else>
+            <div >
             <Map 
   :control="false" 
   :currentMap="true" 
-  :selectMap="true" 
+  :selectMap="false" 
   :legend="false"
   :heatmap="true" 
 />
+            </div>
           </template>
         </Card>
       </div>

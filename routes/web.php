@@ -7,6 +7,7 @@ use App\Http\Controllers\CameraController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\MobileRegisteredAnimalController;
 use App\Http\Middleware\ValidateStaticToken;
+use App\Http\Controllers\RegisteredAnimalController;
 use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
