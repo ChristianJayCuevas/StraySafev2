@@ -14,7 +14,8 @@ class CameraPins extends Model
         'latitude',
         'longitude',
         'direction',
-        'user_map_id'
+        'user_map_id',
+        'image_link'
     ];
     protected $casts = [
         'latitude' => 'float',

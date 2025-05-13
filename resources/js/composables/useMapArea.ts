@@ -85,14 +85,17 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
   };
   
 
-  const fetchUserAreas = async (mapId: number) => {
+  const fetchUserAreas = async (mapId: number, heatmap: boolean) => {
     isLoading.value = true
     try {
       const response = await axios.get('/user-areas', {
         params: { user_map_id: mapId }
       })
       areas.value = response.data
-      displayUserAreas()
+      if (heatmap)
+        displayHeatMap()
+      else
+        displayUserAreas()
       return areas
     } catch (err: any) {
       error.value = err?.response?.data?.message || 'Failed to load areas.'
@@ -159,7 +162,7 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       type: 'line',
       source: 'saved-areas',
       paint: {
-        'line-color': '#00ACC1',
+        'line-color': '#00BCD4',
         'line-width': 2
       }
     });
@@ -198,6 +201,106 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       labelMarkers.value.push(marker);
     });
   };
+
+  const displayHeatMap = () => {
+    if (!drawRef.value || !mapInstance.value) {
+      console.warn('Draw or map instance not initialized');
+      return;
+    }
+  
+    const map = mapInstance.value;
+  
+    // 🧹 Remove previous saved areas layer if exists
+    if (map.getSource('saved-areas')) {
+      map.removeLayer('saved-areas-fill');
+      map.removeLayer('saved-areas-outline');
+      map.removeSource('saved-areas');
+    }
+  
+    const featuresToAdd = areas.value.map(area => {
+      const geometry = JSON.parse(area.geometry);
+      const properties = {
+        ...(JSON.parse(area.properties || '{}')),
+        name: area.name,
+      };
+  
+      return {
+        id: area.feature_id,
+        type: 'Feature',
+        properties,
+        geometry,
+      };
+    });
+  
+    if (featuresToAdd.length === 0) return;
+  
+    // 🗺️ Add as STATIC layer
+    map.addSource('saved-areas', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: featuresToAdd
+      }
+    });
+  
+    // 🔵 Area fill
+    map.addLayer({
+      id: 'saved-areas-fill',
+      type: 'fill',
+      source: 'saved-areas',
+      paint: {
+        'fill-color': '#008000',
+        'fill-opacity': 0.7
+      }
+    });
+  
+    // 🔵 Area border
+    map.addLayer({
+      id: 'saved-areas-outline',
+      type: 'line',
+      source: 'saved-areas',
+      paint: {
+        'line-color': '#008000',
+        'line-width': 2
+      }
+    });
+  
+    // 🛬 Zoom to first feature
+    const firstFeature = featuresToAdd[0];
+    const center = turf.centroid(firstFeature).geometry.coordinates;
+  
+    map.flyTo({
+      center: center as [number, number],
+      zoom: 16,
+      speed: 1.2,
+      curve: 1,
+      easing(t) { return t; }
+    });
+  
+    // 🧹 Remove previous floating labels
+    labelMarkers.value.forEach(marker => marker.remove());
+    labelMarkers.value = [];
+  
+    // 🧱 Add floating labels
+    featuresToAdd.forEach(feature => {
+      const center = turf.centroid(feature).geometry.coordinates;
+      const labelEl = document.createElement('div');
+      labelEl.className = 'rounded-label';
+      labelEl.innerText = feature.properties.name;
+  
+      const marker = new mapboxgl.Marker({
+        element: labelEl,
+        anchor: 'center'
+      })
+        .setLngLat(center as [number, number])
+        .addTo(map);
+  
+      labelEl.dataset.featureId = feature.id;
+      labelMarkers.value.push(marker);
+    });
+  };
+  
+  
   
   
   

@@ -66,8 +66,23 @@ interface Pet {
   image: string;
 }
 
+// Update the interface to match the API response structure
+interface ApiPet {
+  id: number;
+  pet_name: string;
+  animal_type: string;
+  picture: string;
+  status: string;
+  owner: string;
+  breed: string;
+  contact: string;
+  created_at: string;
+}
+
 const isLoading = ref(true);
 const pets = ref<Pet[]>([]);
+// Changed from an object to an array
+const newpets = ref<ApiPet[]>([]);
 const searchQuery = ref('');
 const statusFilter = ref('all');
 
@@ -77,7 +92,7 @@ const currentCardPage = ref(1);
 
 // Filter pets based on search and status
 const filteredPets = computed(() => {
-  let filtered = pets.value;
+  let filtered = newpets.value;
   
   // Apply status filter
   if (statusFilter.value !== 'all') {
@@ -88,16 +103,15 @@ const filteredPets = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(pet =>
-      pet.name.toLowerCase().includes(query) ||
+      pet.pet_name.toLowerCase().includes(query) ||
       pet.breed.toLowerCase().includes(query) ||
-      pet.type.toLowerCase().includes(query) ||
-      pet.owner.toLowerCase().includes(query)
+      pet.animal_type.toLowerCase().includes(query) ||
+      (pet.contact && pet.contact.toLowerCase().includes(query))
     );
   }
   
   return filtered;
 });
-
 // Calculate total pages
 const totalCardPages = computed(() => Math.ceil(filteredPets.value.length / cardsPerPage));
 
@@ -160,7 +174,7 @@ const columns = [
 
 const table = useVueTable({
   get data() {
-    return filteredPets.value;
+    return pets.value;
   },
   columns,
   getCoreRowModel: getCoreRowModel(),
@@ -174,152 +188,7 @@ const table = useVueTable({
   },
 });
 
-const dummyData: Pet[] = [
-  {
-    id: 1,
-    name: 'Max',
-    breed: 'Golden Retriever',
-    type: 'Dog',
-    age: 3,
-    owner: 'John Davis',
-    registered_date: '2023-09-15',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Golden+Retriever',
-  },
-  {
-    id: 2,
-    name: 'Luna',
-    breed: 'Siamese',
-    type: 'Cat',
-    age: 2,
-    owner: 'Emma Wilson',
-    registered_date: '2024-01-22',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Siamese+Cat',
-  },
-  {
-    id: 3,
-    name: 'Rocky',
-    breed: 'German Shepherd',
-    type: 'Dog',
-    age: 5,
-    owner: 'Michael Brown',
-    registered_date: '2022-07-10',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=German+Shepherd',
-  },
-  {
-    id: 4,
-    name: 'Oliver',
-    breed: 'Maine Coon',
-    type: 'Cat',
-    age: 4,
-    owner: 'Sophia Martinez',
-    registered_date: '2023-03-18',
-    status: 'inactive',
-    vaccine_status: false,
-    image: 'https://placehold.co/300x300?text=Maine+Coon',
-  },
-  {
-    id: 5,
-    name: 'Bella',
-    breed: 'Labrador',
-    type: 'Dog',
-    age: 2,
-    owner: 'William Johnson',
-    registered_date: '2024-02-05',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Labrador',
-  },
-  {
-    id: 6,
-    name: 'Chloe',
-    breed: 'Ragdoll',
-    type: 'Cat',
-    age: 1,
-    owner: 'Ava Thompson',
-    registered_date: '2024-04-30',
-    status: 'pending',
-    vaccine_status: false,
-    image: 'https://placehold.co/300x300?text=Ragdoll+Cat',
-  },
-  {
-    id: 7,
-    name: 'Duke',
-    breed: 'Husky',
-    type: 'Dog',
-    age: 4,
-    owner: 'James Wilson',
-    registered_date: '2022-11-20',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Husky',
-  },
-  {
-    id: 8,
-    name: 'Milo',
-    breed: 'Bengal',
-    type: 'Cat',
-    age: 3,
-    owner: 'Emily Taylor',
-    registered_date: '2023-08-12',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Bengal+Cat',
-  },
-  {
-    id: 9,
-    name: 'Charlie',
-    breed: 'Beagle',
-    type: 'Dog',
-    age: 6,
-    owner: 'Daniel Jackson',
-    registered_date: '2021-05-15',
-    status: 'inactive',
-    vaccine_status: false,
-    image: 'https://placehold.co/300x300?text=Beagle',
-  },
-  {
-    id: 10,
-    name: 'Lucy',
-    breed: 'Persian',
-    type: 'Cat',
-    age: 5,
-    owner: 'Olivia Davis',
-    registered_date: '2022-09-08',
-    status: 'pending',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Persian+Cat',
-  },
-  {
-    id: 11,
-    name: 'Cooper',
-    breed: 'Bulldog',
-    type: 'Dog',
-    age: 2,
-    owner: 'Matthew Miller',
-    registered_date: '2023-12-01',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Bulldog',
-  },
-  {
-    id: 12,
-    name: 'Lily',
-    breed: 'Scottish Fold',
-    type: 'Cat',
-    age: 1,
-    owner: 'Charlotte Brown',
-    registered_date: '2024-03-25',
-    status: 'active',
-    vaccine_status: true,
-    image: 'https://placehold.co/300x300?text=Scottish+Fold',
-  },
-];
+// No dummy data
 
 // Setup page size for table
 onMounted(() => {
@@ -328,17 +197,39 @@ onMounted(() => {
 
 const fetchPets = async () => {
   try {
-    // Use dummy data directly since the API endpoint is not yet implemented
-    pets.value = dummyData;
+    const response = await axios.get('/api/mobileregisteredanimals');
+    if (response.data && Array.isArray(response.data)) {
+      newpets.value = response.data;
+    } else if (response.data) {
+      // If response is an object, convert to array with one item
+      newpets.value = [response.data];
+    } else {
+      // Empty array if no data
+      newpets.value = [];
+    }
     
-    // The following code would be used when your API endpoint is working
-    /*
-    const response = await axios.get('/api/pets/registered');
-    pets.value = response.data;
-    */
+    // Convert API data format to Pet format for the table (only if there's data)
+    if (newpets.value.length > 0) {
+      pets.value = newpets.value.map(pet => ({
+        id: pet.id,
+        name: pet.pet_name,
+        breed: pet.breed,
+        type: pet.animal_type,
+        age: 0, // Not available in API
+        owner: pet.owner,
+        registered_date: new Date(pet.created_at).toLocaleDateString(),
+        status: pet.status as 'active' | 'pending' | 'inactive',
+        vaccine_status: false, // Not available in API
+        image: pet.picture || 'https://placehold.co/300x300?text=No+Image'
+      }));
+    } else {
+      pets.value = [];
+    }
   } catch (error) {
     console.error('Failed to fetch registered pets:', error);
-    pets.value = dummyData;
+    // Don't use dummy data, just set empty arrays
+    newpets.value = [];
+    pets.value = [];
   } finally {
     isLoading.value = false;
   }
@@ -380,7 +271,9 @@ const getPageNumbers = computed(() => {
     pages.push('ellipsis-end');
   }
 
-  pages.push(totalPages);
+  if (totalPages > 1) {
+    pages.push(totalPages);
+  }
 
   return pages;
 });
@@ -395,7 +288,11 @@ const getStatusColor = (status: string) => {
   }
 };
 
-onMounted(fetchPets);
+// Remove the function to add placeholder data
+// We'll now show a message instead of placeholder cards
+onMounted(() => {
+  fetchPets();
+});
 </script>
 
 <template>
@@ -430,7 +327,7 @@ onMounted(fetchPets);
               </TabsList>
               
               <div class="flex gap-2">
-                <Button @click="statusFilter = 'all'" 
+                <!-- <Button @click="statusFilter = 'all'" 
                         :variant="statusFilter === 'all' ? 'default' : 'outline'" 
                         size="sm" 
                         class="text-xs">
@@ -453,7 +350,7 @@ onMounted(fetchPets);
                         size="sm" 
                         class="text-xs">
                   Inactive
-                </Button>
+                </Button> -->
               </div>
             </div>
 
@@ -470,10 +367,12 @@ onMounted(fetchPets);
             
             <div v-else-if="filteredPets.length === 0" class="flex justify-center items-center h-64">
               <div class="text-center">
-                <Icon name="Search" class="mx-auto h-12 w-12 text-muted-foreground" />
-                <p class="text-muted-foreground mt-4">No pets found matching your criteria</p>
-                <Button variant="outline" @click="searchQuery = ''; statusFilter = 'all'" class="mt-4">
-                  Clear Filters
+                <Icon name="PawPrint" class="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 class="text-lg font-medium mt-4">No Animals Registered Yet</h3>
+                <p class="text-muted-foreground mt-2">Click the "Register New Pet" button to add your first pet</p>
+                <Button class="mt-4 gap-2" @click="searchQuery = ''; statusFilter = 'all'">
+                  <Icon name="Plus" class="h-4 w-4" />
+                  Register New Pet
                 </Button>
               </div>
             </div>
@@ -481,9 +380,13 @@ onMounted(fetchPets);
             <div v-else>
               <!-- Pet Cards Grid -->
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card v-for="pet in paginatedCards" :key="pet.id" class="h-full flex flex-col overflow-hidden hover:shadow-md transition-shadow">
+                <Card 
+                  v-for="pet in paginatedCards" 
+                  :key="pet.id" 
+                  class="h-full flex flex-col overflow-hidden hover:shadow-md transition-shadow"
+                >
                   <div class="relative">
-                    <img :src="pet.image" :alt="pet.name" class="w-full aspect-square object-cover" />
+                    <img :src="pet.picture" :alt="pet.pet_name" class="w-full aspect-square object-cover" />
                     <div class="absolute top-2 right-2">
                       <Badge :class="getStatusColor(pet.status)" class="capitalize">
                         {{ pet.status }}
@@ -493,9 +396,9 @@ onMounted(fetchPets);
                   
                   <CardHeader class="pb-2">
                     <div class="flex justify-between items-start">
-                      <CardTitle class="text-xl">{{ pet.name }}</CardTitle>
+                      <CardTitle class="text-xl">{{ pet.pet_name }}</CardTitle>
                       <Badge variant="outline" class="ml-2">
-                        {{ pet.type }}
+                        {{ pet.animal_type }}
                       </Badge>
                     </div>
                     <p class="text-sm text-muted-foreground">{{ pet.breed }}</p>
@@ -504,16 +407,8 @@ onMounted(fetchPets);
                   <CardContent class="flex-grow py-2">
                     <div class="space-y-2">
                       <div class="flex justify-between text-sm">
-                        <span class="text-muted-foreground">Age:</span>
-                        <span>{{ pet.age }} years</span>
-                      </div>
-                      <div class="flex justify-between text-sm">
-                        <span class="text-muted-foreground">Vaccinated:</span>
-                        <span>{{ pet.vaccine_status ? 'Yes' : 'No' }}</span>
-                      </div>
-                      <div class="flex justify-between text-sm">
                         <span class="text-muted-foreground">Registered:</span>
-                        <span>{{ new Date(pet.registered_date).toLocaleDateString() }}</span>
+                        <span>{{ new Date(pet.created_at).toLocaleDateString() }}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -521,7 +416,9 @@ onMounted(fetchPets);
                   <CardFooter class="pt-2 border-t">
                     <div class="flex items-center w-full">
                       <Avatar class="h-8 w-8 mr-2">
-                        <AvatarFallback>{{ pet.owner.split(' ').map(n => n[0]).join('') }}</AvatarFallback>
+                        <AvatarFallback>
+                          {{ pet.owner.split(' ').map(n => n[0]).join('') }}
+                        </AvatarFallback>
                       </Avatar>
                       <div class="flex-grow overflow-hidden">
                         <p class="text-sm font-medium truncate">{{ pet.owner }}</p>
@@ -578,8 +475,12 @@ onMounted(fetchPets);
                   <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
                 
-                <div v-else-if="filteredPets.length === 0" class="flex justify-center items-center h-32">
-                  <p class="text-muted-foreground">No pets found matching your criteria</p>
+                <div v-else-if="pets.length === 0" class="flex justify-center items-center h-32">
+                  <div class="text-center">
+                    <Icon name="PawPrint" class="mx-auto h-8 w-8 text-muted-foreground" />
+                    <h3 class="text-base font-medium mt-2">No Animals Registered Yet</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Register your first pet to see it here</p>
+                  </div>
                 </div>
                 
                 <div v-else>
@@ -617,8 +518,8 @@ onMounted(fetchPets);
                     <TableCaption>
                       Showing {{ table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1 }}
                       to {{ Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                        filteredPets.length) }}
-                      of {{ filteredPets.length }} results
+                        pets.length) }}
+                      of {{ pets.length }} results
                     </TableCaption>
                   </Table>
 

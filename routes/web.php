@@ -7,6 +7,7 @@ use App\Http\Controllers\CameraController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\MobileRegisteredAnimalController;
 use App\Http\Middleware\ValidateStaticToken;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -59,6 +60,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/api/animal-pins/{id}', [AnimalPinsController::class, 'destroy']);
 });
 
+Route::get('/stats/summary', [DashboardController::class, 'summary']);
+Route::get('/stats/summary2', [DashboardController::class, 'summary2']);
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';

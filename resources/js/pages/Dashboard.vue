@@ -7,6 +7,23 @@ import { Card } from '@/components/ui/card'
 import Map from '@/components/map/Map.vue'
 import CardData from '@/components/CardData.vue'
 import { Skeleton } from '@/components/ui/skeleton'
+import axios from 'axios'
+
+const stats = ref({
+  dog_pins: 0,
+  cat_pins: 0,
+  animal_pins: 0,
+  registered_pets: 0, // Add this if you have a separate endpoint for it
+})
+
+const fetchStats = async () => {
+  try {
+    const response = await axios.get('/stats/summary2')
+    stats.value = response.data
+  } catch (error) {
+    console.error('Error fetching stats:', error)
+  }
+}
 
 const chartOptions = ref({
   chart: {
@@ -33,9 +50,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 const isLoading = ref(true)
 
 onMounted(() => {
+  fetchStats()
   setTimeout(() => {
     isLoading.value = false
-  }, 2000)
+  }, 1000)
 })
 </script>
 
@@ -49,22 +67,20 @@ onMounted(() => {
           <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 4" :key="i" />
         </template>
         <template v-else>
-          <CardData title="Stray Dog Detected" :value="70" icon="dog" description="+100% compared to yesterday" />
-          <CardData title="Stray Cat Detected" :value="10" icon="cat" description="+100% compared to yesterday" />
-          <CardData title="Total Stray Detected" :value="100" icon="pawPrint"
-            description="+100% compared to yesterday" />
-          <CardData title="Total Registered Pets" :value="60" icon="shieldCheck"
-            description="+100% compared to yesterday" />
+          <CardData title="Stray Dog Detected" :value="stats.dog_pins" icon="dog" description="Stray dogs detected" />
+  <CardData title="Stray Cat Detected" :value="stats.cat_pins" icon="cat" description="Stray cats detected" />
+  <CardData title="Total Stray Detected" :value="stats.animal_pins" icon="pawPrint" description="Total strays detected" />
+  <CardData title="Total Registered Pets" :value="stats.registered_pets" icon="shieldCheck" description="Total registered pets" />
         </template>
       </div>
-      <div class="grid auto-rows-min gap-4 md:grid-cols-2">
+      <div class="grid auto-rows-min gap-4 md:grid-cols-1">
         <Card
           class="px-3 py-3 hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300">
           <template v-if="isLoading">
-            <Skeleton class="h-[600px] w-full rounded-md" />
+            <Skeleton class="h-[500px] w-full rounded-md" />
           </template>
           <template v-else>
-            <apexchart type="area" height="100%" :options="chartOptions" :series="series" />
+            <apexchart type="area" height="500px" :options="chartOptions" :series="series" />
           </template>
         </Card>
         <Card
@@ -73,7 +89,13 @@ onMounted(() => {
             <Skeleton class="h-[600px] w-full rounded-md" />
           </template>
           <template v-else>
-            <Map :control="false" :currentMap="false" :selectMap="false" :legend="false" />
+            <Map 
+  :control="false" 
+  :currentMap="true" 
+  :selectMap="true" 
+  :legend="false"
+  :heatmap="true" 
+/>
           </template>
         </Card>
       </div>

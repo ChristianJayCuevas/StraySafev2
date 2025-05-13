@@ -57,13 +57,18 @@ export function useMapPins(mapInstance: any) {
       console.warn('⚠️ No location selected.');
       return;
     }
-  
+    const match = hls.match(/\/hls\/([^/]+)\/index\.m3u8$/);
+    if (!match) return null;
+    console.log(match)
+    const streamId = match[1];
+    const thumbnailUrl = `https://straysafe.me/api2/debug-img/${streamId}/1_snapshot_with_detection.jpg`;
     const payload = {
       camera_name: name,
       camera_description: description,
       hls_url: hls,
       latitude: selectedLocation.value.lat,
       longitude: selectedLocation.value.lng,
+      image_link: thumbnailUrl,
       user_map_id: mapId,
       direction: direction, // 📍 save direction if you want (optional)
     };
@@ -184,7 +189,7 @@ export function useMapPins(mapInstance: any) {
                   overflow: hidden;
                 ">
                   <img 
-                    src="${pin.thumbnail_url || '/images/camera-placeholder.jpg'}" 
+                    src="${pin.image_link || '/images/camera-placeholder.jpg'}" 
                     alt="CCTV Feed"
                     style="
                       width: 100%;
@@ -439,7 +444,7 @@ export function useMapPins(mapInstance: any) {
                   overflow: hidden;
                 ">
                   <img 
-                    src="${pin.thumbnail_url || '/images/camera-placeholder.jpg'}" 
+                    src="${pin.image_link  || '/images/camera-placeholder.jpg'}" 
                     alt="CCTV Feed"
                     style="
                       width: 100%;
@@ -487,24 +492,27 @@ export function useMapPins(mapInstance: any) {
                     gap: 8px;
                     margin-top: 16px;
                   ">
-                    <button 
-                      onclick="viewCameraFeed('${pin.id}')"
-                      style="
-                        flex: 1;
-                        padding: 8px 16px;
-                        font-size: 14px;
-                        background-color: #0068e7;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        cursor: pointer;
-                        transition: background-color 0.2s;
-                      "
-                      onmouseover="this.style.backgroundColor='#0056c3'"
-                      onmouseout="this.style.backgroundColor='#0068e7'"
-                    >
-                      View Feed
-                    </button>
+                    <a
+                    href="/cctv"
+                    style="
+                      display: inline-block;
+                      flex: 1;
+                      padding: 8px 16px;
+                      font-size: 14px;
+                      background-color: #0068e7;
+                      color: white;
+                      border: none;
+                      border-radius: 6px;
+                      cursor: pointer;
+                      transition: background-color 0.2s;
+                      text-align: center;
+                      text-decoration: none;
+                    "
+                    onmouseover="this.style.backgroundColor='#0056c3'"
+                    onmouseout="this.style.backgroundColor='#0068e7'"
+                  >
+                    View Feed
+                  </a>
                     <button 
                       onclick="deleteCameraPin('${pin.id}')"
                       style="

@@ -27,7 +27,7 @@ class MobileRegisteredAnimalController extends Controller
             'contact' => 'required|string|max:255',
             'animal_type' => 'required|in:dog,cat,Dog,Cat,DOG,CAT',
             'picture' => 'required|url', // Expecting a URL from a CDN
-            'status' => 'in:caught,free,claimed',
+            'status' => 'in:active,inactive',
             'breed' => 'nullable|string|max:255',
             'pet_name' => 'required|string|max:255',
         ]);
@@ -45,7 +45,7 @@ class MobileRegisteredAnimalController extends Controller
             'contact' => $request->contact,
             'animal_type' => $request->animal_type,
             'picture' => $request->picture,
-            'status' => $request->status ?? 'free',
+            'status' => $request->status ?? 'active',
             'breed' => $request->breed,
             'pet_name' => $request->pet_name,
         ]);

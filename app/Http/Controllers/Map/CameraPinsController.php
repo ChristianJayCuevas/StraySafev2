@@ -44,7 +44,8 @@ class CameraPinsController extends Controller
         'latitude' => 'required|numeric',
         'longitude' => 'required|numeric',
         'direction' => 'required|numeric',
-        'user_map_id' => 'nullable|exists:user_maps,id'
+        'user_map_id' => 'nullable|exists:user_maps,id',
+        'image_link' => 'nullable|string|max:255'
     ]);
 
     $pin = \App\Models\CameraPins::create($validated);
