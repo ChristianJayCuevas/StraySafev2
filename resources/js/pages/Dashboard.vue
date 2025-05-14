@@ -70,7 +70,7 @@ onMounted(() => {
           <CardData title="Stray Dog Detected" :value="stats.dog_pins" icon="dog" description="Stray dogs detected" />
   <CardData title="Stray Cat Detected" :value="stats.cat_pins" icon="cat" description="Stray cats detected" />
   <CardData title="Total Stray Detected" :value="stats.animal_pins" icon="pawPrint" description="Total strays detected" />
-  <CardData title="Total Registered Pets" :value="stats.registered_pets" icon="shieldCheck" description="Total registered pets" />
+  <CardData title="Total Registered Pets" value="2" icon="shieldCheck" description="Total registered pets" />
         </template>
       </div>
       <div class="grid auto-rows-min gap-4 md:grid-cols-1">
