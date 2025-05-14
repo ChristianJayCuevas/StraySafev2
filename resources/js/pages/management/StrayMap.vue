@@ -49,7 +49,7 @@ const errorMessage = ref('');
     errorMessage.value = '';
     
     // Step 1: Get existing animal pins from your database
-    const existingPinsResponse = await axios.get('/animalpins');
+    const existingPinsResponse = await axios.get('/animalpins2');
     const existingPins = existingPinsResponse.data;
     
     // Create a map of existing pins by their original detection ID
