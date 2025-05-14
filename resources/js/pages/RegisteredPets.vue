@@ -79,9 +79,15 @@ interface ApiPet {
   created_at: string;
 }
 
+// Add interface for API response structure
+interface ApiResponse {
+  status: string;
+  data: ApiPet[];
+}
+
 const isLoading = ref(true);
 const pets = ref<Pet[]>([]);
-// Changed from an object to an array
+// Changed from an array to store the formatted API data
 const newpets = ref<ApiPet[]>([]);
 const searchQuery = ref('');
 const statusFilter = ref('all');
@@ -188,8 +194,6 @@ const table = useVueTable({
   },
 });
 
-// No dummy data
-
 // Setup page size for table
 onMounted(() => {
   table.setPageSize(10);
@@ -198,11 +202,15 @@ onMounted(() => {
 const fetchPets = async () => {
   try {
     const response = await axios.get('/registered-animals');
-    if (response.data && Array.isArray(response.data)) {
-      newpets.value = response.data;
-    } else if (response.data) {
-      // If response is an object, convert to array with one item
-      newpets.value = [response.data];
+    // Check if response has data property and it's an array
+    if (response.data && response.data.status === 'success' && Array.isArray(response.data.data)) {
+      newpets.value = response.data.data;
+    } else if (response.data && response.data.status === 'success' && response.data.data) {
+      // If API returns only one item in data property
+      newpets.value = [response.data.data];
+    } else if (response.data && response.data.data) {
+      // Directly access data property if that's where the array is
+      newpets.value = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
     } else {
       // Empty array if no data
       newpets.value = [];
@@ -288,8 +296,6 @@ const getStatusColor = (status: string) => {
   }
 };
 
-// Remove the function to add placeholder data
-// We'll now show a message instead of placeholder cards
 onMounted(() => {
   fetchPets();
 });
@@ -301,10 +307,10 @@ onMounted(() => {
     <div class="container mx-auto py-6 px-4">
       <div class="flex flex-col gap-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <!-- <div>
+          <div>
             <h1 class="text-2xl font-bold tracking-tight">Registered Pets</h1>
             <p class="text-muted-foreground">Manage and view all registered pets in the system</p>
-          </div> -->
+          </div>
           <Button class="gap-2">
             <Icon name="Plus" class="h-4 w-4" />
             Register New Pet
@@ -327,7 +333,7 @@ onMounted(() => {
               </TabsList>
               
               <div class="flex gap-2">
-                <!-- <Button @click="statusFilter = 'all'" 
+                <Button @click="statusFilter = 'all'" 
                         :variant="statusFilter === 'all' ? 'default' : 'outline'" 
                         size="sm" 
                         class="text-xs">
@@ -350,7 +356,7 @@ onMounted(() => {
                         size="sm" 
                         class="text-xs">
                   Inactive
-                </Button> -->
+                </Button>
               </div>
             </div>
 
@@ -386,7 +392,12 @@ onMounted(() => {
                   class="h-full flex flex-col overflow-hidden hover:shadow-md transition-shadow"
                 >
                   <div class="relative">
-                    <img :src="pet.picture" :alt="pet.pet_name" class="w-full aspect-square object-cover" />
+                    <img 
+                      :src="pet.picture || 'https://placehold.co/300x300?text=No+Image'" 
+                      :alt="pet.pet_name" 
+                      class="w-full aspect-square object-cover" 
+                      @error="(e) => e.target.src = 'https://placehold.co/300x300?text=No+Image'"
+                    />
                     <div class="absolute top-2 right-2">
                       <Badge :class="getStatusColor(pet.status)" class="capitalize">
                         {{ pet.status }}
@@ -410,6 +421,10 @@ onMounted(() => {
                         <span class="text-muted-foreground">Registered:</span>
                         <span>{{ new Date(pet.created_at).toLocaleDateString() }}</span>
                       </div>
+                      <div class="flex justify-between text-sm">
+                        <span class="text-muted-foreground">Contact:</span>
+                        <span>{{ pet.contact || 'N/A' }}</span>
+                      </div>
                     </div>
                   </CardContent>
                   
@@ -417,7 +432,7 @@ onMounted(() => {
                     <div class="flex items-center w-full">
                       <Avatar class="h-8 w-8 mr-2">
                         <AvatarFallback>
-                          {{ pet.owner.split(' ').map(n => n[0]).join('') }}
+                          {{ pet.owner?.split(' ').map(n => n[0]).join('') }}
                         </AvatarFallback>
                       </Avatar>
                       <div class="flex-grow overflow-hidden">
