@@ -174,6 +174,8 @@ onMounted(() => {
     setTimeout(() => {
         isLoading.value = false
     }, 2000)
+    startPolling();
+    fetchStats();
 })
 </script>
 
