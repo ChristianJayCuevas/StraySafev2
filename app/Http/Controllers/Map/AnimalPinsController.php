@@ -24,6 +24,14 @@ class AnimalPinsController extends Controller
         return response()->json($pins);
     }
 
+    public function index2(Request $request)
+    {
+        
+        $pins = AnimalPins::where('user_map_id', 1)->get();
+
+        return response()->json($pins);
+    }
+
     /**
      * Show the form for creating a new resource.
      */

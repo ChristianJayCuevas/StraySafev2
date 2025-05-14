@@ -25,4 +25,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/animalpins', [AnimalPinsController::class, 'index'])->name('animal-pins.index');
     Route::post('/animalpins', [AnimalPinsController::class, 'store'])->name('animal-pins.store');
     Route::delete('/animalpins/{id}', [AnimalPinsController::class, 'destroy']);
+
+    Route::get('/animalpins2', [AnimalPinsController::class, 'index2']);
+
 });
