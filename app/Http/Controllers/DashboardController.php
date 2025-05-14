@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CameraPins;
 use App\Models\AnimalPins;
 use App\Models\UserArea;
-
+use App\Models\RegisteredAnimal;
 class DashboardController extends Controller
 {
     public function summary()
@@ -14,6 +14,7 @@ class DashboardController extends Controller
             'camera_pins' => CameraPins::count(),
             'animal_pins' => AnimalPins::count(),
             'total_area' => UserArea::count(), // or calculate hectares, etc.
+            'registered_animal' => RegisteredAnimal::count()
         ]);
     }
 
@@ -26,6 +27,7 @@ class DashboardController extends Controller
             'animal_pins' => $animalCount,
             'dog_pins' => $dogCount,
             'cat_pins' => $catCount,
+            
         ]);
     }
 }
