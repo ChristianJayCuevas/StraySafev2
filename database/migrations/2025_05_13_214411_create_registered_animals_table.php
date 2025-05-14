@@ -18,6 +18,7 @@ class CreateRegisteredAnimalsTable extends Migration
             $table->enum('animal_type', ['dog', 'cat']);
             $table->string('picture')->nullable();
             $table->string('breed')->nullable();
+            $table->string('pet_name')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
