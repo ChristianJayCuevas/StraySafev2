@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('camera')->nullable();
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
+            $table->string('detection_id')->nullable()->unique();
             $table->foreignId('user_map_id')->nullable()->constrained('user_maps')->nullOnDelete();
             $table->foreignId('camera_pin_id')->nullable()->constrained('camera_pins')->nullOnDelete();
             $table->index('camera_pin_id');

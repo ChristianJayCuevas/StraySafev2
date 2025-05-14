@@ -45,7 +45,7 @@ defineProps<{
             hasOwnerMatch ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'
           ]"
         >
-          {{ hasOwnerMatch ? 'Owner Found' : 'No Owner Found' }}
+          {{ hasOwnerMatch ? 'Potential Owner Notified' : 'No Owner Found' }}
         </span>
       </div>
     </div>

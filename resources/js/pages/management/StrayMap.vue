@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted,onBeforeUnmount } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { Card } from '@/components/ui/card'
@@ -30,9 +30,146 @@ const fetchStats = async () => {
     console.error('Error fetching stats:', error);
   }
 };
-onMounted(() => {
-  fetchStats();
+
+
+// Reactive state to track processed animal IDs to avoid duplicates
+const processedAnimalIds = ref(new Set());
+const isPolling = ref(false);
+const pollingInterval = ref(null);
+const pollingStatus = ref('Idle');
+const errorMessage = ref('');
+
+/**
+ * Fetches animal detection data and posts it to the animal pins endpoint
+ * @returns {Promise<void>}
+ */
+ async function postDetectedAnimalsToAnimalPins() {
+  try {
+    pollingStatus.value = 'Fetching data...';
+    errorMessage.value = '';
+    
+    // Step 1: Get existing animal pins from your database
+    const existingPinsResponse = await axios.get('/animalpins');
+    const existingPins = existingPinsResponse.data;
+    
+    // Create a map of existing pins by their original detection ID
+    const existingPinMap = {};
+    for (const pin of existingPins) {
+      if (pin.detection_id) {
+        existingPinMap[pin.detection_id] = true;
+      }
+    }
+    
+    // Step 2: Get detected animals from the API
+    const detectionResponse = await axios.get('https://straysafe.me/api2/detected');
+
+    if (detectionResponse.data && detectionResponse.data.detected_animals) {
+      const detectedAnimals = detectionResponse.data.detected_animals;
+      let newAnimalsCount = 0;
+      let failedAnimals = 0;
+      let skipCount = 0;
+
+      // Use plain object for tracking
+      const uniqueAnimalStreamCombos = {}; // Key: `${animal_id}_${stream_id}` → value: timestamp
+
+      const sortedAnimals = [...detectedAnimals].sort((a, b) => {
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      });
+
+      for (const animal of sortedAnimals) {
+        const animalStreamKey = `${animal.animal_id}_${animal.stream_id}`;
+        
+        // Skip if we've already processed this detection in a previous session
+        if (existingPinMap[animal.id]) {
+          skipCount++;
+          continue;
+        }
+
+        // Skip if we've processed this detection in the current session
+        if (processedAnimalIds.value.has(animal.id)) {
+          skipCount++;
+          continue;
+        }
+
+        // Time-based deduplication for the same animal at the same camera
+        if (uniqueAnimalStreamCombos.hasOwnProperty(animalStreamKey)) {
+          const lastTimestamp = uniqueAnimalStreamCombos[animalStreamKey];
+          const currentTimestamp = new Date(animal.timestamp);
+          const lastDate = new Date(lastTimestamp);
+          const timeDiffInSeconds = Math.abs((currentTimestamp - lastDate) / 1000);
+
+          if (timeDiffInSeconds <= 20) {
+            processedAnimalIds.value.add(animal.id);
+            skipCount++;
+            continue;
+          }
+        }
+
+        try {
+          // Step 3: Include the detection_id in the POST request
+          await axios.post('/animalpins', {
+            animal_type: animal.animal_type,
+            stray_status: animal.classification,
+            camera: animal.stream_id,
+            detection_id: animal.id, 
+          });
+
+          uniqueAnimalStreamCombos[animalStreamKey] = animal.timestamp;
+          processedAnimalIds.value.add(animal.id);
+          newAnimalsCount++;
+        } catch (animalError) {
+          console.error(`Error posting animal ${animal.id}:`, animalError);
+          failedAnimals++;
+        }
+      }
+
+      // Step 4: Optionally, update stats after processing
+      if (newAnimalsCount > 0) {
+        fetchStats();
+      }
+
+      pollingStatus.value = `Processed ${newAnimalsCount} new animals` +
+        (skipCount > 0 ? ` (${skipCount} skipped as duplicates)` : '') +
+        (failedAnimals > 0 ? ` (${failedAnimals} failed)` : '');
+    } else {
+      pollingStatus.value = 'No detected animals found in the API response';
+    }
+  } catch (error) {
+    console.error('Error fetching detected animals:', error);
+    errorMessage.value = `Error: ${error.message || 'Unknown error occurred'}`;
+    pollingStatus.value = 'Error occurred while fetching data';
+  }
+}
+function startPolling() {
+  if (isPolling.value) return;
+  
+  isPolling.value = true;
+  // Run immediately on start
+  postDetectedAnimalsToAnimalPins();
+  
+  // Then set up interval for every 10 seconds
+  pollingInterval.value = setInterval(() => {
+    postDetectedAnimalsToAnimalPins();
+  }, 10000); // 10 seconds
+}
+
+// Stop polling function
+function stopPolling() {
+  if (!isPolling.value) return;
+  
+  clearInterval(pollingInterval.value);
+  pollingInterval.value = null;
+  isPolling.value = false;
+  pollingStatus.value = 'Polling stopped';
+}
+
+// Component lifecycle hooks
+
+
+onBeforeUnmount(() => {
+  stopPolling(); // Clean up when component unmounts
 });
+
 onMounted(() => {
     setTimeout(() => {
         isLoading.value = false

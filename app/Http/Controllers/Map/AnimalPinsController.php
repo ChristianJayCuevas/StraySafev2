@@ -107,69 +107,74 @@ class AnimalPinsController extends Controller
     // }
 
     public function store(Request $request)
-{   
-    Log::debug('Request received:', ['request' => $request->all()]);
-    
-    // Validate the request
-    $validated = $request->validate([
-        'animal_type' => 'required|string|max:255',
-        'stray_status' => 'required|string|max:255',
-        'camera' => 'nullable|string|max:255',
-    ]);
-    
-    Log::debug('Validated data:', ['validated' => $validated]);
-    
-    $animalData = [
-        'animal_type' => $validated['animal_type'],
-        'stray_status' => $validated['stray_status'],
-    ];
-    
-    // Check if camera is provided
-    if (!empty($validated['camera'])) {
-        Log::debug('Camera provided:', ['camera' => $validated['camera']]);
+    {   
+        Log::debug('Request received:', ['request' => $request->all()]);
         
-        $camera = CameraPins::where('camera_name', $validated['camera'])->first();
+        // Validate the request
+        $validated = $request->validate([
+            'animal_type' => 'required|string|max:255',
+            'stray_status' => 'required|string|max:255',
+            'camera' => 'nullable|string|max:255', // Changed from 'stream_id' to 'camera'
+            'detection_id' => 'required|string|max:255'
+        ]);
         
-        // Log camera details if found
-        if ($camera) {
-            Log::debug('Camera found:', ['camera' => $camera->toArray()]);
+        Log::debug('Validated data:', ['validated' => $validated]);
+        
+        $animalData = [
+            'animal_type' => $validated['animal_type'],
+            'stray_status' => $validated['stray_status'],
+            'camera' => $validated['camera'],
+            'detection_id' => $validated['detection_id']
+        ];
+        
+        // Check if camera is provided
+        if (!empty($validated['camera'])) {
+            $cameraId = $validated['camera'];
+            Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
+            
+            // Find camera by matching the identifier in the HLS URL
+            $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
+            
+            if ($camera) {
+                Log::debug('Camera found:', ['camera' => $camera->toArray()]);
+            } else {
+                Log::error('Camera not found with identifier in HLS URL: ' . $cameraId);
+                return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
+            }
+        
+            $animalData['camera_pin_id'] = $camera->id;
+            $animalData['user_map_id'] = $camera->user_map_id;
+            
+            // Get existing pins for this camera
+            $existingPins = AnimalPins::where('camera_pin_id', $camera->id)->get();
+            
+            // Base distance and angle values
+            $baseDistance = 5; // Initial distance in meters from the camera
+            $cameraAngleRad = deg2rad($camera->direction); // Camera direction in radians
+            
+            if ($existingPins->count() > 0) {
+                // Calculate new position based on existing pins
+                list($animalLat, $animalLng) = $this->calculateNewPinPosition($camera, $existingPins, $baseDistance, $cameraAngleRad);
+            } else {
+                // No existing pins, place first pin at base distance and camera direction
+                list($animalLat, $animalLng) = $this->calculatePinPosition($camera->latitude, $camera->longitude, $baseDistance, $cameraAngleRad);
+            }
+            
+            Log::debug('Final animal coordinates:', ['animalLat' => $animalLat, 'animalLng' => $animalLng]);
+            
+            $animalData['latitude'] = $animalLat;
+            $animalData['longitude'] = $animalLng;
         } else {
-            Log::error('Camera not found with name: ' . $validated['camera']);
-            return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
-        }
-    
-        $animalData['camera_pin_id'] = $camera->id;
-        $animalData['user_map_id'] = $camera->user_map_id;
-        
-        // Get existing pins for this camera
-        $existingPins = AnimalPins::where('camera_pin_id', $camera->id)->get();
-        
-        // Base distance and angle values
-        $baseDistance = 5; // Initial distance in meters from the camera
-        $cameraAngleRad = deg2rad($camera->direction); // Camera direction in radians
-        
-        if ($existingPins->count() > 0) {
-            // Calculate new position based on existing pins
-            list($animalLat, $animalLng) = $this->calculateNewPinPosition($camera, $existingPins, $baseDistance, $cameraAngleRad);
-        } else {
-            // No existing pins, place first pin at base distance and camera direction
-            list($animalLat, $animalLng) = $this->calculatePinPosition($camera->latitude, $camera->longitude, $baseDistance, $cameraAngleRad);
+            Log::debug('No camera provided in the request.');
         }
         
-        Log::debug('Final animal coordinates:', ['animalLat' => $animalLat, 'animalLng' => $animalLng]);
+        // Create the animal pin
+        $pin = AnimalPins::create($animalData);
+        Log::debug('Animal pin created:', ['pin' => $pin->toArray()]);
         
-        $animalData['latitude'] = $animalLat;
-        $animalData['longitude'] = $animalLng;
-    } else {
-        Log::debug('No camera provided in the request.');
+        return response()->json(['success' => true, 'pin' => $pin]);
     }
     
-    // Create the animal pin
-    $pin = AnimalPins::create($animalData);
-    Log::debug('Animal pin created:', ['pin' => $pin->toArray()]);
-    
-    return response()->json(['success' => true, 'pin' => $pin]);
-}
 
 /**
  * Calculate a new pin position based on existing pins
