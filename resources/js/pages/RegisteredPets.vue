@@ -58,11 +58,11 @@ interface Pet {
   name: string;
   breed: string;
   type: string;
-  age: number;
+
   owner: string;
   registered_date: string;
-  status: 'active' | 'pending' | 'inactive';
-  vaccine_status: boolean;
+
+
   image: string;
 }
 
@@ -146,10 +146,7 @@ const columns = [
     header: 'Breed',
     cell: info => info.getValue(),
   }),
-  columnHelper.accessor('age', {
-    header: 'Age',
-    cell: info => `${info.getValue()} years`,
-  }),
+
   columnHelper.accessor('owner', {
     header: 'Owner',
     cell: info => info.getValue(),
@@ -158,24 +155,7 @@ const columns = [
     header: 'Registered',
     cell: info => info.getValue(),
   }),
-  columnHelper.accessor('status', {
-    header: 'Status',
-    cell: info => {
-      const status = info.getValue();
-      let color = 'bg-gray-400';
-      if (status === 'active') color = 'bg-green-500';
-      if (status === 'pending') color = 'bg-amber-500';
-      if (status === 'inactive') color = 'bg-red-500';
-      
-      return h('div', { class: 'flex justify-center' }, [
-        h('span', { class: `w-3 h-3 rounded-full ${color}` })
-      ]);
-    },
-  }),
-  columnHelper.accessor('vaccine_status', {
-    header: 'Vaccinated',
-    cell: info => info.getValue() ? 'Yes' : 'No',
-  }),
+
 ];
 
 const table = useVueTable({
@@ -223,11 +203,8 @@ const fetchPets = async () => {
         name: pet.pet_name,
         breed: pet.breed,
         type: pet.animal_type,
-        age: 0, // Not available in API
         owner: pet.owner,
         registered_date: new Date(pet.created_at).toLocaleDateString(),
-        status: pet.status as 'active' | 'pending' | 'inactive',
-        vaccine_status: false, // Not available in API
         image: pet.picture || 'https://placehold.co/300x300?text=No+Image'
       }));
     } else {
