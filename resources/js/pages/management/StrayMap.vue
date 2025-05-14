@@ -30,8 +30,11 @@ const fetchStats = async () => {
     console.error('Error fetching stats:', error);
   }
 };
-
-
+function updateProcessedIds(id) {
+  processedAnimalIds.value.add(id);
+  localStorage.setItem('processedAnimalIds', 
+    JSON.stringify([...processedAnimalIds.value]));
+}
 // Reactive state to track processed animal IDs to avoid duplicates
 const processedAnimalIds = ref(new Set());
 const isPolling = ref(false);
@@ -171,12 +174,28 @@ onBeforeUnmount(() => {
 });
 
 onMounted(() => {
-    setTimeout(() => {
-        isLoading.value = false
-    }, 2000)
-    startPolling();
-    fetchStats();
-})
+  // Load processed IDs from localStorage
+  const savedIds = localStorage.getItem('processedAnimalIds');
+  if (savedIds) {
+    try {
+      // Convert the array back to a Set
+      processedAnimalIds.value = new Set(JSON.parse(savedIds));
+      console.log(`Loaded ${processedAnimalIds.value.size} processed IDs from localStorage`);
+    } catch (error) {
+      console.error('Error parsing processedAnimalIds from localStorage:', error);
+      // Reset if there's an error
+      localStorage.removeItem('processedAnimalIds');
+    }
+  }
+  
+  startPolling();
+  fetchStats();
+  
+  // Your existing setTimeout for isLoading if needed
+  setTimeout(() => {
+    isLoading.value = false
+  }, 2000)
+});
 </script>
 
 <template>
