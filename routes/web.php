@@ -67,6 +67,11 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/stats/summary', [DashboardController::class, 'summary']);
 Route::get('/stats/summary2', [DashboardController::class, 'summary2']);
+
+Route::apiResource('videos', VideoController::class);
+Route::post('videos/upload-chunk', [VideoController::class, 'uploadChunk']);
+Route::post('videos/complete-chunked-upload', [VideoController::class, 'completeChunkedUpload']);
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';
