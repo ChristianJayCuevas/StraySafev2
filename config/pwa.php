@@ -20,8 +20,8 @@ return [
     'install-button' => true,
     'manifest' => [
         
-        'name' => 'Laravel PWA',
-        'short_name' => 'LPT',
+        'name' => 'StraySafe',
+        'short_name' => 'StraySafe',
         'background_color' => '#6777ef',
         'display' => 'fullscreen',
         'description' => 'Stray Safe Application.',
