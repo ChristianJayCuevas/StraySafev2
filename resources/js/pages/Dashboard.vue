@@ -70,17 +70,17 @@ onMounted(() => {
           <CardData title="Stray Dog Detected" :value="stats.dog_pins" icon="dog" description="Stray dogs detected" />
   <CardData title="Stray Cat Detected" :value="stats.cat_pins" icon="cat" description="Stray cats detected" />
   <CardData title="Total Stray Detected" :value="stats.animal_pins" icon="pawPrint" description="Total strays detected" />
-  <CardData title="Total Registered Pets" value="2" icon="shieldCheck" description="Total registered pets" />
+  <CardData title="Total Registered Pets" value="0" icon="shieldCheck" description="Total registered pets" />
         </template>
       </div>
-      <div class="grid auto-rows-min gap-4 md:grid-cols-1">
+      <div class="grid auto-rows-min gap-4 md:grid-cols-2">
         <Card
           class="px-3 py-3 hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300">
           <template v-if="isLoading">
             <Skeleton class="h-[500px] w-full rounded-md" />
           </template>
           <template v-else>
-            <apexchart type="area" height="500px" :options="chartOptions" :series="series" />
+            <apexchart type="area" height="600px" :options="chartOptions" :series="series" />
           </template>
         </Card>
         <Card

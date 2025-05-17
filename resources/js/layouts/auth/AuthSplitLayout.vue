@@ -29,9 +29,9 @@ defineProps<{
 
             <div v-if="quote" class="relative z-20 mt-auto">
                 <blockquote class="space-y-2">
-                    <p class="text-lg">"Animals don’t have a voice. But I do. My voice is for them. And I’ll never stay silent while they suffer."</p>
+                    <p class="text-lg text-gray-800 dark:text-white">"Animals don’t have a voice. But I do. My voice is for them. And I’ll never stay silent while they suffer."</p>
                     <!-- <p class="text-lg">&ldquo;{{ quote.message }}&rdquo;</p> -->
-                    <footer class="text-sm text-neutral-300">Ricky Gervais</footer>
+                    <footer class="text-sm text-black dark:text-neutral-300">Ricky Gervais</footer>
                 </blockquote>
             </div>
         </div>

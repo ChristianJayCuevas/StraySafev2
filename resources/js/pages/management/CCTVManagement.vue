@@ -427,67 +427,99 @@ const getModeBadgeVariant = (mode: string) => {
             </Select>
           </div>
           
-          <Dialog v-model:open="showAddDialog">
-            <DialogTrigger asChild>
-              <Button variant="default" @click="showAddDialog = true">
-                <Icon name="plus" class="mr-2 h-4 w-4" />
-                Add Camera
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Camera</DialogTitle>
-                <DialogDescription>
-                  Add a new CCTV camera to your monitoring system.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div class="grid gap-4 py-4">
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="name" class="text-right">Name</Label>
-                  <Input id="name" v-model="newCamera.name" class="col-span-3" placeholder="Main Entrance" />
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="location" class="text-right">Location</Label>
-                  <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="streamUrl" class="text-right">Stream URL</Label>
-                  <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3" placeholder="https://example.com/stream.m3u8" />
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="status" class="text-right">Status</Label>
-                  <Select v-model="newCamera.status">
-                    <SelectTrigger class="col-span-3">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="demo">Demo</SelectItem>
-                      <SelectItem value="offline">Offline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="mode" class="text-right">Camera Mode</Label>
-                  <Select v-model="newCamera.mode">
-                    <SelectTrigger class="col-span-3">
-                      <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="highquality">High Quality CCTV</SelectItem>
-                      <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" @click="showAddDialog = false">Cancel</Button>
-                <Button @click="addCamera">Add Camera</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        
+<Dialog v-model:open="showAddDialog">
+  <DialogTrigger asChild>
+    <Button variant="default" @click="showAddDialog = true">
+      <Icon name="plus" class="mr-2 h-4 w-4" />
+      Add Camera
+    </Button>
+  </DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Add New Camera</DialogTitle>
+      <DialogDescription>
+        Add a new CCTV camera to your monitoring system.
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div class="grid gap-4 py-4">
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="name" class="text-right">Name</Label>
+        <Input id="name" v-model="newCamera.name" class="col-span-3" placeholder="Main Entrance" />
+      </div>
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="location" class="text-right">Location</Label>
+        <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
+      </div>
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="sourceType" class="text-right">Source Type</Label>
+        <Select v-model="newCamera.sourceType" class="col-span-3" @update:modelValue="handleSourceTypeChange">
+          <SelectTrigger>
+            <SelectValue placeholder="Select source type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="stream">Stream URL</SelectItem>
+            <SelectItem value="upload">Upload Video</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <!-- Conditional fields based on sourceType -->
+      <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
+        <Label for="streamUrl" class="text-right">Stream URL</Label>
+        <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3" placeholder="https://example.com/stream.m3u8" />
+      </div>
+      
+      <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
+        <Label for="videoUpload" class="text-right">Upload Video</Label>
+        <div class="col-span-3">
+          <Input 
+            id="videoUpload" 
+            type="file" 
+            accept="video/*" 
+            @change="handleFileUpload"
+            class="col-span-3" 
+          />
+          <p v-if="newCamera.videoFile" class="text-sm text-gray-500 mt-1">
+            Selected: {{ newCamera.videoFile.name }}
+          </p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="status" class="text-right">Status</Label>
+        <Select v-model="newCamera.status" class="col-span-3">
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="live">Live</SelectItem>
+            <SelectItem value="demo">Demo</SelectItem>
+            <SelectItem value="offline">Offline</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="mode" class="text-right">Camera Mode</Label>
+        <Select v-model="newCamera.mode" class="col-span-3">
+          <SelectTrigger>
+            <SelectValue placeholder="Select mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="highquality">High Quality CCTV</SelectItem>
+            <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+    
+    <DialogFooter>
+      <Button variant="outline" @click="showAddDialog = false">Cancel</Button>
+      <Button @click="addCamera">Add Camera</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
         </div>
       </div>
 

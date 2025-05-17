@@ -1,0 +1,16 @@
+{
+    "name": "Laravel PWA",
+    "short_name": "LPT",
+    "background_color": "#6777ef",
+    "display": "fullscreen",
+    "description": "Stray Safe Application.",
+    "theme_color": "#6777ef",
+    "start_url": "/",
+    "icons": [
+        {
+            "src": "/storage/images/newlogo1.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
