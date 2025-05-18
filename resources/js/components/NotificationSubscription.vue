@@ -12,8 +12,9 @@
   <script setup>
   import { ref, onMounted } from 'vue'
   import { Button } from '@/components/ui/button'
-  import { Bell, BellRing } from 'lucide-vue-next' // outline & filled-like icon
+  import { Bell, BellRing } from 'lucide-vue-next'
   
+  const vapidPublicKey = window.vapidPublicKey || ''
   const isPushEnabled = ref(false)
   const registration = ref(null)
   
@@ -36,10 +37,15 @@
   }
   
   async function subscribe() {
+    if (!vapidPublicKey) {
+      console.error('VAPID public key is missing!')
+      return
+    }
+  
     try {
       const sub = await registration.value.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array('{{ env("VAPID_PUBLIC_KEY") }}')
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       })
   
       await fetch('/push-subscriptions', {
@@ -79,37 +85,31 @@
   }
   
   function urlBase64ToUint8Array(base64String) {
-    // Ensure the base64String is not undefined or null
     if (!base64String) {
-        console.error('VAPID public key is missing');
-        return new Uint8Array();
+      console.error('VAPID public key is missing');
+      return new Uint8Array();
     }
-    
-    // Replace any URL-unsafe characters
-    const base64 = base64String.replace(/[^A-Za-z0-9\-_]/g, '')
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-    
-    // Add padding if needed
+  
+    const base64 = base64String
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+  
     const padding = '='.repeat((4 - (base64.length % 4)) % 4);
     const paddedBase64 = base64 + padding;
-    
+  
     try {
-        // Convert base64 to raw binary data
-        const rawData = window.atob(paddedBase64);
-        
-        // Convert raw binary to Uint8Array
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
+      const rawData = window.atob(paddedBase64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
     } catch (e) {
-        console.error('Error decoding base64 string:', e);
-        console.error('Original base64 string:', base64String);
-        console.error('Processed base64 string:', paddedBase64);
-        throw e;
+      console.error('Error decoding base64 string:', e);
+      console.error('Original base64 string:', base64String);
+      console.error('Processed base64 string:', paddedBase64);
+      throw e;
     }
-}
+  }
   </script>
   
