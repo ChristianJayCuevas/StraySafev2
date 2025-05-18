@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { type BreadcrumbItem, type SharedData, type User } from '@/types';
+import NotificationSubscription from '@/components/NotificationSubscription.vue';
 
 interface Props {
     mustVerifyEmail: boolean;
@@ -101,6 +102,8 @@ const submit = () => {
                     </div>
                 </form>
             </div>
+            <HeadingSmall title="Enable Notification" description="Control the notification in your account" />
+            <NotificationSubscription />
 
             <DeleteUser />
         </SettingsLayout>

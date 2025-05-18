@@ -79,14 +79,37 @@
   }
   
   function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4)
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-    const rawData = window.atob(base64)
-    const outputArray = new Uint8Array(rawData.length)
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i)
+    // Ensure the base64String is not undefined or null
+    if (!base64String) {
+        console.error('VAPID public key is missing');
+        return new Uint8Array();
     }
-    return outputArray
-  }
+    
+    // Replace any URL-unsafe characters
+    const base64 = base64String.replace(/[^A-Za-z0-9\-_]/g, '')
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+    
+    // Add padding if needed
+    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+    const paddedBase64 = base64 + padding;
+    
+    try {
+        // Convert base64 to raw binary data
+        const rawData = window.atob(paddedBase64);
+        
+        // Convert raw binary to Uint8Array
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    } catch (e) {
+        console.error('Error decoding base64 string:', e);
+        console.error('Original base64 string:', base64String);
+        console.error('Processed base64 string:', paddedBase64);
+        throw e;
+    }
+}
   </script>
   
