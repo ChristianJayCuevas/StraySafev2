@@ -39,6 +39,16 @@ const submit = () => {
         preserveScroll: true,
     });
 };
+import axios from 'axios';
+
+const sendTestNotification = async () => {
+  try {
+    const response = await axios.get('/test-notification');
+    console.log(response.data); // Optional: show in console
+  } catch (error) {
+    console.error('Notification error:', error);
+  }
+};
 </script>
 
 <template>
@@ -104,6 +114,7 @@ const submit = () => {
             </div>
             <HeadingSmall title="Enable Notification" description="Control the notification in your account" />
             <NotificationSubscription />
+            <Button @click="sendTestNotification">Send Test Notification</Button>
 
             <DeleteUser />
         </SettingsLayout>

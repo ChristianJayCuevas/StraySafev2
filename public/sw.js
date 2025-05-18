@@ -49,8 +49,10 @@ self.addEventListener('activate', (event) => {
 
 // Handle push events
 self.addEventListener('push', function(event) {
+    console.log('[SW] Push received');
     if (event.data) {
         const data = event.data.json();
+        console.log('[SW] Push payload:', data);
         
         const options = {
             body: data.body,
@@ -66,8 +68,11 @@ self.addEventListener('push', function(event) {
         event.waitUntil(
             self.registration.showNotification(data.title, options)
         );
+    } else {
+        console.log('[SW] Push received with no data');
     }
 });
+
 
 // Handle notification clicks
 self.addEventListener('notificationclick', function(event) {
