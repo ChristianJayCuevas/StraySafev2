@@ -1,0 +1,92 @@
+<template>
+    <div>
+      <Button variant="ghost" size="icon" @click="togglePush">
+        <component
+          :is="isPushEnabled ? BellRing : Bell"
+          class="w-5 h-5"
+        />
+      </Button>
+    </div>
+  </template>
+  
+  <script setup>
+  import { ref, onMounted } from 'vue'
+  import { Button } from '@/components/ui/button'
+  import { Bell, BellRing } from 'lucide-vue-next' // outline & filled-like icon
+  
+  const isPushEnabled = ref(false)
+  const registration = ref(null)
+  
+  onMounted(async () => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        registration.value = await navigator.serviceWorker.getRegistration()
+        if (registration.value) {
+          const subscription = await registration.value.pushManager.getSubscription()
+          isPushEnabled.value = subscription !== null
+        }
+      } catch (e) {
+        console.error('Error checking push status', e)
+      }
+    }
+  })
+  
+  async function togglePush() {
+    isPushEnabled.value ? await unsubscribe() : await subscribe()
+  }
+  
+  async function subscribe() {
+    try {
+      const sub = await registration.value.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array('{{ env("VAPID_PUBLIC_KEY") }}')
+      })
+  
+      await fetch('/push-subscriptions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify(sub)
+      })
+  
+      isPushEnabled.value = true
+    } catch (e) {
+      console.error('Error subscribing to push', e)
+    }
+  }
+  
+  async function unsubscribe() {
+    try {
+      const sub = await registration.value.pushManager.getSubscription()
+      if (sub) {
+        await sub.unsubscribe()
+        await fetch('/push-subscriptions', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: JSON.stringify(sub)
+        })
+      }
+  
+      isPushEnabled.value = false
+    } catch (e) {
+      console.error('Error unsubscribing from push', e)
+    }
+  }
+  
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
+  </script>
+  

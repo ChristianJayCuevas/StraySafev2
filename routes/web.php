@@ -72,6 +72,41 @@ Route::apiResource('videos', VideoController::class);
 Route::post('videos/upload-chunk', [VideoController::class, 'uploadChunk']);
 Route::post('videos/complete-chunked-upload', [VideoController::class, 'completeChunkedUpload']);
 
+Route::middleware('auth:sanctum')->group(function () {
+    // Store push subscription
+    Route::post('/push-subscriptions', function (Request $request) {
+        $request->user()->updatePushSubscription(
+            $request->input('endpoint'),
+            $request->input('keys.p256dh'),
+            $request->input('keys.auth')
+        );
+        
+        return response()->json(['success' => true]);
+    });
+    
+    // Delete push subscription
+    Route::delete('/push-subscriptions', function (Request $request) {
+        $request->user()->deletePushSubscription($request->input('endpoint'));
+        
+        return response()->json(['success' => true]);
+    });
+});
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/send-notification', [NotificationController::class, 'sendNotification']);
+    Route::post('/send-broadcast', [NotificationController::class, 'sendBroadcast']);
+});
+Route::get('/test-notification', function () {
+    $user = auth()->user();
+    if ($user) {
+        $user->notify(new \App\Notifications\PushNotification(
+            'Test Notification',
+            'This is a test push notification',
+            '/dashboard'
+        ));
+        return 'Notification sent!';
+    }
+    return 'User not logged in!';
+});
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';
