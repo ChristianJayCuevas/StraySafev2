@@ -9,7 +9,7 @@ use App\Http\Controllers\API\MobileRegisteredAnimalController;
 use App\Http\Middleware\ValidateStaticToken;
 use App\Http\Controllers\RegisteredAnimalController;
 use App\Http\Controllers\DashboardController;
-
+use Illuminate\Http\Request;
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
