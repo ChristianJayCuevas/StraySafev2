@@ -8,11 +8,27 @@ const filesToCache = [
 ];
 
 self.addEventListener("install", (event) => {
+    self.skipWaiting(); // Force activate this SW immediately
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(filesToCache))
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(filesToCache))
     );
 });
+
+self.addEventListener("activate", (event) => {
+    clients.claim(); // Claim control of uncontrolled clients
+    event.waitUntil(
+        caches.keys().then((cacheNames) =>
+            Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            )
+        )
+    );
+});
+
 
 self.addEventListener("fetch", (event) => {
     if (event.request.mode === 'navigate') {
@@ -32,22 +48,6 @@ self.addEventListener("fetch", (event) => {
     }
 });
 
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
-    );
-});
-// Add this to your existing service worker file
-
-// Handle push events
 self.addEventListener('push', function(event) {
     console.log('[SW] Push received');
     if (event.data) {
