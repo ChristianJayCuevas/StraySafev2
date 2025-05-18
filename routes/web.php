@@ -96,16 +96,56 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/send-broadcast', [NotificationController::class, 'sendBroadcast']);
 });
 Route::get('/test-notification', function () {
-    $user = auth()->user();
-    if ($user) {
-        $user->notify(new \App\Notifications\PushNotification(
-            'Test Notification',
-            'This is a test push notification',
-            '/dashboard'
-        ));
-        return 'Notification sent!';
+    try {
+        $user = auth()->user();
+        
+        if ($user) {
+            // Send to authenticated user
+            $user->notify(new \App\Notifications\PushNotification(
+                'Test Notification',
+                'This is a test push notification at ' . now(),
+                '/dashboard'
+            ));
+            
+            return 'Notification sent to authenticated user!';
+        } else if (session()->has('push_subscription')) {
+            // For testing - send to session-stored subscription
+            $subscription = session('push_subscription');
+            
+            $auth = [
+                'VAPID' => [
+                    'subject' => 'mailto:test@example.com',
+                    'publicKey' => env('VAPID_PUBLIC_KEY'),
+                    'privateKey' => env('VAPID_PRIVATE_KEY'),
+                ]
+            ];
+            
+            $webPush = new \Minishlink\WebPush\WebPush($auth);
+            $webPush->sendNotification(
+                $subscription['endpoint'],
+                json_encode([
+                    'title' => 'Test Notification',
+                    'body' => 'This is a test push notification for anonymous user at ' . now(),
+                    'data' => [
+                        'action' => '/dashboard'
+                    ]
+                ]),
+                $subscription['p256dh'],
+                $subscription['auth']
+            );
+            
+            return 'Notification sent to anonymous session!';
+        }
+        
+        return 'No subscription found. Please subscribe first.';
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Error sending test notification', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return 'Error: ' . $e->getMessage();
     }
-    return 'User not logged in!';
 });
 
 require __DIR__.'/settings.php';
