@@ -18,6 +18,10 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::get('mobilemap', function(){
+    return Inertia::render('mobile/MobileMap');
+})->middleware(['auth', 'verified'])->name('mobilemap');
+
 Route::get('straymap', function () {
     return Inertia::render('management/StrayMap');
 })->middleware(['auth', 'verified'])->name('straymap');

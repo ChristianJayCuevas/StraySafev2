@@ -24,6 +24,14 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
+    public function createMobile(Request $request): Response
+    {
+        return Inertia::render('auth/MobileLogin', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => $request->session()->get('status'),
+        ]);
+    }
+
     /**
      * Handle an incoming authentication request.
      */
@@ -34,6 +42,15 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+     public function storeMobile(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('mobilemap', absolute: false));
     }
 
     /**

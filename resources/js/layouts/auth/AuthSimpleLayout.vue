@@ -5,12 +5,17 @@ import { Link } from '@inertiajs/vue3';
 defineProps<{
     title?: string;
     description?: string;
+    backgroundImage?: string;
 }>();
 </script>
 
 <template>
-    <div class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-        <div class="w-full max-w-sm">
+    <div 
+        class="relative flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10 overflow-hidden"
+        :style="backgroundImage ? `background-image: url('${backgroundImage}'); background-size: cover; background-position: center;` : 'background-color: var(--background);'"
+    >
+        <!-- Glassmorphic container -->
+        <div class="w-full max-w-sm backdrop-blur-md bg-white/20 dark:bg-black/30 rounded-xl border border-white/20 dark:border-white/10 shadow-lg p-6">
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">
                     <Link :href="route('home')" class="flex flex-col items-center gap-2 font-medium">
@@ -20,8 +25,8 @@ defineProps<{
                         <span class="sr-only">{{ title }}</span>
                     </Link>
                     <div class="space-y-2 text-center">
-                        <h1 class="text-xl font-medium">{{ title }}</h1>
-                        <p class="text-center text-sm text-muted-foreground">{{ description }}</p>
+                        <h1 class="text-xl font-medium text-black dark:text-white">{{ title }}</h1>
+                        <p class="text-center text-sm text-black/80 dark:text-white/80">{{ description }}</p>
                     </div>
                 </div>
                 <slot />

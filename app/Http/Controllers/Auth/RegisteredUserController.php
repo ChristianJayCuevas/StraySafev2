@@ -23,6 +23,11 @@ class RegisteredUserController extends Controller
         return Inertia::render('auth/Register');
     }
 
+    public function createMobile(): Response
+    {
+        return Inertia::render('auth/MobileRegister');
+    }
+
     /**
      * Handle an incoming registration request.
      *
