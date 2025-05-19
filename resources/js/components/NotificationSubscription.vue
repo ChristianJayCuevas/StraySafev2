@@ -20,7 +20,7 @@ const registration = ref(null)
 const shouldResubscribe = ref(false)
 
 onMounted(async () => {
-  // Check if we're coming back after a page reload for subscription
+  // Check if we're coming back after a page reload
   shouldResubscribe.value = localStorage.getItem('shouldResubscribe') === 'true'
   
   if (shouldResubscribe.value) {
@@ -48,8 +48,9 @@ onMounted(async () => {
         const subscription = await registration.value.pushManager.getSubscription();
         isPushEnabled.value = subscription !== null;
         
-        // If we should resubscribe after page reload and not already subscribed
-        if (shouldResubscribe.value && !isPushEnabled.value) {
+        // If we should resubscribe after page reload
+        if (shouldResubscribe.value) {
+          // Always subscribe after reload when the flag is set
           await subscribe();
         }
       }
@@ -60,23 +61,16 @@ onMounted(async () => {
 })
 
 async function togglePush() {
-  if (!isPushEnabled.value) {
-    // Set flag to resubscribe after reload
-    localStorage.setItem('shouldResubscribe', 'true')
-    
-    // Subscribe and then reload page
-    try {
-      await subscribe()
-      window.location.reload()
-    } catch (e) {
-      console.error('Error subscribing before reload', e)
-      // Clear flag if subscription fails
-      localStorage.removeItem('shouldResubscribe')
-    }
-  } else {
-    // Just unsubscribe normally without reload
+  // Always set the flag - whether subscribing or unsubscribing
+  localStorage.setItem('shouldResubscribe', 'true')
+  
+  // First unsubscribe if currently enabled
+  if (isPushEnabled.value) {
     await unsubscribe()
   }
+  
+  // Reload the page
+  window.location.reload()
 }
 
 async function subscribe() {
