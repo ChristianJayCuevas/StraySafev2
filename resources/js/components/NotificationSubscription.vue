@@ -19,18 +19,31 @@
   const registration = ref(null)
   
   onMounted(async () => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      try {
-        registration.value = await navigator.serviceWorker.getRegistration()
-        if (registration.value) {
-          const subscription = await registration.value.pushManager.getSubscription()
-          isPushEnabled.value = subscription !== null
+   if ('serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+            // Wait for service worker to be ready
+            if (navigator.serviceWorker.controller === null) {
+                // Service worker not controlling the page yet
+                await new Promise(resolve => {
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        resolve();
+                    });
+                    
+                    // Add a timeout in case the controllerchange doesn't fire
+                    setTimeout(resolve, 3000);
+                });
+            }
+            
+            registration.value = await navigator.serviceWorker.ready;
+            if (registration.value) {
+                const subscription = await registration.value.pushManager.getSubscription();
+                isPushEnabled.value = subscription !== null;
+            }
+        } catch (e) {
+            console.error('Error checking push status', e);
         }
-      } catch (e) {
-        console.error('Error checking push status', e)
-      }
     }
-  })
+})
   
   async function togglePush() {
     isPushEnabled.value ? await unsubscribe() : await subscribe()

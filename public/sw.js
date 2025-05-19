@@ -34,7 +34,8 @@ self.addEventListener("fetch", (event) => {
     if (event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request)
-                .catch(() => {
+                .catch((error) => {
+                    console.log('[SW] Fetch failed:', error);
                     return caches.match(OFFLINE_URL);
                 })
         );
@@ -42,7 +43,15 @@ self.addEventListener("fetch", (event) => {
         event.respondWith(
             caches.match(event.request)
                 .then((response) => {
-                    return response || fetch(event.request);
+                    return response || fetch(event.request)
+                        .catch((error) => {
+                            console.log('[SW] Resource fetch failed:', error, event.request.url);
+                            // Return a fallback response for non-navigation requests if possible
+                            return new Response('Resource unavailable', {
+                                status: 503,
+                                statusText: 'Service Unavailable'
+                            });
+                        });
                 })
         );
     }
@@ -58,7 +67,8 @@ self.addEventListener('push', function(event) {
             body: data.body,
             icon: '/storage/images/newlogo1.png',
             badge: '/storage/images/newlogo1.png',
-            data: data.data
+            data: data.data,
+            vibrate: [200, 100, 200]
         };
         
         if (data.actions) {
