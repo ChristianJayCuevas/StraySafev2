@@ -18,9 +18,15 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+//Mobile Map
 Route::get('mobilemap', function(){
     return Inertia::render('mobile/MobileMap');
 })->middleware(['auth', 'verified'])->name('mobilemap');
+
+//Register Mobile
+Route::get('registeredpetsmobile', function(){
+    return Inertia::render('mobile/RegisterPets');
+})->middleware(['auth', 'verified'])->name('registeredpetsmobile');
 
 Route::get('straymap', function () {
     return Inertia::render('management/StrayMap');
