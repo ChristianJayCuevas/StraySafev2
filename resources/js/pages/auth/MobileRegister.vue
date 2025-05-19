@@ -23,7 +23,7 @@ const submit = () => {
 </script>
 
 <template>
-    <AuthBase title="Create an account" description="Enter your details below to create your account"  backgroundImage="/storage/images/wallpaper3.jpg">
+    <AuthBase title="Create an account" description="Enter your details below to create your account" backgroundImage="https://github.com/ChristianJayCuevas/StraySafe-MobileApp/blob/main/assets/wallpaper3.jpg?raw=true">
         <Head title="Register" />
 
         <form @submit.prevent="submit" class="flex flex-col gap-6">

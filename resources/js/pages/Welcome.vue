@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 
 // Images for carousel - replace with your actual image paths
 const carouselImages = [
-  '/storage/images/welcome1.png',
-  '/storage/images/welcome2.png',
-  '/storage/images/welcome3.png',
-  '/storage/images/welcome4.jpg',
-  '/storage/images/welcome5.jpg', 
+  'https://github.com/ChristianJayCuevas/StraySafe-MobileApp/blob/main/assets/welcome1.png?raw=true',
+  'https://github.com/ChristianJayCuevas/StraySafe-MobileApp/blob/main/assets/welcome2.png?raw=true',
+  'https://github.com/ChristianJayCuevas/StraySafe-MobileApp/blob/main/assets/welcome3.png?raw=true',
+  'https://github.com/ChristianJayCuevas/StraySafe-MobileApp/blob/main/assets/welcome4.jpg?raw=true',
+  'https://github.com/ChristianJayCuevas/StraySafe-MobileApp/blob/main/assets/welcome5.jpg?raw=true',
 ];
 
 // Set up autoplay plugin
@@ -31,7 +31,7 @@ const plugin = Autoplay({
       <h2 class="text-6xl font-bold mb-4">Welcome to Stray Safe</h2>
       <p class="text-xl mb-6">Discover amazing features and services</p>
     </div>
-
+    
     <Carousel
       class="w-full h-full"
       :plugins="[plugin]"

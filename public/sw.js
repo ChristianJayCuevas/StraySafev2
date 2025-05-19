@@ -31,31 +31,36 @@ self.addEventListener("activate", (event) => {
 
 
 self.addEventListener("fetch", (event) => {
-    if (event.request.mode === 'navigate') {
+    const req = event.request;
+
+    // Don't handle non-GET requests
+    if (req.method !== 'GET') return;
+
+    // Handle navigation (HTML pages)
+    if (req.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request)
-                .catch((error) => {
-                    console.log('[SW] Fetch failed:', error);
-                    return caches.match(OFFLINE_URL);
-                })
+            fetch(req).catch(() => caches.match(OFFLINE_URL))
         );
-    } else {
-        event.respondWith(
-            caches.match(event.request)
-                .then((response) => {
-                    return response || fetch(event.request)
-                        .catch((error) => {
-                            console.log('[SW] Resource fetch failed:', error, event.request.url);
-                            // Return a fallback response for non-navigation requests if possible
-                            return new Response('Resource unavailable', {
-                                status: 503,
-                                statusText: 'Service Unavailable'
-                            });
-                        });
-                })
-        );
+        return;
     }
+
+    // Skip interception for image requests in storage
+    if (req.url.includes('/storage/images/')) {
+        return; // Let the browser handle it
+    }
+
+    // Handle other requests
+    event.respondWith(
+        caches.match(req)
+            .then((res) => res || fetch(req).catch(() => {
+                return new Response('Resource unavailable', {
+                    status: 503,
+                    statusText: 'Service Unavailable'
+                });
+            }))
+    );
 });
+
 
 self.addEventListener('push', function(event) {
     console.log('[SW] Push received');
