@@ -214,12 +214,6 @@ const confirmSubmit = () => {
 const petTypes = [
   { value: 'Dog', label: 'Dog' },
   { value: 'Cat', label: 'Cat' },
-  { value: 'Bird', label: 'Bird' },
-  { value: 'Rabbit', label: 'Rabbit' },
-  { value: 'Hamster', label: 'Hamster' },
-  { value: 'Fish', label: 'Fish' },
-  { value: 'Reptile', label: 'Reptile' },
-  { value: 'Other', label: 'Other' },
 ];
 </script>
 
