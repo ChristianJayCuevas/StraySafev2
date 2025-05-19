@@ -447,12 +447,14 @@ const props = withDefaults(defineProps<{
   selectMap?: boolean
   legend?: boolean
   heatmap?: boolean
+  mobile?: boolean
 }>(), {
   control: true,
   currentMap: true,
   selectMap: true,
   legend: true,
-  heatmap: false
+  heatmap: false,
+  mobile: false,
 })
 
 // Watch heatmap prop and toggle mode accordingly
@@ -564,7 +566,13 @@ const selectedAreaId = ref('')
 </script>
 
 <template>
-  <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" />
+
+  <div v-if="props.mobile"> 
+  <div ref="mapContainer" class="h-screen w-full max-h-[90vh] rounded overflow-hidden" /> 
+</div> 
+<div v-else> 
+  <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" /> 
+</div>
   <!-- Controls panel -->
    <!-- <Button @click="simulateStrayDog" /> -->
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">

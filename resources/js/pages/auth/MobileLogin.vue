@@ -21,7 +21,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('login'), {
+    form.post(route('mobilelogin'), {
         onFinish: () => form.reset('password'),
     });
 };
