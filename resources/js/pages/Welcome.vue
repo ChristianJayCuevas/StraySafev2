@@ -27,10 +27,10 @@ const plugin = Autoplay({
   <!-- Mobile Carousel (md and below) -->
   <div class="md:hidden relative w-full h-screen overflow-hidden">
     <!-- Static title overlay - positioned above the carousel -->
-    <div class="absolute inset-x-0 top-1/3 mt-15 z-20 text-center text-white p-6">
-      <h2 class="text-6xl font-bold mb-4">Welcome to Stray Safe</h2>
-      <p class="text-xl mb-6">Discover amazing features and services</p>
-    </div>
+   <div class="absolute inset-0 z-20 flex flex-col justify-center items-center text-white p-6 text-center">
+  <h2 class="text-5xl font-bold mb-4">Welcome to Stray Safe</h2>
+  <p class="text-lg mb-6">Discover amazing features and services</p>
+</div>
     
     <Carousel
       class="w-full h-full"
