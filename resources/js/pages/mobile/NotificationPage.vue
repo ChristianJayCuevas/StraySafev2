@@ -42,6 +42,23 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
+// New function to format notification body
+const formatNotificationBody = (body: string) => {
+  if (!body) return '';
+  
+  // Add line break after "detected"
+  let formattedBody = body.replace(/(detected\.?)/gi, '$1<br>');
+  
+  // Add line breaks after Latitude and Longitude
+  formattedBody = formattedBody.replace(/(Latitude:.*?)(\s+)/g, '$1<br>');
+  formattedBody = formattedBody.replace(/(Longitude:.*?)(\s+)/g, '$1<br>');
+  
+  // Add line breaks for any other key-value pattern (like Breed:, Camera:, etc.)
+  formattedBody = formattedBody.replace(/([A-Za-z]+:\s+[^<]+)(\s+)/g, '$1<br>');
+  
+  return formattedBody;
+};
+
 const markAsRead = async (id: number) => {
   try {
     await axios.post(`/notifications/${id}/mark-read`);
@@ -125,7 +142,8 @@ const goToPage = (page: number) => {
             
             <CardContent class="px-4 py-2">
               <div class="space-y-2">
-                <p class="text-sm">{{ notification.body }}</p>
+                <!-- Use v-html with the formatted body -->
+                <p class="text-sm" v-html="formatNotificationBody(notification.body)"></p>
                 
                 <!-- Display image if present - Optimized for mobile -->
                 <img 
