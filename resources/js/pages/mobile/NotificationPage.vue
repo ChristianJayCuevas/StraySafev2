@@ -45,27 +45,22 @@ const formatDate = (dateString: string) => {
 // New function to format notification body
 const formatNotificationBody = (body: string) => {
   if (!body) return '';
-  
-  // Add line break after "detected"
-  let formattedBody = body.replace(/(detected\.?)/gi, '$1<br>');
-  
-  // Add line break before "Breed:" if it exists and is not already at the start of a line
-  formattedBody = formattedBody.replace(/(\s+)(Breed:)/g, '<br>$2');
-  
-  // Add line break before "Latitude:" if it exists and is not already at the start of a line
-  formattedBody = formattedBody.replace(/(\s+)(Latitude:)/g, '<br>$2');
-  
-  // Add line break before "Longitude:" if it exists and is not already at the start of a line
-  formattedBody = formattedBody.replace(/(\s+)(Longitude:)/g, '<br>$2');
-  
-  // Add line break before "Camera:" if it exists and is not already at the start of a line
-  formattedBody = formattedBody.replace(/(\s+)(Camera:)/g, '<br>$2');
-  
-  // Add line break before "Matched Pet:" if it exists and is not already at the start of a line
-  formattedBody = formattedBody.replace(/(\s+)(Matched Pet:)/g, '<br>$2');
-  
+
+  let formattedBody = body;
+
+  // Add <br> after "detected." or "detected" with optional punctuation
+  formattedBody = formattedBody.replace(/(detected[\.\:]?)/gi, '$1<br>');
+
+  // Add <br> before known labels
+  const labels = ['Breed:', 'Latitude:', 'Longitude:', 'Camera:', 'Matched Pet:'];
+  labels.forEach(label => {
+    const regex = new RegExp(`\\s*(${label})`, 'g');
+    formattedBody = formattedBody.replace(regex, '<br>$1');
+  });
+
   return formattedBody;
 };
+
 
 const markAsRead = async (id: number) => {
   try {
