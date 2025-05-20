@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('push_notifications_histories', function (Blueprint $table) {
+        Schema::table('push_notification_histories', function (Blueprint $table) {
             $table->string('image')->nullable()->after('action');
         });
     }
 
     public function down(): void
     {
-        Schema::table('push_notifications_histories', function (Blueprint $table) {
+        Schema::table('push_notification_histories', function (Blueprint $table) {
             $table->dropColumn('image');
         });
     }
