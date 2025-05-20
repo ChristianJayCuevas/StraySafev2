@@ -21,6 +21,7 @@ const props = defineProps<{
       is_read: boolean;
       is_broadcast: boolean;
       action?: string;
+      image?: string;
     }>;
     current_page: number;
     last_page: number;
@@ -79,100 +80,114 @@ const goToPage = (page: number) => {
   <div>
     <Head title="Notifications" />
     <AppLayout>
-    
-        <div class="container py-8">
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Notifications</h1>
-        
-        <div class="flex items-center gap-4">
-          <span v-if="unreadCount > 0" class="text-sm">
-            {{ unreadCount }} unread
-            <Badge variant="secondary">{{ unreadCount }}</Badge>
-          </span>
+      <div class="container px-4 py-4 md:py-8">
+        <!-- Header Section - More stackable on mobile -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+          <h1 class="text-2xl md:text-3xl font-bold">Notifications</h1>
           
-          <Button v-if="unreadCount > 0" @click="markAllAsRead" variant="outline" size="sm">
-            Mark all as read
-          </Button>
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <span v-if="unreadCount > 0" class="text-sm flex items-center">
+              {{ unreadCount }} unread
+              <Badge variant="secondary" class="ml-2">{{ unreadCount }}</Badge>
+            </span>
+            
+            <Button v-if="unreadCount > 0" @click="markAllAsRead" variant="outline" size="sm" class="w-full sm:w-auto mt-1 sm:mt-0">
+              Mark all as read
+            </Button>
+          </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-if="notifications.data.length === 0" class="py-8 text-center">
+          <h2 class="text-lg font-medium text-gray-500">No notifications yet</h2>
+          <p class="mt-2 text-sm text-gray-400">When you receive notifications, they will appear here.</p>
+        </div>
+        
+        <!-- Notifications List -->
+        <div v-else class="space-y-3">
+          <Card v-for="notification in notifications.data" :key="notification.id" 
+                :class="{ 'border-l-4 border-l-primary': !notification.is_read }"
+                class="shadow-sm">
+            <CardHeader class="flex flex-row items-start justify-between space-y-0 pb-2 px-4 pt-4">
+              <div>
+                <CardTitle class="text-sm font-semibold sm:text-base">{{ notification.title }}</CardTitle>
+                <CardDescription class="text-xs">
+                  {{ formatDate(notification.created_at) }}
+                  <span v-if="notification.is_broadcast" class="ml-2 text-xs font-medium text-blue-500">
+                    Broadcast
+                  </span>
+                </CardDescription>
+              </div>
+              <div v-if="!notification.is_read">
+                <Badge variant="secondary" class="h-2 w-2 rounded-full bg-blue-500"></Badge>
+              </div>
+            </CardHeader>
+            
+            <CardContent class="px-4 py-2">
+              <div class="space-y-2">
+                <p class="text-sm">{{ notification.body }}</p>
+                
+                <!-- Display image if present - Optimized for mobile -->
+                <img 
+                  v-if="notification.image" 
+                  :src="notification.image" 
+                  alt="Notification image" 
+                  class="rounded-md w-full max-h-40 object-cover mt-2"
+                  loading="lazy"
+                />
+              </div>
+            </CardContent>
+            
+            <CardFooter class="flex flex-wrap justify-between gap-2 pt-0 px-4 pb-4">
+              <Button v-if="notification.action" variant="ghost" size="sm" 
+                      @click="$inertia.visit(notification.action)"
+                      class="text-xs px-3 py-1 h-8">
+                View
+              </Button>
+              
+              <Button v-if="!notification.is_read" variant="ghost" size="sm" 
+                      @click="markAsRead(notification.id)"
+                      class="text-xs px-3 py-1 h-8">
+                Mark as read
+              </Button>
+              
+              <span v-if="notification.is_read && notification.read_at" class="text-xs text-gray-400 self-center">
+                Read {{ formatDate(notification.read_at) }}
+              </span>
+            </CardFooter>
+          </Card>
+          
+          <!-- Touch-friendly Pagination -->
+          <Pagination v-if="notifications.last_page > 1" class="mt-4">
+            <PaginationContent class="gap-1">
+              <PaginationItem v-if="notifications.current_page > 1">
+                <PaginationPrevious @click="goToPage(notifications.current_page - 1)" 
+                                   class="h-10 w-10" />
+              </PaginationItem>
+              
+              <PaginationItem v-for="page in notifications.last_page" :key="page" 
+                              v-show="page === 1 || 
+                                     page === notifications.last_page || 
+                                     Math.abs(page - notifications.current_page) <= 1">
+                <PaginationLink :is-active="page === notifications.current_page" 
+                                @click="goToPage(page)"
+                                class="h-10 w-10">
+                  {{ page }}
+                </PaginationLink>
+              </PaginationItem>
+              
+              <PaginationItem v-if="notifications.last_page > 3 && notifications.current_page < notifications.last_page - 1">
+                <PaginationEllipsis class="h-10" />
+              </PaginationItem>
+              
+              <PaginationItem v-if="notifications.current_page < notifications.last_page">
+                <PaginationNext @click="goToPage(notifications.current_page + 1)" 
+                               class="h-10 w-10" />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </div>
-      
-      <div v-if="notifications.data.length === 0" class="py-12 text-center">
-        <h2 class="text-xl font-medium text-gray-500">No notifications yet</h2>
-        <p class="mt-2 text-gray-400">When you receive notifications, they will appear here.</p>
-      </div>
-      
-      <div v-else class="space-y-4">
-        <Card v-for="notification in notifications.data" :key="notification.id" 
-              :class="{ 'border-l-4 border-l-primary': !notification.is_read }">
-          <CardHeader class="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div>
-              <CardTitle class="text-base">{{ notification.title }}</CardTitle>
-              <CardDescription class="text-xs">
-                {{ formatDate(notification.created_at) }}
-                <span v-if="notification.is_broadcast" class="ml-2 text-xs font-medium text-blue-500">
-                  Broadcast
-                </span>
-              </CardDescription>
-            </div>
-            <div v-if="!notification.is_read">
-              <Badge variant="secondary" class="h-2 w-2 rounded-full bg-blue-500"></Badge>
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            <div class="space-y-2">
-              <p class="text-sm">{{ notification.body }}</p>
-              
-              <!-- Display image if present -->
-              <img 
-                v-if="notification.image" 
-                :src="notification.image" 
-                alt="Notification image" 
-                class="rounded-md w-full max-h-48 object-cover mt-2"
-              />
-            </div>
-          </CardContent>
-          
-          <CardFooter class="flex justify-between pt-0">
-            <Button v-if="notification.action" variant="ghost" size="sm" 
-                    @click="$inertia.visit(notification.action)">
-              View
-            </Button>
-            
-            <Button v-if="!notification.is_read" variant="ghost" size="sm" 
-                    @click="markAsRead(notification.id)">
-              Mark as read
-            </Button>
-            
-            <span v-if="notification.is_read && notification.read_at" class="text-xs text-gray-400">
-              Read {{ formatDate(notification.read_at) }}
-            </span>
-          </CardFooter>
-        </Card>
-        
-        <Pagination v-if="notifications.last_page > 1" class="mt-6">
-          <PaginationContent>
-            <PaginationItem v-if="notifications.current_page > 1">
-              <PaginationPrevious @click="goToPage(notifications.current_page - 1)" />
-            </PaginationItem>
-            
-            <PaginationItem v-for="page in notifications.last_page" :key="page" 
-                            v-show="page === 1 || 
-                                   page === notifications.last_page || 
-                                   Math.abs(page - notifications.current_page) <= 1">
-              <PaginationLink :is-active="page === notifications.current_page" 
-                              @click="goToPage(page)">
-                {{ page }}
-              </PaginationLink>
-            </PaginationItem>
-            
-            <PaginationItem v-if="notifications.current_page < notifications.last_page">
-              <PaginationNext @click="goToPage(notifications.current_page + 1)" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
-    </div>
-</AppLayout>
+    </AppLayout>
   </div>
 </template>
