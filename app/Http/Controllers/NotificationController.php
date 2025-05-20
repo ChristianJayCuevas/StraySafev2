@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Notifications\PushNotification;
+use App\Models\PushNotificationHistory;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
