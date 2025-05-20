@@ -24,6 +24,15 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function editmobile(Request $request): Response
+    {
+        return Inertia::render('settings/MobileProfile', [
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'status' => $request->session()->get('status'),
+        ]);
+    }
+
+
     /**
      * Update the user's profile information.
      */

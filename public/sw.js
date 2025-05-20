@@ -75,6 +75,10 @@ self.addEventListener('push', function(event) {
             data: data.data,
             vibrate: [200, 100, 200]
         };
+
+        if (data.image){
+            options.image = data.image;
+        }
         
         if (data.actions) {
             options.actions = data.actions;

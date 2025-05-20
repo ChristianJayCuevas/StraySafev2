@@ -20,6 +20,11 @@ class PasswordController extends Controller
         return Inertia::render('settings/Password');
     }
 
+    public function editmobile(): Response
+    {
+        return Inertia::render('settings/MobilePassword');
+    }
+
     /**
      * Update the user's password.
      */

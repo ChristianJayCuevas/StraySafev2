@@ -80,7 +80,7 @@ const goToPage = (page: number) => {
     <Head title="Notifications" />
     <AppLayout>
     
-    <div class="container py-8">
+        <div class="container py-8">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Notifications</h1>
         
@@ -120,7 +120,17 @@ const goToPage = (page: number) => {
           </CardHeader>
           
           <CardContent>
-            <p class="text-sm">{{ notification.body }}</p>
+            <div class="space-y-2">
+              <p class="text-sm">{{ notification.body }}</p>
+              
+              <!-- Display image if present -->
+              <img 
+                v-if="notification.image" 
+                :src="notification.image" 
+                alt="Notification image" 
+                class="rounded-md w-full max-h-48 object-cover mt-2"
+              />
+            </div>
           </CardContent>
           
           <CardFooter class="flex justify-between pt-0">
