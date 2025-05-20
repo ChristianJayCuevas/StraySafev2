@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import { toast } from 'vue-sonner';
-
+import AppLayout from '@/layouts/MobileAppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -78,6 +78,7 @@ const goToPage = (page: number) => {
 <template>
   <div>
     <Head title="Notifications" />
+    <AppLayout>
     
     <div class="container py-8">
       <div class="flex justify-between items-center mb-6">
@@ -162,5 +163,6 @@ const goToPage = (page: number) => {
         </Pagination>
       </div>
     </div>
+</AppLayout>
   </div>
 </template>

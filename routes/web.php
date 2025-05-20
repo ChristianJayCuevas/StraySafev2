@@ -102,10 +102,12 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(['success' => true]);
     });
 });
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/send-notification', [NotificationController::class, 'sendNotification']);
-    Route::post('/send-broadcast', [NotificationController::class, 'sendBroadcast']);
-});
+Route::post('/send-notification', [NotificationController::class, 'sendNotification']);
+Route::post('/send-broadcast', [NotificationController::class, 'sendBroadcast']);
+// Route::middleware('auth:sanctum')->group(function () {
+//     Route::post('/send-notification', [NotificationController::class, 'sendNotification']);
+//     Route::post('/send-broadcast', [NotificationController::class, 'sendBroadcast']);
+// });
 Route::get('/test-notification', function () {
     try {
         $user = auth()->user();
