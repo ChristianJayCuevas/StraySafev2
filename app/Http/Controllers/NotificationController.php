@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Notifications\PushNotification;
 use App\Models\PushNotificationHistory;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class NotificationController extends Controller
 {
