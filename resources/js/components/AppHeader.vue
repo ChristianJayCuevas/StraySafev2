@@ -18,7 +18,7 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { BreadcrumbItem, NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, Map, Menu, Search, Dog } from 'lucide-vue-next';
+import { BookOpen, Folder, Map, Menu, Search, Dog, Bell } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 interface Props {
@@ -60,6 +60,11 @@ const mainNavItems: NavItem[] = [
         title: 'Register Pet',
         href: '/registeredpetsmobile',
         icon: Dog,
+    },
+    {
+        title: 'Notification History',
+        href: '/notifications',
+        icon: Bell,
     },
 ];
 

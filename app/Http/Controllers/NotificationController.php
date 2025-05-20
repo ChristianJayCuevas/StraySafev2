@@ -55,7 +55,7 @@ class NotificationController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
         
-        return Inertia::render('Notifications/Index', [
+        return Inertia::render('mobile/NotificationPage', [
             'notifications' => $notifications
         ]);
     }
