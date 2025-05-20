@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
+import AppLayout from '@/layouts/MobileAppLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import { toast } from 'vue-sonner'
@@ -219,7 +219,7 @@ const petTypes = [
 
 <template>
   <Head title="Register Pet" />
-  <AppLayout :breadcrumbs="breadcrumbs">
+  <AppLayout>
     <div class="container mx-auto py-8 px-4">
       <div class="max-w-3xl mx-auto">
         <Card class="shadow-lg">

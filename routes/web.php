@@ -114,7 +114,8 @@ Route::get('/test-notification', function () {
             $user->notify(new \App\Notifications\PushNotification(
                 'Test Notification',
                 'This is a test push notification at ' . now(),
-                '/dashboard'
+                '/dashboard',
+                false // Not a broadcast
             ));
             
             return 'Notification sent to authenticated user!';
@@ -144,6 +145,8 @@ Route::get('/test-notification', function () {
                 $subscription['auth']
             );
             
+            // Note: We can't store this notification since there's no user
+            
             return 'Notification sent to anonymous session!';
         }
         
@@ -157,7 +160,74 @@ Route::get('/test-notification', function () {
         return 'Error: ' . $e->getMessage();
     }
 });
+// Route::get('/test-notification', function () {
+//     try {
+//         $user = auth()->user();
+        
+//         if ($user) {
+//             // Send to authenticated user
+//             $user->notify(new \App\Notifications\PushNotification(
+//                 'Test Notification',
+//                 'This is a test push notification at ' . now(),
+//                 '/dashboard'
+//             ));
+            
+//             return 'Notification sent to authenticated user!';
+//         } else if (session()->has('push_subscription')) {
+//             // For testing - send to session-stored subscription
+//             $subscription = session('push_subscription');
+            
+//             $auth = [
+//                 'VAPID' => [
+//                     'subject' => 'mailto:test@example.com',
+//                     'publicKey' => env('VAPID_PUBLIC_KEY'),
+//                     'privateKey' => env('VAPID_PRIVATE_KEY'),
+//                 ]
+//             ];
+            
+//             $webPush = new \Minishlink\WebPush\WebPush($auth);
+//             $webPush->sendNotification(
+//                 $subscription['endpoint'],
+//                 json_encode([
+//                     'title' => 'Test Notification',
+//                     'body' => 'This is a test push notification for anonymous user at ' . now(),
+//                     'data' => [
+//                         'action' => '/dashboard'
+//                     ]
+//                 ]),
+//                 $subscription['p256dh'],
+//                 $subscription['auth']
+//             );
+            
+//             return 'Notification sent to anonymous session!';
+//         }
+        
+//         return 'No subscription found. Please subscribe first.';
+//     } catch (\Exception $e) {
+//         \Illuminate\Support\Facades\Log::error('Error sending test notification', [
+//             'message' => $e->getMessage(),
+//             'trace' => $e->getTraceAsString()
+//         ]);
+        
+//         return 'Error: ' . $e->getMessage();
+//     }
+// });
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+});
 
+
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/notifications/unread-count', function () {
+        $count = \App\Models\PushNotification::where('user_id', auth()->id())
+            ->where('is_read', false)
+            ->count();
+        
+        return response()->json(['count' => $count]);
+    });
+});
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 require __DIR__.'/map.php';

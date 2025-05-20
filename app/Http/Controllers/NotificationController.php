@@ -47,4 +47,48 @@ class NotificationController extends Controller
         
         return response()->json(['message' => 'Broadcast notification sent successfully']);
     }
+
+    public function index()
+    {
+        $user = auth()->user();
+        $notifications = PushNotificationModel::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+        
+        return Inertia::render('Notifications/Index', [
+            'notifications' => $notifications
+        ]);
+    }
+    
+    public function markAsRead($id)
+    {
+        $notification = PushNotificationModel::findOrFail($id);
+        
+        // Check if notification belongs to the authenticated user
+        if ($notification->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        $notification->update([
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+        
+        return response()->json(['message' => 'Notification marked as read']);
+    }
+    
+    public function markAllAsRead()
+    {
+        $user = auth()->user();
+        
+        PushNotificationModel::where('user_id', $user->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+        
+        return response()->json(['message' => 'All notifications marked as read']);
+    }
+
 }
