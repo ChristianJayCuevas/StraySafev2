@@ -49,12 +49,20 @@ const formatNotificationBody = (body: string) => {
   // Add line break after "detected"
   let formattedBody = body.replace(/(detected\.?)/gi, '$1<br>');
   
-  // Add line breaks after Latitude and Longitude
-  formattedBody = formattedBody.replace(/(Latitude:.*?)(\s+)/g, '$1<br>');
-  formattedBody = formattedBody.replace(/(Longitude:.*?)(\s+)/g, '$1<br>');
+  // Add line break before "Breed:" if it exists and is not already at the start of a line
+  formattedBody = formattedBody.replace(/(\s+)(Breed:)/g, '<br>$2');
   
-  // Add line breaks for any other key-value pattern (like Breed:, Camera:, etc.)
-  formattedBody = formattedBody.replace(/([A-Za-z]+:\s+[^<]+)(\s+)/g, '$1<br>');
+  // Add line break before "Latitude:" if it exists and is not already at the start of a line
+  formattedBody = formattedBody.replace(/(\s+)(Latitude:)/g, '<br>$2');
+  
+  // Add line break before "Longitude:" if it exists and is not already at the start of a line
+  formattedBody = formattedBody.replace(/(\s+)(Longitude:)/g, '<br>$2');
+  
+  // Add line break before "Camera:" if it exists and is not already at the start of a line
+  formattedBody = formattedBody.replace(/(\s+)(Camera:)/g, '<br>$2');
+  
+  // Add line break before "Matched Pet:" if it exists and is not already at the start of a line
+  formattedBody = formattedBody.replace(/(\s+)(Matched Pet:)/g, '<br>$2');
   
   return formattedBody;
 };
