@@ -61,7 +61,17 @@ const formatNotificationBody = (body: string) => {
   return formattedBody;
 };
 
-
+const deleteNotification = async (id: number) => {
+  try {
+    await axios.delete(`/notifications/${id}`);
+    // Remove the notification from the array
+    notifications.value.data = notifications.value.data.filter(n => n.id !== id);
+    toast.success("Notification deleted successfully");
+  } catch (error) {
+    console.error("Error deleting notification:", error);
+    toast.warning("Failed to delete notification");
+  }
+};
 const markAsRead = async (id: number) => {
   try {
     await axios.post(`/notifications/${id}/mark-read`);
@@ -160,22 +170,31 @@ const goToPage = (page: number) => {
             </CardContent>
             
             <CardFooter class="flex flex-wrap justify-between gap-2 pt-0 px-4 pb-4">
-              <Button v-if="notification.action" variant="ghost" size="sm" 
-                      @click="$inertia.visit(notification.action)"
-                      class="text-xs px-3 py-1 h-8">
-                View
-              </Button>
-              
-              <Button v-if="!notification.is_read" variant="ghost" size="sm" 
-                      @click="markAsRead(notification.id)"
-                      class="text-xs px-3 py-1 h-8">
-                Mark as read
-              </Button>
-              
-              <span v-if="notification.is_read && notification.read_at" class="text-xs text-gray-400 self-center">
-                Read {{ formatDate(notification.read_at) }}
-              </span>
-            </CardFooter>
+  <div class="flex gap-2">
+    <Button v-if="notification.action" variant="ghost" size="sm" 
+            @click="$inertia.visit(notification.action)"
+            class="text-xs px-3 py-1 h-8">
+      View
+    </Button>
+    
+    <Button v-if="!notification.is_read" variant="ghost" size="sm" 
+            @click="markAsRead(notification.id)"
+            class="text-xs px-3 py-1 h-8">
+      Mark as read
+    </Button>
+  </div>
+  
+  <div class="flex gap-2 items-center">
+    <Button variant="ghost" size="sm" class="text-xs px-3 py-1 h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+            @click="deleteNotification(notification.id)">
+      Delete
+    </Button>
+    
+    <span v-if="notification.is_read && notification.read_at" class="text-xs text-gray-400">
+      Read {{ formatDate(notification.read_at) }}
+    </span>
+  </div>
+</CardFooter>
           </Card>
           
           <!-- Touch-friendly Pagination -->

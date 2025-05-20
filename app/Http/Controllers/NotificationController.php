@@ -98,5 +98,18 @@ public function markAllAsRead()
     
     return response()->json(['message' => 'All notifications marked as read']);
 }
+public function delete($id)
+{
+    $notification = PushNotificationHistory::findOrFail($id);
+    
+    // Check if notification belongs to the authenticated user
+    if ($notification->user_id !== auth()->id()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+    
+    $notification->delete();
+    
+    return response()->json(['message' => 'Notification deleted successfully']);
+}
 
 }
