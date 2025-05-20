@@ -21,8 +21,7 @@ class NotificationController extends Controller
         $user->notify(new PushNotification(
             $request->title,
             $request->body,
-            $request->action,
-            false
+            $request->action
         ));
         
         return response()->json(['message' => 'Notification sent successfully']);
@@ -42,8 +41,7 @@ class NotificationController extends Controller
             new PushNotification(
                 $request->title,
                 $request->body,
-                $request->action,
-                true
+                $request->action
             )
         );
         
@@ -51,46 +49,46 @@ class NotificationController extends Controller
     }
 
     public function index()
-    {
-        $user = auth()->user();
-        $notifications = PushNotification::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-        
-        return Inertia::render('mobile/NotificationPage', [
-            'notifications' => $notifications
-        ]);
+{
+    $user = auth()->user();
+    $notifications = PushNotificationHistory::where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->paginate(10);
+    
+    return Inertia::render('mobile/NotificationPage', [
+        'notifications' => $notifications
+    ]);
+}
+    
+public function markAsRead($id)
+{
+    $notification = PushNotificationHistory::findOrFail($id);
+    
+    // Check if notification belongs to the authenticated user
+    if ($notification->user_id !== auth()->id()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
     
-    public function markAsRead($id)
-    {
-        $notification = PushNotification::findOrFail($id);
-        
-        // Check if notification belongs to the authenticated user
-        if ($notification->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-        
-        $notification->update([
+    $notification->update([
+        'is_read' => true,
+        'read_at' => now(),
+    ]);
+    
+    return response()->json(['message' => 'Notification marked as read']);
+}
+
+public function markAllAsRead()
+{
+    $user = auth()->user();
+    
+    PushNotificationHistory::where('user_id', $user->id)
+        ->where('is_read', false)
+        ->update([
             'is_read' => true,
             'read_at' => now(),
         ]);
-        
-        return response()->json(['message' => 'Notification marked as read']);
-    }
     
-    public function markAllAsRead()
-    {
-        $user = auth()->user();
-        
-        PushNotification::where('user_id', $user->id)
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
-        
-        return response()->json(['message' => 'All notifications marked as read']);
-    }
+    return response()->json(['message' => 'All notifications marked as read']);
+}
 
 }
