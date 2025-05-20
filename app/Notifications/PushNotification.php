@@ -5,7 +5,7 @@ namespace App\Notifications;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 use NotificationChannels\WebPush\WebPushChannel;
-use App\Models\PushNotification as PushNotificationModel;
+use App\Models\PushNotificationHistory as PushNotificationModel;
 
 class PushNotification extends Notification
 {
