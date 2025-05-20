@@ -21,7 +21,8 @@ class NotificationController extends Controller
         $user->notify(new PushNotification(
             $request->title,
             $request->body,
-            $request->action
+            $request->action,
+            false
         ));
         
         return response()->json(['message' => 'Notification sent successfully']);
@@ -41,7 +42,8 @@ class NotificationController extends Controller
             new PushNotification(
                 $request->title,
                 $request->body,
-                $request->action
+                $request->action,
+                true
             )
         );
         
@@ -62,7 +64,7 @@ class NotificationController extends Controller
     
     public function markAsRead($id)
     {
-        $notification = PushNotificationModel::findOrFail($id);
+        $notification = PushNotification::findOrFail($id);
         
         // Check if notification belongs to the authenticated user
         if ($notification->user_id !== auth()->id()) {
@@ -81,7 +83,7 @@ class NotificationController extends Controller
     {
         $user = auth()->user();
         
-        PushNotificationModel::where('user_id', $user->id)
+        PushNotification::where('user_id', $user->id)
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
