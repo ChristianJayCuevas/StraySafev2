@@ -14,6 +14,7 @@ class PushNotificationHistory extends Model
         'title',
         'body',
         'action',
+        'image', 
         'is_read',
         'read_at',
         'is_broadcast',

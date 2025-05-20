@@ -16,14 +16,18 @@ class NotificationController extends Controller
             'user_id' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
             'body' => 'required|string',
-            'action' => 'nullable|string'
+            'action' => 'nullable|string',
+            'image' => 'nullable|url', 
         ]);
         
         $user = User::find($request->user_id);
         $user->notify(new PushNotification(
             $request->title,
             $request->body,
-            $request->action
+            $request->action,
+            $request->image,
+            false
+
         ));
         
         return response()->json(['message' => 'Notification sent successfully']);
@@ -43,7 +47,9 @@ class NotificationController extends Controller
             new PushNotification(
                 $request->title,
                 $request->body,
-                $request->action
+                $request->action,
+                $request->image,
+                true
             )
         );
         
