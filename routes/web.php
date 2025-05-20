@@ -10,6 +10,7 @@ use App\Http\Middleware\ValidateStaticToken;
 use App\Http\Controllers\RegisteredAnimalController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
+use App\Http\Controllers\NotificationController;
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
