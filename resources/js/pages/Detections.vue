@@ -164,11 +164,24 @@ const table = useVueTable({
   },
 });
 
+function getRandomInt(min: number, max: number): number {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Helper function to format date and time
+function formatDateTime(date: Date): string {
+  const optionsDate: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const optionsTime: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+  return `${date.toLocaleDateString(undefined, optionsDate)}, ${date.toLocaleTimeString(undefined, optionsTime)}`;
+}
+
+
 async function fetchDetections() {
   isLoading.value = true;
   detections.value = [];
-  globalDetectionIdCounter = 0;
-  let currentTime = new Date(); // Initialize with current time for the first item
+  // globalDetectionIdCounter = 0; // This will be set based on successfulFetchesCount
 
   const API_BASE_URL = 'https://straysafe.me/info'; // Or your local URL
   const requests = [];
@@ -199,24 +212,38 @@ async function fetchDetections() {
 
   try {
     const responses = await Promise.all(requests);
-    const fetchedDetections: Detection[] = [];
-    
-    responses.forEach((animalData, index) => { // Add index to loop
+    const finalDetections: Detection[] = [];
+    let successfulFetchesCount = 0;
+
+    // Define the date range (May is month 4 in JavaScript Date (0-indexed))
+    const year = new Date().getFullYear(); // Or a fixed year like 2024
+    const startDate = new Date(year, 4, 19, 8, 0, 0); // May 19, 8:00 AM
+    const endDate = new Date(year, 4, 21, 15, 0, 0);   // May 21, 3:00 PM (15:00)
+
+    responses.forEach((animalData) => {
       if (animalData) {
         const apiPetType = animalData.pet_type || animalData.originalQueryType;
 
-        // Calculate timestamp for the current item
-        // For the first valid item (index where animalData is not null), use currentTime as is.
-        // For subsequent items, add 2 minutes.
-        // We need a counter for successfully fetched items to increment time correctly.
-        let itemTimestamp = new Date(currentTime.getTime());
-        if (fetchedDetections.length > 0) { // If not the first successfully fetched item
-            itemTimestamp.setMinutes(currentTime.getMinutes() + (fetchedDetections.length * 2));
+        // Generate a random timestamp within the defined range for each item
+        const randomDayOffset = getRandomInt(0, 2); // 0 for May 19, 1 for May 20, 2 for May 21
+        const randomHour = getRandomInt(8, 14); // 8 AM to 2 PM (14 represents 2:xx PM, up to 2:59)
+        const randomMinute = getRandomInt(0, 59);
+        const randomSecond = getRandomInt(0, 59);
+
+        let itemTimestamp = new Date(year, 4, 19 + randomDayOffset, randomHour, randomMinute, randomSecond);
+
+        // Ensure the generated time does not exceed the end time on the last day
+        if (itemTimestamp.getDate() === 21 && itemTimestamp.getHours() >= 15) {
+            itemTimestamp.setHours(14, 59, 59); // Cap at 2:59:59 PM on May 21
+        }
+         // Ensure the generated time is not before the start time on the first day
+        if (itemTimestamp.getDate() === 19 && itemTimestamp.getHours() < 8) {
+            itemTimestamp.setHours(8, 0, 0); // Cap at 8:00:00 AM on May 19
         }
 
 
-        fetchedDetections.push({
-          id: `client-${globalDetectionIdCounter++}`,
+        finalDetections.push({
+          id: `client-${successfulFetchesCount}`,
           breed: animalData.breed || null,
           contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
           frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
@@ -226,47 +253,13 @@ async function fetchDetections() {
           pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
           pet_type: apiPetType,
           reg_base64: formatBase64Image(animalData.reg_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
-          timestamp: itemTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }), // Format as needed
+          timestamp: formatDateTime(itemTimestamp), // Use the new formatting function
         });
+        successfulFetchesCount++;
       }
     });
-
-    // If you want the *very first item fetched overall* to be "now" and subsequent ones incremented by 2 minutes
-    // regardless of whether previous API calls failed, you'd adjust the timestamp logic slightly.
-    // The current logic bases the increment on the count of *successfully* fetched items.
-    // Let's refine for overall increment:
-
-    // Re-processing loop for correct timestamp increment based on overall API call order
-    const finalDetections: Detection[] = [];
-    let successfulFetchesCount = 0;
-    const initialTime = new Date(); // Base time for the very first potential detection
-
-    responses.forEach((animalData, overallIndex) => { // overallIndex is the index in the 'requests' array
-        if(animalData){
-            const apiPetType = animalData.pet_type || animalData.originalQueryType;
-            let itemTimestamp = new Date(initialTime.getTime());
-            itemTimestamp.setMinutes(initialTime.getMinutes() + (successfulFetchesCount * 2));
-
-
-            finalDetections.push({
-                id: `client-${successfulFetchesCount}`, // ID based on successful fetches
-                breed: animalData.breed || null,
-                contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
-                frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
-                has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
-                is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
-                leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
-                pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
-                pet_type: apiPetType,
-                reg_base64: formatBase64Image(animalData.reg_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
-                timestamp: itemTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
-            });
-            successfulFetchesCount++; // Increment only for successful fetches
-        }
-    });
-    globalDetectionIdCounter = successfulFetchesCount; // Update global counter
+    globalDetectionIdCounter = successfulFetchesCount;
     detections.value = finalDetections;
-
 
   } catch (error) {
     console.error('Error processing batched detections:', error);
@@ -275,7 +268,6 @@ async function fetchDetections() {
     isLoading.value = false;
   }
 }
-
 
 onMounted(() => {
   // ... (onMounted logic remains the same)
