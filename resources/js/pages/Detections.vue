@@ -402,7 +402,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                             <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
                             <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
                             <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
-                            <p><strong>Time:</strong> {{ animal.timestamp }}</p> {/* NEW: Timestamp for Matched Card */}
+                            <p><strong>Time:</strong> {{ animal.timestamp }}</p>
                           </div>
                         </CardContent>
                       </Card>
