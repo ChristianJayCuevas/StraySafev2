@@ -373,7 +373,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                   </template>
                 </div>
 
-                {/* ... Pagination ... */}
+      
                  <div class="flex justify-center mt-6">
                   <Pagination v-if="filteredDetections.length > cardsPerPage">
                     <PaginationContent class="flex gap-2">
@@ -404,7 +404,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
             </TabsContent>
             
             <TabsContent value="Table">
-              {/* ... Table content ... */}
+    
                <Card>
                 <CardHeader>
                   <CardTitle>List of Detected Animals</CardTitle>
