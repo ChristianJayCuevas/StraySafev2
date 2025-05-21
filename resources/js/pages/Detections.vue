@@ -320,7 +320,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                 <!-- Card Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <template v-for="animal in paginatedCards" :key="animal.id">
-                    <!-- Conditional Matched Card -->
+                    <!-- Conditional Matched Card (This remains custom and uses its own structure) -->
                     <Card v-if="animal.frame_base64 && animal.reg_base64" class="h-full flex flex-col border-green-500 border-2">
                       <CardHeader class="pb-2">
                         <CardTitle class="text-center text-base sm:text-lg text-green-700 flex items-center justify-center gap-2">
@@ -328,16 +328,16 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                           Potential Match!
                         </CardTitle>
                       </CardHeader>
-                      <CardContent class="flex-grow flex flex-col gap-2 pt-2"> {/* Reduced gap for tighter layout if needed */}
-                        <div class="text-center"> {/* Removed mb-2 to make badge part of the flow */}
+                      <CardContent class="flex-grow flex flex-col gap-2 pt-2">
+                        <div class="text-center">
                           <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
                             {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
                           </Badge>
                         </div>
-                        <p class="text-xs sm:text-sm text-center text-muted-foreground"> {/* Removed mb-1 */}
+                        <p class="text-xs sm:text-sm text-center text-muted-foreground">
                           Detected {{ animal.pet_type || 'pet' }} appears to match registered {{ animal.pet_type || 'pet' }}.
                         </p>
-                        <div class="grid grid-cols-2 gap-2 items-start my-1"> {/* Added my-1 for slight spacing */}
+                        <div class="grid grid-cols-2 gap-2 items-start my-1">
                           <div>
                             <p class="text-xs font-semibold text-center mb-1">Detected:</p>
                             <img :src="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Detected Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
@@ -358,55 +358,23 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                       </CardContent>
                     </Card>
 
-                    <!-- Standard CardAnimal for non-matched or partially-detailed items -->
+                    <!-- Standard CardAnimal now uses new props -->
                     <CardAnimal
                       v-else
                       :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                       :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
-                      :description="`${animal.pet_name ? 'Name: '+animal.pet_name+', ' : ''}Breed: ${animal.breed || 'N/A'}`"
+                      :description="`Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}`"
                       :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
                       :hasOwnerMatch="!!animal.contact_number"
-                      class="h-full"
-                    >
-                      <template #footer>
-                        <div class="flex flex-col gap-1 p-2 text-xs">
-                          <div class="text-center mb-1"> {/* Leash badge is here in the footer */}
-                             <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
-                              {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
-                            </Badge>
-                          </div>
-                          <div class="flex justify-between">
-                            <span>Type:</span>
-                            <span class="truncate">{{ animal.pet_type || 'N/A' }}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span>Breed:</span>
-                            <span class="truncate">{{ animal.breed || 'N/A' }}</span>
-                          </div>
-                          <div v-if="animal.has_leash === true" class="flex justify-between">
-                            <span>Leash Color:</span>
-                            <span class="truncate">{{ animal.leash_color || 'Unknown' }}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span>Registered:</span>
-                            <span>{{ animal.is_registered === null ? 'N/A' : (animal.is_registered ? 'Yes' : 'No') }}</span>
-                          </div>
-                          <div v-if="animal.reg_base64 && animal.is_registered && animal.frame_base64" class="mt-1">
-                            <p class="font-medium text-center">Registration Proof:</p>
-                            <img :src="formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Registration Proof" class="max-w-full h-20 mx-auto rounded mt-1 object-contain border" />
-                          </div>
-                           <div v-if="animal.contact_number" class="flex justify-between mt-1 border-t pt-1">
-                            <span class="font-semibold">Contact:</span>
-                            <span>{{ animal.contact_number }}</span>
-                          </div>
-                        </div>
-                      </template>
-                    </CardAnimal>
+                      :hasLeash="animal.has_leash"      эсте                       :leashColor="animal.leash_color"  
+                      class="h-auto min-h-[280px] 2xl:min-h-[320px]" {/* Adjusted height to be min-height and h-auto to allow content to expand */}
+                    />
+                      <!-- NO SLOT CONTENT NEEDED HERE ANYMORE for CardAnimal regarding leash badge -->
                   </template>
                 </div>
 
-                <!-- Pagination and other content remains the same -->
-                <div class="flex justify-center mt-6">
+                {/* ... Pagination ... */}
+                 <div class="flex justify-center mt-6">
                   <Pagination v-if="filteredDetections.length > cardsPerPage">
                     <PaginationContent class="flex gap-2">
                       <PaginationPrevious 
@@ -426,7 +394,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                         <PaginationEllipsis v-else />
                       </template>
                       <PaginationNext 
-                        @click="currentCardPage = Math.min(totalCardPages, currentCardPage + 1)"
+                        @click="currentCardPage = Math.min(totalCardPages, current_card_page + 1)"
                         :disabled="currentCardPage === totalCardPages"
                       />
                     </PaginationContent>
@@ -436,6 +404,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
             </TabsContent>
             
             <TabsContent value="Table">
+              {/* ... Table content ... */}
                <Card>
                 <CardHeader>
                   <CardTitle>List of Detected Animals</CardTitle>
