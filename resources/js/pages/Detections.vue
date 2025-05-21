@@ -330,8 +330,8 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                       </CardHeader>
                       <CardContent class="flex-grow flex flex-col gap-3 pt-2">
                         <div class="text-center mb-2">
-                          <Badge :variant="animal.has_leash ? 'default' : 'destructive'">
-                            {{ animal.has_leash ? 'Collar/Leashed' : 'No Collar/Leash' }}
+                          <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
+                            {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
                           </Badge>
                         </div>
                         <p class="text-xs sm:text-sm text-center text-muted-foreground mb-1">
@@ -351,7 +351,8 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                           <p v-if="animal.pet_name"><strong>Name:</strong> {{ animal.pet_name }}</p>
                           <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
                           <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
-                          <p v-if="animal.has_leash"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
+                          <!-- Display Leash Color if has_leash is true -->
+                          <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
                           <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
                           <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
                         </div>
@@ -364,6 +365,10 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                       :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                       :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
                       :description="`${animal.pet_name ? 'Name: '+animal.pet_name+', ' : ''}Breed: ${animal.breed || 'N/A'}`"
+                       
+                       
+                      <!-- The isStray and hasOwnerMatch props determine the top-right badge in CardAnimal if it has one -->
+                      <!-- We want to make sure this doesn't prevent other info from showing -->
                       :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
                       :hasOwnerMatch="!!animal.contact_number"
                       class="h-full"
@@ -371,8 +376,8 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                       <template #footer>
                         <div class="flex flex-col gap-1 p-2 text-xs">
                           <div class="text-center mb-1">
-                             <Badge :variant="animal.has_leash ? 'default' : 'destructive'">
-                              {{ animal.has_leash ? 'Collar/Leashed' : 'No Collar/Leash' }}
+                             <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
+                              {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
                             </Badge>
                           </div>
                           <div class="flex justify-between">
@@ -383,7 +388,8 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                             <span>Breed:</span>
                             <span class="truncate">{{ animal.breed || 'N/A' }}</span>
                           </div>
-                          <div v-if="animal.has_leash" class="flex justify-between">
+                          <!-- Display Leash Color if has_leash is true -->
+                          <div v-if="animal.has_leash === true" class="flex justify-between">
                             <span>Leash Color:</span>
                             <span class="truncate">{{ animal.leash_color || 'Unknown' }}</span>
                           </div>
@@ -391,6 +397,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                             <span>Registered:</span>
                             <span>{{ animal.is_registered === null ? 'N/A' : (animal.is_registered ? 'Yes' : 'No') }}</span>
                           </div>
+                          <!-- Show registration proof if it exists AND frame_base64 was also present (to avoid duplication if reg_base64 was main image) -->
                           <div v-if="animal.reg_base64 && animal.is_registered && animal.frame_base64" class="mt-1">
                             <p class="font-medium text-center">Registration Proof:</p>
                             <img :src="formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Registration Proof" class="max-w-full h-20 mx-auto rounded mt-1 object-contain border" />
@@ -436,6 +443,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
             </TabsContent>
             
             <TabsContent value="Table">
+               <!-- ... Table content remains the same ... -->
                <Card>
                 <CardHeader>
                   <CardTitle>List of Detected Animals</CardTitle>
