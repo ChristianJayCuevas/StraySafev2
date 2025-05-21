@@ -367,7 +367,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                       :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
                       :hasOwnerMatch="!!animal.contact_number"
                       :hasLeash="animal.has_leash"      эсте                       :leashColor="animal.leash_color"  
-                      class="h-auto min-h-[280px] 2xl:min-h-[320px]" {/* Adjusted height to be min-height and h-auto to allow content to expand */}
+                      class="h-auto min-h-[280px] 2xl:min-h-[320px]" 
                     />
                       <!-- NO SLOT CONTENT NEEDED HERE ANYMORE for CardAnimal regarding leash badge -->
                   </template>
