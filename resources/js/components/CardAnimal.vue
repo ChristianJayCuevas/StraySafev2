@@ -29,7 +29,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
     <div class="relative">
       <img
         :src="imagelink || placeholderImage"
-        class="h-[140px] 2xl:h-[200px] w-full object-cover bg-muted"
+        class="h-[300px] 2xl:h-[300px] w-full object-cover bg-muted"
         alt="Animal"
       />
 
@@ -66,14 +66,14 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
       <CardTitle class="text-base 2xl:text-lg font-bold mb-1 truncate">
         {{ title }}
       </CardTitle>
-      <CardDescription class="text-md 2xl:text-sm text-muted-foreground mb-1">
+      <CardDescription class="text-lg text-muted-foreground">
         {{ description || 'No specific description.' }}
       </CardDescription>
 
       <!-- Leash Color -->
       <div
         v-if="hasLeash === true"
-        class="text-md text-muted-foreground"
+        class="text-lg text-muted-foreground"
       >
         Leash: <span class="font-semibold">{{ leashColor || 'Color Unknown' }}</span>
       </div>
