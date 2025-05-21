@@ -53,7 +53,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
 
         <Badge
           v-if="typeof hasLeash === 'boolean'"
-          :class="hasLeash ? 'bg-yellow-500 text-black' : 'bg-red-600 text-white'"
+          :class="hasLeash ? 'bg-blue-500 text-black' : 'bg-yellow-600 text-white'"
           class="text-xs px-2 py-0.5 rounded-full shadow-sm"
         >
           {{ hasLeash ? 'Collar/Leashed' : 'No Collar/Leash' }}
@@ -66,22 +66,22 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
       <CardTitle class="text-base 2xl:text-lg font-bold mb-1 truncate">
         {{ title }}
       </CardTitle>
-      <CardDescription class="text-xs 2xl:text-sm text-muted-foreground mb-1">
+      <CardDescription class="text-md 2xl:text-sm text-muted-foreground mb-1">
         {{ description || 'No specific description.' }}
       </CardDescription>
 
       <!-- Leash Color -->
       <div
         v-if="hasLeash === true"
-        class="text-xs text-muted-foreground"
+        class="text-md text-muted-foreground"
       >
         Leash: <span class="font-semibold">{{ leashColor || 'Color Unknown' }}</span>
       </div>
     </CardHeader>
 
     <!-- Footer -->
-    <CardFooter class="px-4 py-2 mt-auto justify-center text-xs text-muted-foreground border-t">
+    <!-- <CardFooter class="px-4 py-2 mt-auto justify-center text-xs text-muted-foreground border-t">
       Detection Summary
-    </CardFooter>
+    </CardFooter> -->
   </Card>
 </template>
