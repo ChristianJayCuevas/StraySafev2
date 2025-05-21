@@ -17,6 +17,7 @@ defineProps<{
   hasOwnerMatch?: boolean
   hasLeash?: boolean | null
   leashColor?: string | null
+  time?: string
 }>()
 
 const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image'
@@ -80,8 +81,8 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
     </CardHeader>
 
     <!-- Footer -->
-    <!-- <CardFooter class="px-4 py-2 mt-auto justify-center text-xs text-muted-foreground border-t">
-      Detection Summary
-    </CardFooter> -->
+   <CardFooter class="px-4 py-2 mt-auto justify-center text-md text-muted-foreground border-t">
+      Time: <span class="font-semibold">{{ time }}</span>
+    </CardFooter> 
   </Card>
 </template>

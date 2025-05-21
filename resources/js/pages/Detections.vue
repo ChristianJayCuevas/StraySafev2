@@ -62,6 +62,7 @@ interface Detection {
   pet_name: string | null;
   pet_type: string | null;
   reg_base64: string | null;   // Should be a full Data URI or raw base64
+  timestamp: string;
 }
 
 const isLoading = ref(true);
@@ -166,9 +167,10 @@ const table = useVueTable({
 async function fetchDetections() {
   isLoading.value = true;
   detections.value = [];
-  globalDetectionIdCounter = 0; 
+  globalDetectionIdCounter = 0;
+  let currentTime = new Date(); // Initialize with current time for the first item
 
-  const API_BASE_URL = 'https://straysafe.me/info'; 
+  const API_BASE_URL = 'https://straysafe.me/info'; // Or your local URL
   const requests = [];
 
   // Prepare requests for dogs
@@ -178,7 +180,7 @@ async function fetchDetections() {
         .then(response => ({ ...response.data, originalQueryType: 'dog', originalQueryId: i }))
         .catch(error => {
           console.warn(`Failed to fetch dog with id=${i}:`, error.message);
-          return null; 
+          return null;
         })
     );
   }
@@ -190,7 +192,7 @@ async function fetchDetections() {
         .then(response => ({ ...response.data, originalQueryType: 'cat', originalQueryId: i }))
         .catch(error => {
           console.warn(`Failed to fetch cat with id=${i}:`, error.message);
-          return null; 
+          return null;
         })
     );
   }
@@ -198,28 +200,73 @@ async function fetchDetections() {
   try {
     const responses = await Promise.all(requests);
     const fetchedDetections: Detection[] = [];
-    responses.forEach(animalData => {
-      if (animalData) { 
-        // Ensure 'pet_type' from API response is used, or fallback to query type
+    
+    responses.forEach((animalData, index) => { // Add index to loop
+      if (animalData) {
         const apiPetType = animalData.pet_type || animalData.originalQueryType;
 
+        // Calculate timestamp for the current item
+        // For the first valid item (index where animalData is not null), use currentTime as is.
+        // For subsequent items, add 2 minutes.
+        // We need a counter for successfully fetched items to increment time correctly.
+        let itemTimestamp = new Date(currentTime.getTime());
+        if (fetchedDetections.length > 0) { // If not the first successfully fetched item
+            itemTimestamp.setMinutes(currentTime.getMinutes() + (fetchedDetections.length * 2));
+        }
+
+
         fetchedDetections.push({
-          id: `client-${globalDetectionIdCounter++}`, 
+          id: `client-${globalDetectionIdCounter++}`,
           breed: animalData.breed || null,
           contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
-          // Use the helper function to ensure correct Data URI format
-          frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'), // Example: dog as jpeg, cat as png
+          frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
           has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
           is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
           leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
           pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
-          pet_type: apiPetType, 
-          // Use the helper function for reg_base64 as well
-          reg_base64: formatBase64Image(animalData.reg_base64, apiPetType === 'dog' ? 'jpeg' : 'png'), // Example
+          pet_type: apiPetType,
+          reg_base64: formatBase64Image(animalData.reg_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
+          timestamp: itemTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }), // Format as needed
         });
       }
     });
-    detections.value = fetchedDetections;
+
+    // If you want the *very first item fetched overall* to be "now" and subsequent ones incremented by 2 minutes
+    // regardless of whether previous API calls failed, you'd adjust the timestamp logic slightly.
+    // The current logic bases the increment on the count of *successfully* fetched items.
+    // Let's refine for overall increment:
+
+    // Re-processing loop for correct timestamp increment based on overall API call order
+    const finalDetections: Detection[] = [];
+    let successfulFetchesCount = 0;
+    const initialTime = new Date(); // Base time for the very first potential detection
+
+    responses.forEach((animalData, overallIndex) => { // overallIndex is the index in the 'requests' array
+        if(animalData){
+            const apiPetType = animalData.pet_type || animalData.originalQueryType;
+            let itemTimestamp = new Date(initialTime.getTime());
+            itemTimestamp.setMinutes(initialTime.getMinutes() + (successfulFetchesCount * 2));
+
+
+            finalDetections.push({
+                id: `client-${successfulFetchesCount}`, // ID based on successful fetches
+                breed: animalData.breed || null,
+                contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
+                frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
+                has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
+                is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
+                leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
+                pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
+                pet_type: apiPetType,
+                reg_base64: formatBase64Image(animalData.reg_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
+                timestamp: itemTimestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+            });
+            successfulFetchesCount++; // Increment only for successful fetches
+        }
+    });
+    globalDetectionIdCounter = successfulFetchesCount; // Update global counter
+    detections.value = finalDetections;
+
 
   } catch (error) {
     console.error('Error processing batched detections:', error);
@@ -228,6 +275,7 @@ async function fetchDetections() {
     isLoading.value = false;
   }
 }
+
 
 onMounted(() => {
   // ... (onMounted logic remains the same)
@@ -322,53 +370,55 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                   <template v-for="animal in paginatedCards" :key="animal.id">
                     <!-- Conditional Matched Card (This remains custom and uses its own structure) -->
                     <Card v-if="animal.frame_base64 && animal.reg_base64" class="h-full flex flex-col border-green-500 border-2">
-                      <CardHeader class="pb-2">
-                        <CardTitle class="text-center text-base sm:text-lg text-green-700 flex items-center justify-center gap-2">
-                          <Icon name="CheckCircle2" class="h-6 w-6" />
-                          Potential Match!
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent class="flex-grow flex flex-col gap-2 pt-2">
-                        <div class="text-center">
-                          <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
-                            {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
-                          </Badge>
-                        </div>
-                        <p class="text-xs sm:text-sm text-center text-muted-foreground">
-                          Detected {{ animal.pet_type || 'pet' }} appears to match registered {{ animal.pet_type || 'pet' }}.
-                        </p>
-                        <div class="grid grid-cols-2 gap-2 items-start my-1">
-                          <div>
-                            <p class="text-xs font-semibold text-center mb-1">Detected:</p>
-                            <img :src="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Detected Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                        <CardHeader class="pb-2">
+                          <CardTitle class="text-center text-base sm:text-lg text-green-700 flex items-center justify-center gap-2">
+                            <Icon name="CheckCircle2" class="h-6 w-6" />
+                            Potential Match!
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent class="flex-grow flex flex-col gap-2 pt-2">
+                          <div class="text-center">
+                            <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
+                              {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
+                            </Badge>
                           </div>
-                          <div>
-                            <p class="text-xs font-semibold text-center mb-1">Registered:</p>
-                            <img :src="formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                          <p class="text-xs sm:text-sm text-center text-muted-foreground">
+                            Detected {{ animal.pet_type || 'pet' }} appears to match registered {{ animal.pet_type || 'pet' }}.
+                          </p>
+                          <div class="grid grid-cols-2 gap-2 items-start my-1">
+                            <div>
+                              <p class="text-xs font-semibold text-center mb-1">Detected:</p>
+                              <img :src="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Detected Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                            </div>
+                            <div>
+                              <p class="text-xs font-semibold text-center mb-1">Registered:</p>
+                              <img :src="formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                            </div>
                           </div>
-                        </div>
-                        <div class="mt-auto pt-2 text-xs border-t">
-                          <p v-if="animal.pet_name"><strong>Name:</strong> {{ animal.pet_name }}</p>
-                          <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
-                          <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
-                          <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
-                          <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
-                          <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          <div class="mt-auto pt-2 text-xs border-t">
+                            <p v-if="animal.pet_name"><strong>Name:</strong> {{ animal.pet_name }}</p>
+                            <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
+                            <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
+                            <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
+                            <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
+                            <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
+                            <p><strong>Time:</strong> {{ animal.timestamp }}</p> {/* NEW: Timestamp for Matched Card */}
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                    <!-- Standard CardAnimal now uses new props -->
-                    <CardAnimal
-                      v-else
-                      :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
-                      :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
-                      :description="`Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}`"
-                      :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
-                      :hasOwnerMatch="!!animal.contact_number"
-                      :hasLeash="animal.has_leash"      эсте                       :leashColor="animal.leash_color"  
-                      class="h-auto min-h-[280px] 2xl:min-h-[320px]" 
-                    />
+                      <CardAnimal
+                        v-else
+                        :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
+                        :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
+                        :description="`Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}`"
+                        :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name"
+                        :hasOwnerMatch="!!animal.contact_number"
+                        :hasLeash="animal.has_leash"
+                        :leashColor="animal.leash_color"
+                        :time="animal.timestamp" {/* NEW: Pass timestamp prop */}
+                        class="h-auto min-h-[280px] 2xl:min-h-[320px]"
+                      />
                       <!-- NO SLOT CONTENT NEEDED HERE ANYMORE for CardAnimal regarding leash badge -->
                   </template>
                 </div>
