@@ -178,7 +178,7 @@ const goToPage = (page: number) => {
                   v-if="notification.image" 
                   :src="notification.image" 
                   alt="Notification image" 
-                  class="rounded-md w-full max-h-40 object-cover mt-2"
+                  class="rounded-md w-full max-h-60 object-cover mt-2"
                   loading="lazy"
                 />
               </div>
