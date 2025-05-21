@@ -416,7 +416,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                         :hasOwnerMatch="!!animal.contact_number"
                         :hasLeash="animal.has_leash"
                         :leashColor="animal.leash_color"
-                        :time="animal.timestamp" {/* NEW: Pass timestamp prop */}
+                        :time="animal.timestamp" 
                         class="h-auto min-h-[280px] 2xl:min-h-[320px]"
                       />
                       <!-- NO SLOT CONTENT NEEDED HERE ANYMORE for CardAnimal regarding leash badge -->
