@@ -167,7 +167,7 @@ async function fetchDetections() {
   detections.value = [];
   globalDetectionIdCounter = 0; 
 
-  const API_BASE_URL = 'http://localhost:5000/info'; 
+  const API_BASE_URL = 'https://straysafe.me/info'; 
   const requests = [];
 
   // Prepare requests for dogs
