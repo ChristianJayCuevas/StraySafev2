@@ -568,7 +568,7 @@ const selectedAreaId = ref('')
 <template>
 
   <div v-if="props.mobile"> 
-  <div ref="mapContainer" class="h-screen w-full max-h-[90vh] rounded overflow-hidden" /> 
+  <div ref="mapContainer" class="h-screen w-full max-h-[100vh] rounded overflow-hidden" /> 
 </div> 
 <div v-else> 
   <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" /> 

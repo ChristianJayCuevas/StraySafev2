@@ -60,7 +60,23 @@ const formatNotificationBody = (body: string) => {
 
   return formattedBody;
 };
+const extractCoordinates = (body: string) => {
+  const latitudeMatch = body.match(/Latitude:\s*([0-9.-]+)/);
+  const longitudeMatch = body.match(/Longitude:\s*([0-9.-]+)/);
 
+  const latitude = latitudeMatch ? parseFloat(latitudeMatch[1]) : null;
+  const longitude = longitudeMatch ? parseFloat(longitudeMatch[1]) : null;
+
+  return { latitude, longitude };
+};
+const handleCoords = (body: string) => {
+  const { latitude, longitude } = extractCoordinates(body);
+  if (latitude !== null && longitude !== null) {
+    yourComposableFunction(latitude, longitude); // pass to your composable
+  } else {
+    console.warn("Latitude or Longitude not found in body");
+  }
+};
 const deleteNotification = async (id: number) => {
   try {
     await axios.delete(`/notifications/${id}`);
@@ -172,7 +188,7 @@ const goToPage = (page: number) => {
             <CardFooter class="flex flex-wrap justify-between gap-2 pt-0 px-4 pb-4">
   <div class="flex gap-2">
     <Button v-if="notification.action" variant="ghost" size="sm" 
-            @click="$inertia.visit(notification.action)"
+            @click="handleCoords(notification.body)"
             class="text-xs px-3 py-1 h-8">
       View
     </Button>

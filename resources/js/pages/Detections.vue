@@ -1,9 +1,12 @@
 <script setup lang="ts">
+// ... (all the script setup code from the previous answer)
+// Ensure Card, CardHeader, CardTitle, CardContent are imported, they are from your original code.
+
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, computed } from 'vue';
 import { type BreadcrumbItem } from '@/types';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Already here
 import CardAnimal from '@/components/CardAnimal.vue';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/Icon.vue'
@@ -20,9 +23,7 @@ import { Input } from '@/components/ui/input';
 import axios from 'axios';
 import {
   createColumnHelper,
-  FlexRender,
   getCoreRowModel,
-  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -52,61 +53,80 @@ const breadcrumbs: BreadcrumbItem[] = [
   },
 ];
 
+interface Detection {
+  id: string; 
+  breed: string | null;
+  contact_number: string | null;
+  frame_base64: string | null;
+  has_leash: boolean | null;
+  is_registered: boolean | null;
+  leash_color: string | null;
+  pet_name: string | null;
+  pet_type: string | null;
+  reg_base64: string | null;
+}
 
 const isLoading = ref(true);
 const detections = ref<Detection[]>([]);
 const searchQuery = ref('');
-
-// Pagination for cards
+let globalDetectionIdCounter = 0;
 const cardsPerPage = 8;
 const currentCardPage = ref(1);
-const totalCardPages = computed(() => Math.ceil(filteredDetections.value.length / cardsPerPage));
 
-// Filter detections based on search
 const filteredDetections = computed(() => {
   if (!searchQuery.value) return detections.value;
-
   const query = searchQuery.value.toLowerCase();
   return detections.value.filter(animal =>
-    animal.type.toLowerCase().includes(query) ||
-    animal.location.toLowerCase().includes(query) ||
-    animal.classification.toLowerCase().includes(query) ||
-    animal.timestamp.toLowerCase().includes(query)
+    (animal.pet_type && animal.pet_type.toLowerCase().includes(query)) ||
+    (animal.breed && animal.breed.toLowerCase().includes(query)) ||
+    (animal.pet_name && animal.pet_name.toLowerCase().includes(query)) ||
+    (animal.leash_color && animal.leash_color.toLowerCase().includes(query)) ||
+    (animal.contact_number && animal.contact_number.toLowerCase().includes(query))
   );
 });
 
-// Get paginated cards
+const totalCardPages = computed(() => Math.ceil(filteredDetections.value.length / cardsPerPage));
+
 const paginatedCards = computed(() => {
   const startIndex = (currentCardPage.value - 1) * cardsPerPage;
   return filteredDetections.value.slice(startIndex, startIndex + cardsPerPage);
 });
 
-// TanStack table configuration
 const columnHelper = createColumnHelper<Detection>();
 const columns = [
-  columnHelper.accessor('id', {
-    header: 'ID',
-    cell: info => info.getValue(),
+  columnHelper.accessor('pet_type', {
+    header: 'Pet Type',
+    cell: info => info.getValue() || 'N/A',
   }),
-  columnHelper.accessor('type', {
-    header: 'Type',
-    cell: info => info.getValue(),
+  columnHelper.accessor('breed', {
+    header: 'Breed',
+    cell: info => info.getValue() || 'N/A',
   }),
-  columnHelper.accessor('classification', {
-    header: 'Status',
-    cell: info => info.getValue(),
+  columnHelper.accessor('pet_name', {
+    header: 'Pet Name',
+    cell: info => info.getValue() || 'N/A',
   }),
-  columnHelper.accessor('location', {
-    header: 'Location',
-    cell: info => info.getValue(),
+  columnHelper.accessor('has_leash', {
+    header: 'Has Leash?',
+    cell: info => {
+      const value = info.getValue();
+      return value === null ? 'N/A' : (value ? 'Yes' : 'No');
+    },
   }),
-  columnHelper.accessor('timestamp', {
-    header: 'Detected At',
-    cell: info => info.getValue(),
+  columnHelper.accessor('is_registered', {
+    header: 'Registered?',
+    cell: info => {
+      const value = info.getValue();
+      return value === null ? 'N/A' : (value ? 'Yes' : 'No');
+    },
   }),
-  columnHelper.accessor('confidence', {
-    header: 'Confidence',
-    cell: info => `${(info.getValue() * 100).toFixed(2)}%`,
+  columnHelper.accessor('contact_number', {
+    header: 'Contact',
+    cell: info => info.getValue() || 'N/A',
+  }),
+  columnHelper.accessor('leash_color', {
+    header: 'Leash Color',
+    cell: info => info.getValue() || 'N/A',
   }),
 ];
 
@@ -115,6 +135,7 @@ const table = useVueTable({
     return filteredDetections.value;
   },
   columns,
+  getRowId: row => row.id,
   getCoreRowModel: getCoreRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
@@ -126,118 +147,63 @@ const table = useVueTable({
   },
 });
 
-// Fallback dummy data if API fails
-
-// ... existing imports and code
-
 async function fetchDetections() {
   isLoading.value = true;
-  
+  detections.value = [];
+  globalDetectionIdCounter = 0; 
+
+  const API_BASE_URL = 'https://straysafe.me/info'; 
+  const requests = [];
+
+  for (let i = 1; i <= 60; i++) {
+    requests.push(
+      axios.get(`${API_BASE_URL}?id=${i}&type=dog`)
+        .then(response => ({ ...response.data, originalQueryType: 'dog', originalQueryId: i }))
+        .catch(error => {
+          console.warn(`Failed to fetch dog with id=${i}:`, error.message);
+          return null; 
+        })
+    );
+  }
+
+  for (let i = 1; i <= 20; i++) {
+    requests.push(
+      axios.get(`${API_BASE_URL}?id=${i}&type=cat`)
+        .then(response => ({ ...response.data, originalQueryType: 'cat', originalQueryId: i }))
+        .catch(error => {
+          console.warn(`Failed to fetch cat with id=${i}:`, error.message);
+          return null; 
+        })
+    );
+  }
+
   try {
-    const response = await axios.get('https://straysafe.me/api2/detected');
-    
-    if (response.data && response.data.detected_animals) {
-      // First, process all the animals
-      const processedAnimals = response.data.detected_animals.map(animal => {
-        // Ensure image URL follows the exact format
-        let imageUrl = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
-        
-        if (animal.image_url) {
-          // Extract the parts we need from the original URL
-          const urlParts = animal.image_url.split('/');
-          // Get the last two segments which should be like: static-demo3/static-demo3_max_cat1.jpg
-          if (urlParts.length >= 2) {
-            const streamId = urlParts[urlParts.length - 2];
-            const fileName = urlParts[urlParts.length - 1];
-            // Construct the URL in the exact format specified
-            imageUrl = `https://straysafe.me/api2/debug-img/${streamId}/${fileName}`;
-          }
-        }
+    const responses = await Promise.all(requests);
+    const fetchedDetections: Detection[] = [];
+    responses.forEach(animalData => {
+      if (animalData) { 
+        fetchedDetections.push({
+          id: `client-${globalDetectionIdCounter++}`, 
+          breed: animalData.breed || null,
+          contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
+          frame_base64: animalData.frame_base64 || null,
+          has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
+          is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
+          leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
+          pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
+          pet_type: animalData.pet_type || animalData.originalQueryType, 
+          reg_base64: animalData.reg_base64 || null,
+        });
+      }
+    });
+    detections.value = fetchedDetections;
 
-        // Define IDs that need special classification handling
-        const specialClassifications = {
-          "cam1-4_dog2_1747178136": "not_stray",
-          // Add more ID-classification pairs as needed
-        };
-        
-        // Apply special classification if needed
-        let classification = animal.classification || 'Unknown';
-        if (specialClassifications[animal.animal_id] || specialClassifications[animal.id]) {
-          classification = specialClassifications[animal.animal_id] || specialClassifications[animal.id];
-        }
-
-        return {
-          id: animal.id,
-          animal_id: animal.animal_id || animal.id, // Ensure we have a value
-          stream_id: animal.stream_id,
-          type: animal.animal_type,
-          location: `Camera ${animal.stream_id}`,
-          timestamp: new Date(animal.timestamp).toLocaleString(),
-          raw_timestamp: animal.timestamp, // Keep raw timestamp for sorting
-          image: imageUrl,
-          classification: classification, // Use determined classification
-          confidence: animal.match_score || animal.confidence || 0,
-          owner_id: animal.owner_id
-        };
-      });
-
-      // Sort by timestamp (newest first) before filtering
-      processedAnimals.sort((a, b) => {
-        return new Date(b.raw_timestamp).getTime() - new Date(a.raw_timestamp).getTime();
-      });
-      
-      // Define the IDs to completely exclude
-      const idsToExclude = ["cam1-3_catcat1_1747175319", "cam1-4_catcat1_1747175321", "cam1-4_cat1_1747178297","cam1-3_cat1_1747178297" ,"cam1-3_cat1_1747178298", "cam1-3_dog1_1747178137", "cam1-3_dog1_1747178125", "cam1-3_dog1_1747178126","cam1-4_catcat1_1747175320","cam1-3_dog1_1747178135", "cam2-5_catcat2_1747175323"];
-      
-      // Filter out animals with IDs in the exclusion list
-    
-
-// Filter out animals with exact `id` matches
-      const filteredAnimals = processedAnimals.filter(animal => {
-        return !idsToExclude.includes(animal.id);
-      });
-            
-      // Regular deduplication - keep only the first occurrence of each animal_id+stream_id combination
-      const uniqueAnimalsMap = new Map();
-      
-      filteredAnimals.forEach(animal => {
-        const key = `${animal.animal_id}_${animal.stream_id}`;
-        if (!uniqueAnimalsMap.has(key)) {
-          uniqueAnimalsMap.set(key, animal);
-        }
-      });
-      
-      // Convert map back to array
-      detections.value = Array.from(uniqueAnimalsMap.values());
-      
-      // Add debug logging if needed
-      console.log('Processed animals:', processedAnimals.length);
-      console.log('After exclusions:', filteredAnimals.length);
-      console.log('After deduplication:', detections.value.length);
-    } else {
-      detections.value = dummyData;
-      console.log('No data from API, using dummy data');
-    }
   } catch (error) {
-    console.error('Error fetching detections:', error);
-    detections.value = dummyData;
+    console.error('Error processing batched detections:', error);
+    detections.value = [];
   } finally {
     isLoading.value = false;
   }
-}
-
-// Update the interface to include the new properties we're using
-interface Detection {
-  id: string;
-  animal_id?: string;
-  stream_id?: string;
-  type: string;
-  location: string;
-  timestamp: string;
-  raw_timestamp?: string;
-  image: string;
-  classification: string;
-  confidence: number;
 }
 
 onMounted(() => {
@@ -245,7 +211,6 @@ onMounted(() => {
   fetchDetections();
 });
 
-// Generate page numbers for pagination
 const getPageNumbers = computed(() => {
   const totalPages = totalCardPages.value;
   const currentPage = currentCardPage.value;
@@ -255,36 +220,49 @@ const getPageNumbers = computed(() => {
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
-  let pages = [];
-
+  let pages: (number | string)[] = [];
   pages.push(1);
-  let start = Math.max(2, currentPage - 1);
-  let end = Math.min(totalPages - 1, currentPage + 1);
+  
+  let coreRangeStart, coreRangeEnd;
+  const corePagesLength = maxVisiblePages - 2; // Available for dynamic pages and ellipses
 
-  if (end - start < 2) {
-    if (start === 2) {
-      end = Math.min(totalPages - 1, start + 2);
-    } else if (end === totalPages - 1) {
-      start = Math.max(2, end - 2);
-    }
+  if (currentPage <= Math.ceil(corePagesLength / 2) +1 ) { 
+      coreRangeStart = 2;
+      coreRangeEnd = Math.min(totalPages - 1, corePagesLength);
+  } else if (currentPage >= totalPages - Math.floor(corePagesLength / 2) -1) { 
+      coreRangeStart = Math.max(2, totalPages - corePagesLength + 1);
+      coreRangeEnd = totalPages - 1;
+  } else { 
+      coreRangeStart = currentPage - Math.floor((corePagesLength - 2) / 2); // -2 for potential ellipses
+      coreRangeEnd = currentPage + Math.ceil((corePagesLength - 2) / 2);
   }
-
-  if (start > 2) {
+  
+  if (coreRangeStart > 2) {
     pages.push('ellipsis-start');
   }
 
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
+  for (let i = coreRangeStart; i <= coreRangeEnd; i++) {
+    if (i > 1 && i < totalPages) pages.push(i);
   }
 
-  if (end < totalPages - 1) {
+  if (coreRangeEnd < totalPages - 1) {
     pages.push('ellipsis-end');
   }
 
-  pages.push(totalPages);
+  if (totalPages > 1) pages.push(totalPages);
+  
+  pages = pages.filter((page, index, self) => 
+    typeof page === 'string' || self.indexOf(page) === index
+  );
+  
+  if (pages.length > 1 && pages[0] === 1 && pages[1] === 1) pages.splice(1,1); // Deduplicate '1' if totalPages is 1
+  if (pages.length > 1 && pages[pages.length-1] === totalPages && pages[pages.length-2] === totalPages) pages.splice(pages.length-1,1);
+
 
   return pages;
 });
+
+const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
 </script>
 
 <template>
@@ -298,9 +276,7 @@ const getPageNumbers = computed(() => {
         
         <div v-else>
           <Tabs default-value="Cards">
-            <!-- Tabs List with triggers only -->
             <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-              <!-- TabsList for triggers only -->
               <TabsList>
                 <TabsTrigger value="Cards">
                   <Icon name="Grid2x2" />
@@ -309,9 +285,7 @@ const getPageNumbers = computed(() => {
                   <Icon name="TableProperties" />
                 </TabsTrigger>
               </TabsList>
-
-              <!-- Search input separated visually -->
-              <Input v-model="searchQuery" placeholder="Search detections..." class="w-full sm:w-64" />
+              <Input v-model="searchQuery" placeholder="Search by type, breed, name..." class="w-full sm:w-64" />
             </div>
             
             <TabsContent value="Cards">
@@ -319,47 +293,87 @@ const getPageNumbers = computed(() => {
                 <p class="text-muted-foreground">No detections found</p>
               </div>
               <div v-else>
-                <!-- <div class="mb-4 p-2 bg-gray-100 rounded text-xs overflow-auto"> -->
-        <!-- <p>Debug - Classifications in current page:</p>
-        <ul>
-          <li v-for="(animal, i) in paginatedCards" :key="i">
-            ID: {{ animal.id }} | Type: {{ animal.type }} | 
-            Classification: "{{ animal.classification }}" | 
-            Length: {{ animal.classification.length }}
-          </li>
-        </ul>
-      </div> -->
                 <!-- Card Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <CardAnimal 
-          v-for="animal in paginatedCards" 
-          :key="animal.id" 
-          :title="animal.type.toUpperCase()"
-          :imagelink="animal.image"
-          :description="`${animal.location} - ${animal.timestamp}`"
-          :isStray="animal.classification === 'stray'"
-          :hasOwnerMatch="animal.owner_id !== undefined && animal.owner_id !== null && animal.owner_id !== ''"
-          class="h-full"
-        >
-    <template #footer>
-      <div class="flex flex-col gap-1">
-        <div class="flex justify-between items-center">
-          <!-- Add a debug output to verify correct class values -->
-          <!-- {{animal.classification}} -->
-          <span class="text-sm font-medium" :class="{
-            'text-green-500': animal.classification === 'not_stray',
-            'text-amber-500': animal.classification === 'stray',
-            'text-gray-500': animal.classification === 'Unknown'
-          }">{{ animal.classification }}</span>
-          <span class="text-sm">{{ (animal.confidence * 100).toFixed(2) }}%</span>
-        </div>
-        <div class="flex justify-between items-center text-xs text-muted-foreground">
-          <span>{{ animal.location }}</span>
-          <span>{{ animal.timestamp }}</span>
-        </div>
-      </div>
-    </template>
-  </CardAnimal>
+                  <template v-for="animal in paginatedCards" :key="animal.id">
+                    <!-- Conditional Matched Card -->
+                    <Card v-if="animal.frame_base64 && animal.reg_base64" class="h-full flex flex-col border-green-500 border-2">
+                      <CardHeader class="pb-2">
+                        <CardTitle class="text-center text-base sm:text-lg text-green-700 flex items-center justify-center gap-2">
+                          <Icon name="CheckCircle2" class="h-6 w-6" />
+                          Potential Match!
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent class="flex-grow flex flex-col gap-3 pt-2">
+                        <p class="text-xs sm:text-sm text-center text-muted-foreground mb-1">
+                          Detected {{ animal.pet_type || 'pet' }} appears to match registered {{ animal.pet_type || 'pet' }}.
+                        </p>
+                        <div class="grid grid-cols-2 gap-2 items-start">
+                          <div>
+                            <p class="text-xs font-semibold text-center mb-1">Detected:</p>
+                            <img :src="animal.frame_base64" alt="Detected Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                          </div>
+                          <div>
+                            <p class="text-xs font-semibold text-center mb-1">Registered:</p>
+                            <img :src="animal.reg_base64" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                          </div>
+                        </div>
+                        <div class="mt-auto pt-2 text-xs border-t">
+                          <p v-if="animal.pet_name"><strong>Name:</strong> {{ animal.pet_name }}</p>
+                          <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
+                          <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
+                          <p><strong>Leash:</strong> {{ animal.has_leash === null ? 'N/A' : (animal.has_leash ? `Yes (${animal.leash_color || 'Unknown'})` : 'No') }}</p>
+                          <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
+                          <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <!-- Standard CardAnimal for non-matched or partially-detailed items -->
+                    <CardAnimal
+                      v-else
+                      :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
+                      :imagelink="animal.frame_base64 || animal.reg_base64 || placeholderImage"
+                      :description="`${animal.pet_name ? 'Name: '+animal.pet_name+', ' : ''}Breed: ${animal.breed || 'N/A'}`"
+                      :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
+                      :hasOwnerMatch="!!animal.contact_number"
+                      class="h-full"
+                    >
+                      <template #footer>
+                        <div class="flex flex-col gap-1 p-2 text-xs">
+                          <div class="flex justify-between">
+                            <span>Type:</span>
+                            <span class="truncate">{{ animal.pet_type || 'N/A' }}</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Breed:</span>
+                            <span class="truncate">{{ animal.breed || 'N/A' }}</span>
+                          </div>
+                           <div class="flex justify-between">
+                            <span>Name:</span>
+                            <span class="truncate">{{ animal.pet_name || 'N/A' }}</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Has Leash:</span>
+                            <span class="truncate">{{ animal.has_leash === null ? 'N/A' : (animal.has_leash ? `Yes (${animal.leash_color || 'color?'})` : 'No') }}</span>
+                          </div>
+                          <div class="flex justify-between">
+                            <span>Registered:</span>
+                            <span>{{ animal.is_registered === null ? 'N/A' : (animal.is_registered ? 'Yes' : 'No') }}</span>
+                          </div>
+                          <!-- Show registration proof in footer if it exists, animal is registered, AND it wasn't the main image (i.e. frame_base64 was present) -->
+                          <div v-if="animal.reg_base64 && animal.is_registered && animal.frame_base64" class="mt-1">
+                            <p class="font-medium text-center">Registration Proof:</p>
+                            <img :src="animal.reg_base64" alt="Registration Proof" class="max-w-full h-20 mx-auto rounded mt-1 object-contain border" />
+                          </div>
+                           <div v-if="animal.contact_number" class="flex justify-between mt-1 border-t pt-1">
+                            <span class="font-semibold">Contact:</span>
+                            <span>{{ animal.contact_number }}</span>
+                          </div>
+                        </div>
+                      </template>
+                    </CardAnimal>
+                  </template>
                 </div>
 
                 <!-- Cards Pagination -->
@@ -370,10 +384,8 @@ const getPageNumbers = computed(() => {
                         @click="currentCardPage = Math.max(1, currentCardPage - 1)"
                         :disabled="currentCardPage === 1"
                       />
-
-                      <template v-for="(page, index) in getPageNumbers" :key="index">
-                        <PaginationItem v-if="typeof page === 'number'" :value="page"
-                          :is-active="page === currentCardPage">
+                      <template v-for="(page, index) in getPageNumbers" :key="page === 'string' ? `${page}-${index}` : page">
+                        <PaginationItem v-if="typeof page === 'number'">
                           <Button 
                             class="h-10 w-10" 
                             :variant="page === currentCardPage ? 'default' : 'outline'"
@@ -382,9 +394,8 @@ const getPageNumbers = computed(() => {
                             {{ page }}
                           </Button>
                         </PaginationItem>
-                        <PaginationEllipsis v-else :key="page" :index="index" />
+                        <PaginationEllipsis v-else />
                       </template>
-
                       <PaginationNext 
                         @click="currentCardPage = Math.min(totalCardPages, currentCardPage + 1)"
                         :disabled="currentCardPage === totalCardPages"
@@ -396,7 +407,8 @@ const getPageNumbers = computed(() => {
             </TabsContent>
             
             <TabsContent value="Table">
-              <Card>
+              <!-- ... Table content remains the same ... -->
+               <Card>
                 <CardHeader>
                   <CardTitle>List of Detected Animals</CardTitle>
                 </CardHeader>
@@ -409,11 +421,15 @@ const getPageNumbers = computed(() => {
                       <TableHeader>
                         <TableRow>
                           <TableHead v-for="header in table.getFlatHeaders()" :key="header.id" class="text-center">
-                            <div class="flex items-center justify-center space-x-1 cursor-pointer"
-                              @click="header.column.toggleSorting()">
-                              {{ header.column.columnDef.header }}
-                              <span v-if="header.column.getIsSorted() === 'asc'">↑</span>
-                              <span v-else-if="header.column.getIsSorted() === 'desc'">↓</span>
+                            <div 
+                              class="flex items-center justify-center space-x-1"
+                              :class="{'cursor-pointer': header.column.getCanSort()}"
+                              @click="header.column.getCanSort() && header.column.toggleSorting()"
+                            >
+                              <span>{{ header.column.columnDef.header }}</span>
+                              <template v-if="header.column.getIsSorted()">
+                                <Icon :name="header.column.getIsSorted() === 'desc' ? 'ArrowDown' : 'ArrowUp'" class="h-4 w-4" />
+                              </template>
                             </div>
                           </TableHead>
                         </TableRow>
@@ -421,14 +437,7 @@ const getPageNumbers = computed(() => {
                       <TableBody>
                         <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
                           <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" class="text-center">
-                            <span v-if="cell.column.id === 'classification'" :class="{
-                              'text-green-500': cell.getValue() === 'not_stray',
-                              'text-amber-500': cell.getValue() === 'stray',
-                              'text-gray-500': cell.getValue() === 'Unknown'
-                            }">
-                              {{ cell.getValue() }}
-                            </span>
-                            <span v-else>{{ cell.getValue() }}</span>
+                            {{ cell.getValue() }}
                           </TableCell>
                         </TableRow>
                       </TableBody>
@@ -440,25 +449,21 @@ const getPageNumbers = computed(() => {
                       </TableCaption>
                     </Table>
 
-                    <!-- Table Pagination -->
-                    <div class="flex items-center justify-end space-x-2 py-4">
-                      <Button @click="table.previousPage()" :disabled="!table.getCanPreviousPage()" variant="outline"
-                        size="sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                          class="h-4 w-4 mr-2">
-                          <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                        Previous
-                      </Button>
-                      <Button @click="table.nextPage()" :disabled="!table.getCanNextPage()" variant="outline" size="sm">
-                        Next
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                          class="h-4 w-4 ml-2">
-                          <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                      </Button>
+                    <div class="flex items-center justify-between space-x-2 py-4">
+                       <span class="text-sm text-muted-foreground">
+                        Page {{ table.getState().pagination.pageIndex + 1 }} of {{ table.getPageCount() }}
+                      </span>
+                      <div class="flex space-x-2">
+                        <Button @click="table.previousPage()" :disabled="!table.getCanPreviousPage()" variant="outline"
+                          size="sm">
+                          <Icon name="ChevronLeft" class="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button @click="table.nextPage()" :disabled="!table.getCanNextPage()" variant="outline" size="sm">
+                          Next
+                          <Icon name="ChevronRight" class="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

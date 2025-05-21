@@ -7,7 +7,7 @@ import Map from '@/components/map/Map.vue';
         <Map :control="false" 
   :currentMap="false" 
   :selectMap="false" 
-  :legend="false"
+  :legend="true"
   :heatmap="false" 
   :mobile="true"/>
     </AppLayout>
