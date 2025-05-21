@@ -365,10 +365,6 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                       :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                       :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
                       :description="`${animal.pet_name ? 'Name: '+animal.pet_name+', ' : ''}Breed: ${animal.breed || 'N/A'}`"
-                       
-                       
-                      <!-- The isStray and hasOwnerMatch props determine the top-right badge in CardAnimal if it has one -->
-                      <!-- We want to make sure this doesn't prevent other info from showing -->
                       :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
                       :hasOwnerMatch="!!animal.contact_number"
                       class="h-full"
