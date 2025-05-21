@@ -36,7 +36,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
         alt="Animal"
       />
       <!-- Status Tags -->
-      <div class="absolute top-2 left-2 flex flex-wrap gap-1"> {/* Use flex-wrap for smaller screens */}
+      <div class="absolute top-2 left-2 flex flex-wrap gap-1">
         <Badge
           v-if="typeof isStray === 'boolean'"
           :variant="isStray ? 'destructive' : 'default'"
@@ -62,7 +62,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
       </div>
     </div>
 
-    <CardHeader class="px-4 pt-2 pb-1 flex-grow"> {/* Added flex-grow and reduced pb */}
+    <CardHeader class="px-4 pt-2 pb-1 flex-grow"> 
       <CardTitle class="text-center text-base 2xl:text-lg font-bold mb-1 truncate">
         {{ title }}
       </CardTitle>
@@ -78,7 +78,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
       </div>
     </CardHeader>
 
-    <CardFooter class="px-4 py-2 mt-auto justify-center text-xs text-muted-foreground border-t"> {/* Added border-t, py-2 */}
+    <CardFooter class="px-4 py-2 mt-auto justify-center text-xs text-muted-foreground border-t">
       <!-- You can add more fixed details here, or we can use a slot later -->
       Details
     </CardFooter>
