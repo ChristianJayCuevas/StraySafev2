@@ -1,12 +1,9 @@
 <script setup lang="ts">
-// ... (all the script setup code from the previous answer)
-// Ensure Card, CardHeader, CardTitle, CardContent are imported, they are from your original code.
-
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, computed } from 'vue';
 import { type BreadcrumbItem } from '@/types';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Already here
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import CardAnimal from '@/components/CardAnimal.vue';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/Icon.vue'
@@ -57,13 +54,13 @@ interface Detection {
   id: string; 
   breed: string | null;
   contact_number: string | null;
-  frame_base64: string | null;
+  frame_base64: string | null; // Should be a full Data URI or raw base64
   has_leash: boolean | null;
   is_registered: boolean | null;
   leash_color: string | null;
   pet_name: string | null;
   pet_type: string | null;
-  reg_base64: string | null;
+  reg_base64: string | null;   // Should be a full Data URI or raw base64
 }
 
 const isLoading = ref(true);
@@ -73,7 +70,22 @@ let globalDetectionIdCounter = 0;
 const cardsPerPage = 8;
 const currentCardPage = ref(1);
 
+// Helper function to format base64 string into a Data URI
+function formatBase64Image(base64String: string | null, imageType: string = 'png'): string | null {
+  if (!base64String) {
+    return null;
+  }
+  // Check if it's already a Data URI
+  if (base64String.startsWith('data:image')) {
+    return base64String;
+  }
+  // Assume it's a raw base64 string and prepend the Data URI scheme
+  // You might need to adjust 'imageType' if your API provides type info or if it's not always PNG
+  return `data:image/${imageType};base64,${base64String}`;
+}
+
 const filteredDetections = computed(() => {
+  // ... (filtering logic remains the same)
   if (!searchQuery.value) return detections.value;
   const query = searchQuery.value.toLowerCase();
   return detections.value.filter(animal =>
@@ -88,12 +100,14 @@ const filteredDetections = computed(() => {
 const totalCardPages = computed(() => Math.ceil(filteredDetections.value.length / cardsPerPage));
 
 const paginatedCards = computed(() => {
+  // ... (pagination logic remains the same)
   const startIndex = (currentCardPage.value - 1) * cardsPerPage;
   return filteredDetections.value.slice(startIndex, startIndex + cardsPerPage);
 });
 
 const columnHelper = createColumnHelper<Detection>();
 const columns = [
+  // ... (column definitions remain the same)
   columnHelper.accessor('pet_type', {
     header: 'Pet Type',
     cell: info => info.getValue() || 'N/A',
@@ -131,6 +145,7 @@ const columns = [
 ];
 
 const table = useVueTable({
+  // ... (table configuration remains the same)
   get data() {
     return filteredDetections.value;
   },
@@ -152,9 +167,10 @@ async function fetchDetections() {
   detections.value = [];
   globalDetectionIdCounter = 0; 
 
-  const API_BASE_URL = 'https://straysafe.me/info'; 
+  const API_BASE_URL = 'http://localhost:5000/info'; 
   const requests = [];
 
+  // Prepare requests for dogs
   for (let i = 1; i <= 60; i++) {
     requests.push(
       axios.get(`${API_BASE_URL}?id=${i}&type=dog`)
@@ -166,6 +182,7 @@ async function fetchDetections() {
     );
   }
 
+  // Prepare requests for cats
   for (let i = 1; i <= 20; i++) {
     requests.push(
       axios.get(`${API_BASE_URL}?id=${i}&type=cat`)
@@ -182,17 +199,22 @@ async function fetchDetections() {
     const fetchedDetections: Detection[] = [];
     responses.forEach(animalData => {
       if (animalData) { 
+        // Ensure 'pet_type' from API response is used, or fallback to query type
+        const apiPetType = animalData.pet_type || animalData.originalQueryType;
+
         fetchedDetections.push({
           id: `client-${globalDetectionIdCounter++}`, 
           breed: animalData.breed || null,
           contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
-          frame_base64: animalData.frame_base64 || null,
+          // Use the helper function to ensure correct Data URI format
+          frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'), // Example: dog as jpeg, cat as png
           has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
           is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
           leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
           pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
-          pet_type: animalData.pet_type || animalData.originalQueryType, 
-          reg_base64: animalData.reg_base64 || null,
+          pet_type: apiPetType, 
+          // Use the helper function for reg_base64 as well
+          reg_base64: formatBase64Image(animalData.reg_base64, apiPetType === 'dog' ? 'jpeg' : 'png'), // Example
         });
       }
     });
@@ -207,11 +229,13 @@ async function fetchDetections() {
 }
 
 onMounted(() => {
+  // ... (onMounted logic remains the same)
   table.setPageSize(10);
   fetchDetections();
 });
 
 const getPageNumbers = computed(() => {
+  // ... (getPageNumbers logic remains the same)
   const totalPages = totalCardPages.value;
   const currentPage = currentCardPage.value;
   const maxVisiblePages = 5;
@@ -224,7 +248,7 @@ const getPageNumbers = computed(() => {
   pages.push(1);
   
   let coreRangeStart, coreRangeEnd;
-  const corePagesLength = maxVisiblePages - 2; // Available for dynamic pages and ellipses
+  const corePagesLength = maxVisiblePages - 2; 
 
   if (currentPage <= Math.ceil(corePagesLength / 2) +1 ) { 
       coreRangeStart = 2;
@@ -233,7 +257,7 @@ const getPageNumbers = computed(() => {
       coreRangeStart = Math.max(2, totalPages - corePagesLength + 1);
       coreRangeEnd = totalPages - 1;
   } else { 
-      coreRangeStart = currentPage - Math.floor((corePagesLength - 2) / 2); // -2 for potential ellipses
+      coreRangeStart = currentPage - Math.floor((corePagesLength - 2) / 2); 
       coreRangeEnd = currentPage + Math.ceil((corePagesLength - 2) / 2);
   }
   
@@ -255,16 +279,15 @@ const getPageNumbers = computed(() => {
     typeof page === 'string' || self.indexOf(page) === index
   );
   
-  if (pages.length > 1 && pages[0] === 1 && pages[1] === 1) pages.splice(1,1); // Deduplicate '1' if totalPages is 1
+  if (pages.length > 1 && pages[0] === 1 && pages[1] === 1) pages.splice(1,1);
   if (pages.length > 1 && pages[pages.length-1] === totalPages && pages[pages.length-2] === totalPages) pages.splice(pages.length-1,1);
-
 
   return pages;
 });
 
 const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
-</script>
 
+</script>
 <template>
   <Head title="Detections" />
   <AppLayout :breadcrumbs="breadcrumbs">
