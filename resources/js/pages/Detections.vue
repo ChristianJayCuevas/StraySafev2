@@ -6,6 +6,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import CardAnimal from '@/components/CardAnimal.vue';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/Icon.vue'
 import {
   Table,
@@ -328,24 +329,29 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                         </CardTitle>
                       </CardHeader>
                       <CardContent class="flex-grow flex flex-col gap-3 pt-2">
+                        <div class="text-center mb-2">
+                          <Badge :variant="animal.has_leash ? 'default' : 'destructive'">
+                            {{ animal.has_leash ? 'Collar/Leashed' : 'No Collar/Leash' }}
+                          </Badge>
+                        </div>
                         <p class="text-xs sm:text-sm text-center text-muted-foreground mb-1">
                           Detected {{ animal.pet_type || 'pet' }} appears to match registered {{ animal.pet_type || 'pet' }}.
                         </p>
                         <div class="grid grid-cols-2 gap-2 items-start">
                           <div>
                             <p class="text-xs font-semibold text-center mb-1">Detected:</p>
-                            <img :src="animal.frame_base64" alt="Detected Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                            <img :src="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Detected Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
                           </div>
                           <div>
                             <p class="text-xs font-semibold text-center mb-1">Registered:</p>
-                            <img :src="animal.reg_base64" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                            <img :src="formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
                           </div>
                         </div>
                         <div class="mt-auto pt-2 text-xs border-t">
                           <p v-if="animal.pet_name"><strong>Name:</strong> {{ animal.pet_name }}</p>
                           <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
                           <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
-                          <p><strong>Leash:</strong> {{ animal.has_leash === null ? 'N/A' : (animal.has_leash ? `Yes (${animal.leash_color || 'Unknown'})` : 'No') }}</p>
+                          <p v-if="animal.has_leash"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
                           <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
                           <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
                         </div>
@@ -356,7 +362,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                     <CardAnimal
                       v-else
                       :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
-                      :imagelink="animal.frame_base64 || animal.reg_base64 || placeholderImage"
+                      :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
                       :description="`${animal.pet_name ? 'Name: '+animal.pet_name+', ' : ''}Breed: ${animal.breed || 'N/A'}`"
                       :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
                       :hasOwnerMatch="!!animal.contact_number"
@@ -364,6 +370,11 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                     >
                       <template #footer>
                         <div class="flex flex-col gap-1 p-2 text-xs">
+                          <div class="text-center mb-1">
+                             <Badge :variant="animal.has_leash ? 'default' : 'destructive'">
+                              {{ animal.has_leash ? 'Collar/Leashed' : 'No Collar/Leash' }}
+                            </Badge>
+                          </div>
                           <div class="flex justify-between">
                             <span>Type:</span>
                             <span class="truncate">{{ animal.pet_type || 'N/A' }}</span>
@@ -372,22 +383,17 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                             <span>Breed:</span>
                             <span class="truncate">{{ animal.breed || 'N/A' }}</span>
                           </div>
-                           <div class="flex justify-between">
-                            <span>Name:</span>
-                            <span class="truncate">{{ animal.pet_name || 'N/A' }}</span>
-                          </div>
-                          <div class="flex justify-between">
-                            <span>Has Leash:</span>
-                            <span class="truncate">{{ animal.has_leash === null ? 'N/A' : (animal.has_leash ? `Yes (${animal.leash_color || 'color?'})` : 'No') }}</span>
+                          <div v-if="animal.has_leash" class="flex justify-between">
+                            <span>Leash Color:</span>
+                            <span class="truncate">{{ animal.leash_color || 'Unknown' }}</span>
                           </div>
                           <div class="flex justify-between">
                             <span>Registered:</span>
                             <span>{{ animal.is_registered === null ? 'N/A' : (animal.is_registered ? 'Yes' : 'No') }}</span>
                           </div>
-                          <!-- Show registration proof in footer if it exists, animal is registered, AND it wasn't the main image (i.e. frame_base64 was present) -->
                           <div v-if="animal.reg_base64 && animal.is_registered && animal.frame_base64" class="mt-1">
                             <p class="font-medium text-center">Registration Proof:</p>
-                            <img :src="animal.reg_base64" alt="Registration Proof" class="max-w-full h-20 mx-auto rounded mt-1 object-contain border" />
+                            <img :src="formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage" alt="Registration Proof" class="max-w-full h-20 mx-auto rounded mt-1 object-contain border" />
                           </div>
                            <div v-if="animal.contact_number" class="flex justify-between mt-1 border-t pt-1">
                             <span class="font-semibold">Contact:</span>
@@ -430,7 +436,6 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
             </TabsContent>
             
             <TabsContent value="Table">
-              <!-- ... Table content remains the same ... -->
                <Card>
                 <CardHeader>
                   <CardTitle>List of Detected Animals</CardTitle>
