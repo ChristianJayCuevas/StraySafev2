@@ -86,11 +86,5 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
 </template>
 
 <style scoped>
-/* Ensure card height is managed if content grows */
 
-
-/* Custom variant for info badge if not in your shadcn theme */
-.badge-info {
-  @apply bg-blue-500 text-white;
-}
 </style>
