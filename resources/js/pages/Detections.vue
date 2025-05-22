@@ -298,16 +298,16 @@ async function pollExternalAPIAndStore() {
       }
 
       // ---- NEW: Check for match with registered pets ----
-      if (detectedAnimalData.pet_name && detectedAnimalData.pet_name !== 'none' && detectedAnimalData.breed) {
+      if (detectedAnimalData.pet_name && detectedAnimalData.breed) {
         const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
         const detectedBreedLower = detectedAnimalData.breed.toLowerCase();
-        const detectedPetTypeLower = detectedAnimalData.pet_type.toLowerCase();
+       
 
         for (const regPet of registeredPets.value) {
           if (
             regPet.pet_name.toLowerCase() === detectedNameLower &&
-            regPet.breed.toLowerCase() === detectedBreedLower &&
-            regPet.pet_type.toLowerCase() === detectedPetTypeLower // Optional: match pet_type too
+            regPet.breed.toLowerCase() === detectedBreedLower 
+            // Optional: match pet_type too
           ) {
             console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.user_id}`);
             // Send notification
@@ -317,10 +317,9 @@ async function pollExternalAPIAndStore() {
           }
         }
       }
-      // ---- END NEW ----
 
     } else {
-      // console.log('Poll: No new valid data from /checknewimage. Data:', detectedAnimalData);
+       console.log('Poll: No new valid data from /checknewimage. Data:', detectedAnimalData);
     }
   } catch (error: any) {
     if (error.response && error.response.status === 204) {
