@@ -176,10 +176,23 @@ watch(searchQuery, () => { /* Client-side search on current page */ });
 async function fetchRegisteredPets() {
   isLoadingRegisteredPets.value = true;
   try {
-    // Replace with your actual API endpoint for fetching registered pets
-    const response = await axios.get<RegisteredPet[]>('/api/mobileregisteredanimals'); // Or '/registered-pets'
-    registeredPets.value = response.data;
-    console.log('Registered pets loaded:', registeredPets.value.length);
+    // Define a type for the expected backend response structure
+    interface RegisteredPetsApiResponse {
+      status: string;
+      data: RegisteredPet[]; // The array of pets
+    }
+
+    // Use this type with axios.get
+    const response = await axios.get<RegisteredPetsApiResponse>('/api/mobileregisteredanimals'); // Adjust endpoint if needed
+
+    if (response.data && response.data.status === 'success' && Array.isArray(response.data.data)) {
+      registeredPets.value = response.data.data; // Access the nested 'data' array
+      console.log('Registered pets loaded:', registeredPets.value.length); // Now this will be correct
+    } else {
+      console.error('Failed to fetch registered pets or unexpected response structure:', response.data);
+      toast.error("Error Loading Registered Pets", { description: "Received an invalid response from the server." });
+      registeredPets.value = [];
+    }
   } catch (error) {
     console.error('Error fetching registered pets:', error);
     toast.error("Error Loading Registered Pets", { description: "Could not fetch the list of registered pets." });
