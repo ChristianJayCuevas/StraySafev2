@@ -83,7 +83,8 @@ function formatBase64Image(base64String: string | null, imageType: string = 'png
   }
   // Assume it's a raw base64 string and prepend the Data URI scheme
   // You might need to adjust 'imageType' if your API provides type info or if it's not always PNG
-  return data:image/${imageType};base64,${base64String};
+  // return data:image/${imageType};base64,${base64String}; // <--- TYPO HERE
+  return `data:image/${imageType};base64,${base64String}`; // <--- CORRECTED
 }
 
 const filteredDetections = computed(() => {
@@ -174,9 +175,9 @@ function getRandomInt(min: number, max: number): number {
 function formatDateTime(date: Date): string {
   const optionsDate: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   const optionsTime: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-  return ${date.toLocaleDateString(undefined, optionsDate)}, ${date.toLocaleTimeString(undefined, optionsTime)};
+  // return ${date.toLocaleDateString(undefined, optionsDate)}, ${date.toLocaleTimeString(undefined, optionsTime)}; // <--- TYPO HERE
+  return `${date.toLocaleDateString(undefined, optionsDate)}, ${date.toLocaleTimeString(undefined, optionsTime)}`; // <--- CORRECTED
 }
-
 
 async function fetchDetections() {
   isLoading.value = true;
@@ -189,10 +190,11 @@ async function fetchDetections() {
   // Prepare requests for dogs
   for (let i = 1; i <= 60; i++) {
     requests.push(
-      axios.get(${API_BASE_URL}?id=${i}&type=dog)
+      // axios.get(${API_BASE_URL}?id=${i}&type=dog) // <--- TYPO HERE
+      axios.get(`${API_BASE_URL}?id=${i}&type=dog`) // <--- CORRECTED
         .then(response => ({ ...response.data, originalQueryType: 'dog', originalQueryId: i }))
         .catch(error => {
-          console.warn(Failed to fetch dog with id=${i}:, error.message);
+          console.warn(`Failed to fetch dog with id=${i}:`, error.message);
           return null;
         })
     );
@@ -201,10 +203,11 @@ async function fetchDetections() {
   // Prepare requests for cats
   for (let i = 1; i <= 20; i++) {
     requests.push(
-      axios.get(${API_BASE_URL}?id=${i}&type=cat)
+      // axios.get(${API_BASE_URL}?id=${i}&type=cat) // <--- TYPO HERE
+      axios.get(`${API_BASE_URL}?id=${i}&type=cat`) // <--- CORRECTED
         .then(response => ({ ...response.data, originalQueryType: 'cat', originalQueryId: i }))
         .catch(error => {
-          console.warn(Failed to fetch cat with id=${i}:, error.message);
+          console.warn(`Failed to fetch cat with id=${i}:`, error.message);
           return null;
         })
     );
@@ -243,7 +246,7 @@ async function fetchDetections() {
 
 
         finalDetections.push({
-          id: client-${successfulFetchesCount},
+          id: `client-${successfulFetchesCount}`,
           breed: animalData.breed || null,
           contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
           frame_base64: formatBase64Image(animalData.frame_base64, apiPetType === 'dog' ? 'jpeg' : 'png'),
@@ -401,15 +404,15 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                         v-else
                         :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                         :imagelink="formatBase64Image(animal.frame_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || formatBase64Image(animal.reg_base64, animal.pet_type === 'dog' ? 'jpeg' : 'png') || placeholderImage"
-                        :description="Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}"
+                        :description="`Breed: ${animal.breed || 'N/A'}`"
                         :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name"
                         :hasOwnerMatch="!!animal.contact_number"
                         :hasLeash="animal.has_leash"
                         :leashColor="animal.leash_color"
-                        :time="animal.timestamp" 
+                        :time="animal.timestamp"
                         class="h-auto min-h-[280px] 2xl:min-h-[320px]"
                       />
-                      <!-- NO SLOT CONTENT NEEDED HERE ANYMORE for CardAnimal regarding leash badge -->
+                      
                   </template>
                 </div>
 
