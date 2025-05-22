@@ -238,10 +238,10 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
   // ... (rest of bodyMessage construction) ...
 
   const payload = {
-    user_id: userId, // Use the actual user_id from matchedRegisteredPet.user_id
+    user_id: 1, // Use the actual user_id from matchedRegisteredPet.user_id
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
-    action: '/detections',
+    action: '/notifications',
     image: detectedAnimal.frame_base64 || detectedAnimal.reg_base64 || 'https://straysafe.me/images/default-pet-notification.png',
   };
 
