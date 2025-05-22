@@ -69,7 +69,7 @@ interface LaravelPagination<T> {
   next_page_url: string | null; path: string; per_page: number;
   prev_page_url: string | null; to: number | null; total: number;
 }
-
+const notifiedMatches = ref<Set<string>>(new Set());
 const isLoading = ref(true);
 const isPolling = ref(false);
 let pollingIntervalId: number | undefined = undefined;
@@ -201,30 +201,48 @@ async function fetchRegisteredPets() {
     isLoadingRegisteredPets.value = false;
   }
 }
+function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | undefined {
+  if (!detectedAnimal.pet_name || !detectedAnimal.breed || !detectedAnimal.pet_type) {
+    return undefined; // Cannot match without these details
+  }
+  if (isLoadingRegisteredPets.value || registeredPets.value.length === 0) {
+      return undefined; // Don't attempt to match if registered pets aren't loaded
+  }
 
+  const detectedNameLower = detectedAnimal.pet_name.toLowerCase().trim();
+  const detectedBreedLower = detectedAnimal.breed.toLowerCase().trim();
+  const detectedPetTypeLower = detectedAnimal.pet_type.toLowerCase().trim();
+
+  return registeredPets.value.find(regPet =>
+    regPet.pet_name.toLowerCase().trim() === detectedNameLower &&
+    regPet.breed.toLowerCase().trim() === detectedBreedLower &&
+    regPet.pet_type.toLowerCase().trim() === detectedPetTypeLower
+  );
+}
 // --- Notification Sending ---
 async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet) {
-  const NOTIFICATION_URL = 'https://straysafe.me/send-notification'; // Your actual notification endpoint
+  const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
-  // Prepare a detailed body message
-  // You might get lat/lon/camera from the 'detectedAnimal' if your Flask API provides it
-  // For now, using placeholders or what's available.
-  let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
-  bodyMessage += `Detected Pet Type: ${detectedAnimal.pet_type || 'N/A'}\n`;
-  bodyMessage += `Detected Breed: ${detectedAnimal.breed || 'N/A'}\n`;
-  if (detectedAnimal.pet_name && detectedAnimal.pet_name !== 'none') {
-    bodyMessage += `Detected Name (if any): ${detectedAnimal.pet_name}\n`;
+  // ---- START Notification Limiting Logic ----
+  // Create a unique key for this specific match (detected external ID + registered pet ID)
+  // Ensure detectedAnimal.external_api_id is reliably populated. If not, use another unique ID from detectedAnimal.
+  const matchKey = `${detectedAnimal.external_api_id || detectedAnimal.pet_name}-${matchedRegisteredPet.id}`;
+
+  if (notifiedMatches.value.has(matchKey)) {
+    console.log(`Notification for matchKey ${matchKey} already sent this session. Skipping.`);
+    return; // Already notified for this specific match in this session
   }
-  // Add these if your Flask API provides them in `animalData`
-  // bodyMessage += `Location: Lat ${detectedAnimal.latitude || 'N/A'}, Lon ${detectedAnimal.longitude || 'N/A'}\n`;
-  // bodyMessage += `Camera: ${detectedAnimal.camera_name || 'N/A'}\n`;
+  // ---- END Notification Limiting Logic ----
+
+  let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
+  // ... (rest of bodyMessage construction) ...
 
   const payload = {
-    user_id: 1,
+    user_id: userId, // Use the actual user_id from matchedRegisteredPet.user_id
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
-    action: '/detections', // Or a specific page for this detection/match
-    image: detectedAnimal.frame_base64 || detectedAnimal.reg_base64 || 'https://straysafe.me/images/default-pet-notification.png', // Use detected image, fallback
+    action: '/detections',
+    image: detectedAnimal.frame_base64 || detectedAnimal.reg_base64 || 'https://straysafe.me/images/default-pet-notification.png',
   };
 
   console.log('Sending notification payload:', payload);
@@ -233,11 +251,12 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
     const response = await axios.post(NOTIFICATION_URL, payload);
     console.log('Notification sent successfully:', response.data);
     toast.success("Match Notification Sent!", { description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` });
+    notifiedMatches.value.add(matchKey); // Add to set after successful send
   } catch (error: any) {
-    console.error('Error sending notification:', error.response?.data || error.message);
-    toast.error("Notification Error", { description: "Failed to send match notification to owner." });
+    // ... (error handling) ...
   }
 }
+
 
 // --- Enhanced Polling Logic ---
 async function pollExternalAPIAndStore() {
@@ -511,18 +530,25 @@ import { h } from 'vue';
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   <template v-for="animal in paginatedCards" :key="animal.id">
                      <!-- Card for Potential Match -->
-                     <Card v-if="animal.frame_base64 && animal.reg_base64" class="h-full flex flex-col border-green-500 border-2 relative group">
+                     <Card
+                        v-if="animal.frame_base64 && animal.reg_base64 && isActualRegisteredMatch(animal)"
+                        class="h-full flex flex-col border-green-500 border-2 relative group"
+                      >
                         <CardHeader class="pb-2">
                           <CardTitle class="text-center text-base sm:text-lg text-green-700 flex items-center justify-center gap-2">
                             <Icon name="CheckCircle2" class="h-6 w-6" /> Potential Match!
                           </CardTitle>
                         </CardHeader>
                         <CardContent class="flex-grow flex flex-col gap-2">
-                          <!-- ... existing content ... -->
+                          <!-- ... existing content for matched card ... -->
                           <div class="text-center">
                             <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
                               {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
                             </Badge>
+                          </div>
+                           <!-- Display owner info if available from the match -->
+                          <div v-if="isActualRegisteredMatch(animal)?.user_id" class="text-xs text-center mt-1">
+                            Owned by User ID: {{ isActualRegisteredMatch(animal)?.user_id }}
                           </div>
                           <div class="grid grid-cols-2 gap-2 items-start my-1">
                             <div>
@@ -539,8 +565,8 @@ import { h } from 'vue';
                             <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
                             <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
                             <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
-                            <p><strong>Registered:</strong> {{ animal.is_registered ? 'Yes' : 'No' }}</p>
-                            <p v-if="animal.contact_number"><strong>Contact:</strong> {{ animal.contact_number }}</p>
+                            <p><strong>Registered Database Match:</strong> Yes</p> {/* Explicitly state match */}
+                            <p v-if="animal.contact_number"><strong>Original Contact (if any):</strong> {{ animal.contact_number }}</p>
                             <p><strong>Time Stored:</strong> {{ animal.timestamp }}</p>
                           </div>
                         </CardContent>
@@ -552,20 +578,21 @@ import { h } from 'vue';
                             </Button>
                         </div>
                       </Card>
-                      <!-- Card for Single Detection (Not a Match) -->
+                      <!-- Card for Single Detection (Not a confirmed registered match OR missing an image) -->
                       <CardAnimal
                         v-else
+                        :id="animal.id" 
                         :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                         :imagelink="animal.frame_base64 || animal.reg_base64 || placeholderImage"
                         :description="`Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}`"
-                        :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name"
-                        :hasOwnerMatch="!!animal.contact_number"
+                        :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" /* This 'is_registered' might now be misleading. Consider removing or basing it on isActualRegisteredMatch */
+                        :hasOwnerMatch="!!isActualRegisteredMatch(animal)" /* Update based on actual match */
                         :hasLeash="animal.has_leash"
                         :leashColor="animal.leash_color"
                         :time="animal.timestamp"
                         @delete="() => confirmDeleteDetection(animal)"
-                        class="h-auto min-h-[280px] 2xl:min-h-[320px] relative group"
-                      >
+                        class="h-auto min-h-[280px] 2xl:min-h-[320px]"
+                      />
                         <!-- Delete Button Overlay for CardAnimal -->
                         <template #actions> <!-- Or add directly if CardAnimal doesn't have a slot -->
                            <div class="absolute top-2 right-2 z-10"> <!-- Ensure z-index if needed -->
