@@ -220,7 +220,7 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
   // bodyMessage += `Camera: ${detectedAnimal.camera_name || 'N/A'}\n`;
 
   const payload = {
-    user_id: userId,
+    user_id: 1,
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
     action: '/detections', // Or a specific page for this detection/match
@@ -296,7 +296,6 @@ async function pollExternalAPIAndStore() {
         console.error('Poll: Failed POST to backend /animal-detections:', postError.response?.data || postError.message, 'Payload:', detectionPayload);
         toast.error("Error Saving Detection", { description: postError.response?.data?.message || postError.message });
       }
-
       // ---- NEW: Check for match with registered pets ----
       if (detectedAnimalData.pet_name && detectedAnimalData.breed) {
         const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
