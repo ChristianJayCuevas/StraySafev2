@@ -424,10 +424,10 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                         @click="currentCardPage = Math.max(1, currentCardPage - 1)"
                         :disabled="currentCardPage === 1"
                       />
-                      <template v-for="(page, index) in getPageNumbers" :key="page === 'string' ? ${page}-${index} : page">
+                      <template v-for="(page, index) in getPageNumbers" :key="page === 'string' ? `${page}-${index}` : page"> // <--- TYPO WAS HERE, ALREADY CORRECTED in your snippet for this one. Just ensuring it's noted.
                         <PaginationItem v-if="typeof page === 'number'">
-                          <Button 
-                            class="h-10 w-10" 
+                          <Button
+                            class="h-10 w-10"
                             :variant="page === currentCardPage ? 'default' : 'outline'"
                             @click="currentCardPage = page"
                           >
