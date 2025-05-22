@@ -585,8 +585,8 @@ import { h } from 'vue';
                         :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                         :imagelink="animal.frame_base64 || animal.reg_base64 || placeholderImage"
                         :description="`Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}`"
-                        :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" /* This 'is_registered' might now be misleading. Consider removing or basing it on isActualRegisteredMatch */
-                        :hasOwnerMatch="!!isActualRegisteredMatch(animal)" /* Update based on actual match */
+                        :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
+                        :hasOwnerMatch="!!isActualRegisteredMatch(animal)" 
                         :hasLeash="animal.has_leash"
                         :leashColor="animal.leash_color"
                         :time="animal.timestamp"
