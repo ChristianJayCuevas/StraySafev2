@@ -123,7 +123,7 @@ class AnimalPinsController extends Controller
             'animal_type' => 'required|string|max:255',
             'stray_status' => 'required|string|max:255',
             'camera' => 'nullable|string|max:255', // Changed from 'stream_id' to 'camera'
-            'detection_id' => 'nullable|string|max:255'
+        
         ]);
         
         Log::debug('Validated data:', ['validated' => $validated]);
@@ -132,7 +132,7 @@ class AnimalPinsController extends Controller
             'animal_type' => $validated['animal_type'],
             'stray_status' => $validated['stray_status'],
             'camera' => $validated['camera'],
-            'detection_id' => $validated['detection_id']
+
         ];
         
         // Check if camera is provided
