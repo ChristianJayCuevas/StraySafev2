@@ -215,7 +215,7 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
 
   return registeredPets.value.find(regPet =>
     regPet.pet_name.toLowerCase().trim() === detectedNameLower &&
-    regPet.breed.toLowerCase().trim() === detectedBreedLower &&
+    regPet.breed.toLowerCase().trim() === detectedBreedLower
   );
 }
 // --- Notification Sending ---
