@@ -202,7 +202,7 @@ async function fetchRegisteredPets() {
   }
 }
 function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | undefined {
-  if (!detectedAnimal.pet_name || !detectedAnimal.breed || !detectedAnimal.pet_type) {
+  if (!detectedAnimal.pet_name || !detectedAnimal.breed) {
     return undefined; // Cannot match without these details
   }
   if (isLoadingRegisteredPets.value || registeredPets.value.length === 0) {
@@ -211,12 +211,11 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
 
   const detectedNameLower = detectedAnimal.pet_name.toLowerCase().trim();
   const detectedBreedLower = detectedAnimal.breed.toLowerCase().trim();
-  const detectedPetTypeLower = detectedAnimal.pet_type.toLowerCase().trim();
+
 
   return registeredPets.value.find(regPet =>
     regPet.pet_name.toLowerCase().trim() === detectedNameLower &&
     regPet.breed.toLowerCase().trim() === detectedBreedLower &&
-    regPet.pet_type.toLowerCase().trim() === detectedPetTypeLower
   );
 }
 // --- Notification Sending ---
