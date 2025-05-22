@@ -56,7 +56,7 @@ interface LaravelPagination<T> {
 const isLoading = ref(true); // For initial load of main list
 const isPolling = ref(false); // Flag for concurrent polling control
 let pollingIntervalId: number | undefined = undefined;
-const POLLING_INTERVAL_MS = 1000; // **WARNING: VERY AGGRESSIVE. Change for production!**
+const POLLING_INTERVAL_MS = 3000; // **WARNING: VERY AGGRESSIVE. Change for production!**
 
 const detections = ref<Detection[]>([]);
 const searchQuery = ref('');
@@ -203,7 +203,7 @@ async function pollExternalAPIAndStore() {
     let newCreations = 0;
     let updates = 0;
     const postPromises = postPayloads.map(p =>
-      axios.post('/api/animal-detections', p)
+      axios.post('/animal-detections', p)
         .then(response => {
           if (response.status === 201) newCreations++;
           if (response.status === 200) updates++;
@@ -228,7 +228,7 @@ async function loadDetectionsFromBackend() {
   // console.log(`Loading main list from backend. Page: ${tablePagination.value.pageIndex + 1}, PageSize: ${tablePagination.value.pageSize}`);
   // isLoading.value = true; // This isLoading is for the main list, separate from polling
   try {
-    const response = await axios.get<LaravelPagination<any>>('/api/animal-detections', {
+    const response = await axios.get<LaravelPagination<any>>('/animal-detections', {
       params: {
         page: tablePagination.value.pageIndex + 1,
         per_page: tablePagination.value.pageSize,
@@ -288,13 +288,13 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="container mx-auto py-6 px-4">
        <!-- Polling Warning Banner -->
-      <div v-if="POLLING_INTERVAL_MS > 0 && POLLING_INTERVAL_MS <= 5000" 
+      <!-- <div v-if="POLLING_INTERVAL_MS > 0 && POLLING_INTERVAL_MS <= 5000" 
            class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm" role="alert">
         <p>
           <Icon name="AlertTriangle" class="inline h-5 w-5 mr-2" />
           <strong class="font-semibold">Aggressive Polling Active:</strong> External API is being checked every {{ POLLING_INTERVAL_MS / 1000 }} second(s). This is for demonstration and may cause issues with external API rate limits or performance. Reduce counts in `pollExternalAPIAndStore` or increase `POLLING_INTERVAL_MS` for stable use.
         </p>
-      </div>
+      </div> -->
 
       <div class="flex flex-col gap-6">
         <div v-if="isLoading" class="flex justify-center items-center h-64">
