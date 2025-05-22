@@ -592,7 +592,7 @@ import { h } from 'vue';
                         :time="animal.timestamp"
                         @delete="() => confirmDeleteDetection(animal)"
                         class="h-auto min-h-[280px] 2xl:min-h-[320px]"
-                      />
+                      >
                         <!-- Delete Button Overlay for CardAnimal -->
                         <template #actions> <!-- Or add directly if CardAnimal doesn't have a slot -->
                            <div class="absolute top-2 right-2 z-10"> <!-- Ensure z-index if needed -->
