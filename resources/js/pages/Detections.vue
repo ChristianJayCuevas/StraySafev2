@@ -177,7 +177,7 @@ async function fetchRegisteredPets() {
   isLoadingRegisteredPets.value = true;
   try {
     // Replace with your actual API endpoint for fetching registered pets
-    const response = await axios.get<RegisteredPet[]>('/api/registered-pets'); // Or '/registered-pets'
+    const response = await axios.get<RegisteredPet[]>('/api/mobileregisteredpets'); // Or '/registered-pets'
     registeredPets.value = response.data;
     console.log('Registered pets loaded:', registeredPets.value.length);
   } catch (error) {
