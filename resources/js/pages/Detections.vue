@@ -135,93 +135,78 @@ watch(searchQuery, () => { /* Client-side search on current page */ });
 
 async function pollExternalAPIAndStore() {
   if (isPolling.value) {
-    // console.log('Polling already in progress. Skipping interval.');
     return;
   }
   isPolling.value = true;
-  // console.log('Starting external API poll...');
+  // console.log('Polling /checknewimage...');
 
-  const API_BASE_URL = 'https://straysafe.me/checknewimage';
-  const externalRequests = [];
+  const API_URL = 'https://straysafe.me/checknewimage'; // Corrected from API_BASE_URL
 
-  // WARNING: Fetching all these every second is extremely resource-intensive.
-  // Consider reducing count or increasing POLLING_INTERVAL_MS significantly.
-  // For demonstration with 1s interval, reduce counts drastically:
-  const dogCount = 2; // Originally 60
-  const catCount = 1; // Originally 20
+  try {
+    const response = await axios.get(API_URL);
 
-  for (let i = 1; i <= dogCount; i++) {
-    externalRequests.push(
-      axios.get(`${API_BASE_URL}?id=${i}&type=dog`)
-        .then(response => ({ ...response.data, originalQueryId: String(i), originalQueryType: 'dog' }))
-        .catch(error => {
-          console.warn(`Poll: Failed to fetch dog id=${i}:`, error.response?.status, error.message);
-          return null;
-        })
-    );
-  }
-  for (let i = 1; i <= catCount; i++) {
-    externalRequests.push(
-      axios.get(`${API_BASE_URL}?id=${i}&type=cat`)
-        .then(response => ({ ...response.data, originalQueryId: String(i), originalQueryType: 'cat' }))
-        .catch(error => {
-          console.warn(`Poll: Failed to fetch cat id=${i}:`, error.response?.status, error.message);
-          return null;
-        })
-    );
-  }
+    // Check if the response contains data.
+    // Adjust this condition based on how `/checknewimage` signals "no new data".
+    // It might be an empty object, null, an empty array, or a specific status code handled by axios.
+    // If axios throws for 204, it would be caught in the catch block.
+    const animalData = response.data;
 
-  const responses = await Promise.allSettled(externalRequests); // Use allSettled to process all
-  const postPayloads = [];
-  let itemsFetchedFromExternal = 0;
+    if (animalData && Object.keys(animalData).length > 0 && animalData.id && animalData.type) { // Basic check for valid data
+      // console.log('Poll: New data received from /checknewimage:', animalData);
 
-  responses.forEach((result) => {
-    if (result.status === 'fulfilled' && result.value) {
-      itemsFetchedFromExternal++;
-      const animalData = result.value;
-      const apiPetType = animalData.pet_type || animalData.originalQueryType;
+      // Prepare the payload for your backend
+      // Ensure animalData has fields that map to your backend's expectations.
+      // 'originalQueryId' and 'originalQueryType' were from the loop,
+      // now we use 'id' and 'type' (or similar) directly from the /checknewimage response.
       const payload = {
-        external_api_id: animalData.originalQueryId,
-        external_api_type: animalData.originalQueryType,
+        external_api_id: String(animalData.id), // Assuming 'id' is the unique identifier
+        external_api_type: animalData.type,    // Assuming 'type' is like 'dog' or 'cat'
         breed: animalData.breed || null,
         contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
-        frame_base64: animalData.detected_image_base64 || animalData.frame_base64 || null,
+        frame_base64: animalData.detected_image_base64 || animalData.frame_base64 || null, // Prioritize detected_image_base64
         reg_base64: animalData.registered_image_base64 || animalData.reg_base64 || null,
         has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
         is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
         leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
         pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
-        pet_type: apiPetType,
+        pet_type: animalData.pet_type || animalData.type, // Use pet_type if available, fallback to type
       };
-      postPayloads.push(payload);
+
+      try {
+        // Your backend API endpoint for POSTing is '/api/animal-detections'
+        const backendResponse = await axios.post('/animal-detections', payload); // Corrected endpoint
+        let refreshedList = false;
+
+        if (backendResponse.status === 201) {
+          // console.log('Poll: New detection created in backend.');
+          refreshedList = true;
+        } else if (backendResponse.status === 200) {
+          // console.log('Poll: Existing detection data processed/updated in backend.');
+          // You might only want to refresh if data *actually* changed.
+          // For simplicity, we can refresh, or add more complex logic.
+          // For now, let's assume an update might mean a change worth showing.
+          refreshedList = true;
+        }
+
+        if (refreshedList) {
+          // console.log('Poll: Triggering refresh of main detection list.');
+          await loadDetectionsFromBackend();
+        }
+      } catch (postError: any) {
+        console.error('Poll: Failed POST to backend:', postError.response?.data || postError.message, 'Payload:', payload);
+      }
+    } else {
+      // console.log('Poll: No new data or invalid data from /checknewimage.');
     }
-  });
-
-  // console.log(`Poll: Fetched ${itemsFetchedFromExternal} items from external API. Attempting to POST/update ${postPayloads.length} to backend.`);
-
-  if (postPayloads.length > 0) {
-    let newCreations = 0;
-    let updates = 0;
-    const postPromises = postPayloads.map(p =>
-      axios.post('/animal-detections', p)
-        .then(response => {
-          if (response.status === 201) newCreations++;
-          if (response.status === 200) updates++;
-        })
-        .catch(err => {
-          console.error('Poll: Failed POST to backend:', err.response?.data || err.message, 'Payload:', p.external_api_id);
-        })
-    );
-    await Promise.allSettled(postPromises);
-    // console.log(`Poll: Backend processing complete. New: ${newCreations}, Updated/Processed: ${updates}.`);
-
-    // Refresh main displayed list if any changes were made or periodically
-    if (newCreations > 0 || updates > 0) { // Or some other condition
-      // console.log('Poll: Triggering refresh of main detection list.');
-      await loadDetectionsFromBackend();
+  } catch (error: any) {
+    if (error.response && error.response.status === 204) {
+      // console.log('Poll: No new image data (204 No Content).');
+    } else {
+      console.warn(`Poll: Failed to fetch from /checknewimage:`, error.response?.status, error.message);
     }
+  } finally {
+    isPolling.value = false;
   }
-  isPolling.value = false;
 }
 
 async function loadDetectionsFromBackend() {
