@@ -240,7 +240,7 @@ async function fetchDetections() {
             itemTimestamp.setHours(14, 59, 59); // Cap at 2:59:59 PM on May 21
         }
          // Ensure the generated time is not before the start time on the first day
-        if (itemTimestamp.getDate() === 19 && itemTimestamp.getHours() < 😎 {
+        if (itemTimestamp.getDate() === 19 && itemTimestamp.getHours() < 8) {
             itemTimestamp.setHours(8, 0, 0); // Cap at 8:00:00 AM on May 19
         }
 
