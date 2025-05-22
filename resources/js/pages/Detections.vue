@@ -151,7 +151,7 @@ async function pollExternalAPIAndStore() {
     // If axios throws for 204, it would be caught in the catch block.
     const animalData = response.data;
 
-    if (animalData && Object.keys(animalData).length > 0 && animalData.id && animalData.type) { // Basic check for valid data
+    if (animalData && Object.keys(animalData).length > 0 && animalData.pet_type && animalData.pet_name) { // Basic check for valid data
       // console.log('Poll: New data received from /checknewimage:', animalData);
 
       // Prepare the payload for your backend
@@ -159,8 +159,8 @@ async function pollExternalAPIAndStore() {
       // 'originalQueryId' and 'originalQueryType' were from the loop,
       // now we use 'id' and 'type' (or similar) directly from the /checknewimage response.
       const payload = {
-        external_api_id: String(animalData.id), // Assuming 'id' is the unique identifier
-        external_api_type: animalData.type,    // Assuming 'type' is like 'dog' or 'cat'
+        external_api_id: String(animalData.pet_name), // Assuming 'id' is the unique identifier
+        external_api_type: animalData.pet_type,    // Assuming 'type' is like 'dog' or 'cat'
         breed: animalData.breed || null,
         contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
         frame_base64: animalData.detected_image_base64 || animalData.frame_base64 || null, // Prioritize detected_image_base64
@@ -261,10 +261,10 @@ onUnmounted(() => {
   }
 });
 
-const currentCardPage = computed({ /* ... */ });
+const currentCardPage = computed({});
 const totalCardPages = computed(() => backendPaginationData.value.last_page);
 const paginatedCards = computed(() => filteredDetections.value);
-const getPageNumbers = computed(() => { /* ... */ });
+const getPageNumbers = computed(() => {});
 const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
 </script>
 
