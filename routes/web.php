@@ -11,6 +11,8 @@ use App\Http\Controllers\RegisteredAnimalController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AnimalDetectionController;
+
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
@@ -221,7 +223,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     Route::delete('/notifications/{id}', [NotificationController::class, 'delete'])->name('notifications.delete');
 });
-
+Route::apiResource('animal-detections', AnimalDetectionController::class);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/unread-count', function () {

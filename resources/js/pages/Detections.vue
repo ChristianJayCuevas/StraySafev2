@@ -434,7 +434,7 @@ const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No
                         <PaginationEllipsis v-else />
                       </template>
                       <PaginationNext 
-                        @click="currentCardPage = Math.min(totalCardPages, current_card_page + 1)"
+                        @click="currentCardPage = Math.min(totalCardPages, currentCardPage + 1)"
                         :disabled="currentCardPage === totalCardPages"
                       />
                     </PaginationContent>
