@@ -583,7 +583,7 @@ import { h } from 'vue';
                         :id="animal.id" 
                         :title="animal.pet_type ? animal.pet_type.toUpperCase() : 'UNKNOWN TYPE'"
                         :imagelink="animal.frame_base64 || animal.reg_base64 || placeholderImage"
-                        :description="`Breed: ${animal.breed || 'N/A'}${animal.pet_name ? ', Name: ' + animal.pet_name : ''}`"
+                        :description="`Breed: ${animal.breed || 'N/A'}`"
                         :isStray="animal.is_registered === false && !animal.contact_number && !animal.pet_name" 
                         :hasOwnerMatch="!!isActualRegisteredMatch(animal)" 
                         :hasLeash="animal.has_leash"
