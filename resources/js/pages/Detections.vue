@@ -565,7 +565,7 @@ import { h } from 'vue';
                             <p><strong>Type:</strong> {{ animal.pet_type || 'N/A' }}</p>
                             <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
                             <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
-                            <p><strong>Registered Database Match:</strong> Yes</p> {/* Explicitly state match */}
+                            <p><strong>Registered Database Match:</strong> Yes</p>
                             <p v-if="animal.contact_number"><strong>Original Contact (if any):</strong> {{ animal.contact_number }}</p>
                             <p><strong>Time Stored:</strong> {{ animal.timestamp }}</p>
                           </div>
