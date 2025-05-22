@@ -1,4 +1,4 @@
-<script lang="ts">
+<script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
