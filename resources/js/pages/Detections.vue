@@ -207,12 +207,12 @@ async function pollExternalAPIAndStore() {
     const animalData = response.data;
 
     // Ensure your Flask API returns 'api_id' and 'api_type' (or similar)
-    if (animalData && Object.keys(animalData).length > 0 && animalData.api_id && animalData.api_type) {
+    if (animalData && Object.keys(animalData).length > 0 && animalData.pet_name && animalData.pet_type) {
       console.log('Poll: New data received from /checknewimage:', animalData);
 
       const payload = {
-        external_api_id: String(animalData.api_id),
-        external_api_type: animalData.api_type,
+        external_api_id: String(animalData.pet_name),
+        external_api_type: animalData.pet_type,
         breed: animalData.breed || null,
         contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
         frame_base64: animalData.detected_image_base64 || animalData.frame_base64 || null,
