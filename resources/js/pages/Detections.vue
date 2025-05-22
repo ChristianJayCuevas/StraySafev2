@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
@@ -23,9 +23,7 @@ import {
 import {
   Tabs, TabsContent, TabsList, TabsTrigger
 } from '@/components/ui/tabs';
-import {toast} from 'vue-sonner'; // Import useToast
-
-// Initialize toast
+import {toast} from 'vue-sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Detections', href: '/detections' },
@@ -35,8 +33,8 @@ interface Detection {
   id: number; // Internal DB ID for your Laravel backend
   external_api_id: string | null;
   external_api_type: string | null;
-  api_id?: string | null; // From Flask if you added it
-  api_type?: string | null; // From Flask if you added it
+  api_id?: string | null;
+  api_type?: string | null;
   breed: string | null;
   contact_number: string | null;
   frame_base64: string | null;
@@ -48,6 +46,20 @@ interface Detection {
   reg_base64: string | null;
   timestamp: string;
   external_data_timestamp: string | null;
+  // For notification context
+  latitude?: string | null;
+  longitude?: string | null;
+  camera_name?: string | null;
+}
+
+// NEW: Interface for Registered Pet
+interface RegisteredPet {
+  id: number;         // Registered Pet's own ID
+  user_id: number;    // Owner's User ID
+  pet_name: string;
+  breed: string;
+  pet_type: string; // e.g., 'dog', 'cat'
+  // ... any other relevant fields from your registered_pets table
 }
 
 interface LaravelPagination<T> {
@@ -61,10 +73,13 @@ interface LaravelPagination<T> {
 const isLoading = ref(true);
 const isPolling = ref(false);
 let pollingIntervalId: number | undefined = undefined;
-const POLLING_INTERVAL_MS = 3000;
-const isMonitoringActive = ref(false); // New state for monitoring control
+const POLLING_INTERVAL_MS = 3000; // Keep it higher for production (e.g., 10-30 seconds)
+const isMonitoringActive = ref(false);
 
 const detections = ref<Detection[]>([]);
+const registeredPets = ref<RegisteredPet[]>([]); // NEW: Store registered pets
+const isLoadingRegisteredPets = ref(true);      // NEW: Loading state for registered pets
+
 const searchQuery = ref('');
 const backendPaginationData = ref<Omit<LaravelPagination<any>, 'data'>>({
   current_page: 1, last_page: 1, per_page: 10, total: 0, from: null, to: null,
@@ -72,11 +87,9 @@ const backendPaginationData = ref<Omit<LaravelPagination<any>, 'data'>>({
 });
 const tablePagination = ref<PaginationState>({ pageIndex: 0, pageSize: 10 });
 
-// --- Toast and Action Confirmations (Optional, but good UX) ---
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 const showDeleteConfirmDialog = ref(false);
@@ -86,8 +99,6 @@ function confirmDeleteDetection(detection: Detection) {
   detectionToDelete.value = detection;
   showDeleteConfirmDialog.value = true;
 }
-// --- End Toast ---
-
 
 function formatBase64Image(base64String: string | null, imageTypeIfRaw: string = 'png'): string | null {
   if (!base64String) return null;
@@ -127,16 +138,12 @@ const columns = [
   columnHelper.accessor('has_leash', { header: 'Has Leash?', cell: info => info.getValue() === null ? 'N/A' : (info.getValue() ? 'Yes' : 'No') }),
   columnHelper.accessor('is_registered', { header: 'Registered?', cell: info => info.getValue() === null ? 'N/A' : (info.getValue() ? 'Yes' : 'No') }),
   columnHelper.accessor('timestamp', { header: 'Time Stored', cell: info => info.getValue() || 'N/A' }),
-  columnHelper.display({ // New column for actions
+  columnHelper.display({
     id: 'actions',
     header: 'Actions',
     cell: ({ row }) => h(
         Button,
-        {
-          variant: 'destructive',
-          size: 'sm',
-          onClick: () => confirmDeleteDetection(row.original),
-        },
+        { variant: 'destructive', size: 'sm', onClick: () => confirmDeleteDetection(row.original) },
         () => [h(Icon, { name: 'Trash2', class: 'h-4 w-4 mr-1' }), 'Delete']
       ),
   }),
@@ -164,93 +171,143 @@ const table = useVueTable({
 
 watch(searchQuery, () => { /* Client-side search on current page */ });
 
-function startMonitoring() {
-  if (POLLING_INTERVAL_MS > 0 && !pollingIntervalId) {
-    console.warn(`External API polling starting: every ${POLLING_INTERVAL_MS / 1000}s.`);
-    pollingIntervalId = window.setInterval(pollExternalAPIAndStore, POLLING_INTERVAL_MS);
-    isMonitoringActive.value = true;
-    // Use vue-sonner's toast.info() or toast() for default
-    toast.info("Monitoring Started", { // Or just toast("Monitoring Started", { ... })
-      description: `Checking for new detections every ${POLLING_INTERVAL_MS / 1000}s.`,
-    });
-  }
-}
-function stopMonitoring() {
-  if (pollingIntervalId !== undefined) {
-    clearInterval(pollingIntervalId);
-    pollingIntervalId = undefined;
-    isMonitoringActive.value = false;
-    console.log('External API polling stopped.');
-    toast.info("Monitoring Stopped", { // Or just toast("Monitoring Stopped", { ... })
-      description: "No longer checking for new detections automatically.",
-    });
+
+// --- Registered Pets Fetching ---
+async function fetchRegisteredPets() {
+  isLoadingRegisteredPets.value = true;
+  try {
+    // Replace with your actual API endpoint for fetching registered pets
+    const response = await axios.get<RegisteredPet[]>('/api/registered-pets'); // Or '/registered-pets'
+    registeredPets.value = response.data;
+    console.log('Registered pets loaded:', registeredPets.value.length);
+  } catch (error) {
+    console.error('Error fetching registered pets:', error);
+    toast.error("Error Loading Registered Pets", { description: "Could not fetch the list of registered pets." });
+    registeredPets.value = [];
+  } finally {
+    isLoadingRegisteredPets.value = false;
   }
 }
 
-function toggleMonitoring() {
-  if (isMonitoringActive.value) {
-    stopMonitoring();
-  } else {
-    startMonitoring();
+// --- Notification Sending ---
+async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet) {
+  const NOTIFICATION_URL = 'https://straysafe.me/send-notification'; // Your actual notification endpoint
+
+  // Prepare a detailed body message
+  // You might get lat/lon/camera from the 'detectedAnimal' if your Flask API provides it
+  // For now, using placeholders or what's available.
+  let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
+  bodyMessage += `Detected Pet Type: ${detectedAnimal.pet_type || 'N/A'}\n`;
+  bodyMessage += `Detected Breed: ${detectedAnimal.breed || 'N/A'}\n`;
+  if (detectedAnimal.pet_name && detectedAnimal.pet_name !== 'none') {
+    bodyMessage += `Detected Name (if any): ${detectedAnimal.pet_name}\n`;
   }
-}
+  // Add these if your Flask API provides them in `animalData`
+  // bodyMessage += `Location: Lat ${detectedAnimal.latitude || 'N/A'}, Lon ${detectedAnimal.longitude || 'N/A'}\n`;
+  // bodyMessage += `Camera: ${detectedAnimal.camera_name || 'N/A'}\n`;
 
+  const payload = {
+    user_id: userId,
+    title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
+    body: bodyMessage,
+    action: '/detections', // Or a specific page for this detection/match
+    image: detectedAnimal.frame_base64 || detectedAnimal.reg_base64 || 'https://straysafe.me/images/default-pet-notification.png', // Use detected image, fallback
+  };
 
-async function pollExternalAPIAndStore() {
-  if (isPolling.value) return;
-  isPolling.value = true;
-
-  const API_URL = 'https://straysafe.me/checknewimage'; // Or your local Flask URL
+  console.log('Sending notification payload:', payload);
 
   try {
-    const response = await axios.get(API_URL);
-    const animalData = response.data;
+    const response = await axios.post(NOTIFICATION_URL, payload);
+    console.log('Notification sent successfully:', response.data);
+    toast.success("Match Notification Sent!", { description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` });
+  } catch (error: any) {
+    console.error('Error sending notification:', error.response?.data || error.message);
+    toast.error("Notification Error", { description: "Failed to send match notification to owner." });
+  }
+}
 
-    // Ensure your Flask API returns 'api_id' and 'api_type' (or similar)
-    if (animalData && Object.keys(animalData).length > 0 && animalData.pet_name && animalData.pet_type) {
-      console.log('Poll: New data received from /checknewimage:', animalData);
+// --- Enhanced Polling Logic ---
+async function pollExternalAPIAndStore() {
+  if (isPolling.value) return;
+  if (isLoadingRegisteredPets.value) {
+    console.log('Polling paused: Registered pets data is still loading.');
+    return;
+  }
+  isPolling.value = true;
 
-      const payload = {
-        external_api_id: String(animalData.pet_name),
-        external_api_type: animalData.pet_type,
-        breed: animalData.breed || null,
-        contact_number: animalData.contact_number === 'none' ? null : (animalData.contact_number || null),
-        frame_base64: animalData.detected_image_base64 || animalData.frame_base64 || null,
-        reg_base64: animalData.registered_image_base64 || animalData.reg_base64 || null,
-        has_leash: typeof animalData.has_leash === 'boolean' ? animalData.has_leash : null,
-        is_registered: typeof animalData.is_registered === 'boolean' ? animalData.is_registered : null,
-        leash_color: animalData.leash_color === 'none' ? null : (animalData.leash_color || null),
-        pet_name: animalData.pet_name === 'none' ? null : (animalData.pet_name || null),
-        pet_type: animalData.pet_type || animalData.api_type,
+  const API_URL = 'https://straysafe.me/checknewimage';
+
+  try {
+    const response = await axios.get<Detection>(API_URL); // Assume animalData matches Detection structure
+    const detectedAnimalData = response.data;
+
+    // Using pet_name and pet_type from Flask response as the primary identifiers for a detection
+    // This was the condition you had: animalData.pet_name && animalData.pet_type
+    // Let's ensure Flask provides these consistently.
+    if (detectedAnimalData && Object.keys(detectedAnimalData).length > 0 && detectedAnimalData.pet_name && detectedAnimalData.pet_type) {
+      console.log('Poll: New detection received:', detectedAnimalData);
+
+      // Prepare payload for saving the detection to your Laravel backend
+      const detectionPayload = {
+        external_api_id: String(detectedAnimalData.pet_name), // Or use a more unique ID from Flask if available
+        external_api_type: detectedAnimalData.pet_type,
+        breed: detectedAnimalData.breed || null,
+        contact_number: detectedAnimalData.contact_number === 'none' ? null : (detectedAnimalData.contact_number || null),
+        frame_base64: detectedAnimalData.detected_image_base64 || detectedAnimalData.frame_base64 || null,
+        reg_base64: detectedAnimalData.registered_image_base64 || detectedAnimalData.reg_base64 || null,
+        has_leash: typeof detectedAnimalData.has_leash === 'boolean' ? detectedAnimalData.has_leash : null,
+        is_registered: typeof detectedAnimalData.is_registered === 'boolean' ? detectedAnimalData.is_registered : null,
+        leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
+        pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null), // This is the detected pet's name
+        pet_type: detectedAnimalData.pet_type,
+        // Include location data if Flask provides it
+        // latitude: detectedAnimalData.latitude || null,
+        // longitude: detectedAnimalData.longitude || null,
+        // camera_name: detectedAnimalData.camera_name || null,
       };
 
+      // Save the detection to your backend
       try {
-        const backendResponse = await axios.post('/animal-detections', payload);
+        const backendResponse = await axios.post('/animal-detections', detectionPayload);
         let refreshedList = false;
-
-        if (backendResponse.status === 201) {
-          console.log('Poll: New detection created in backend.');
-          toast.success("New Detection Saved!", {
-            description: `Pet: ${payload.pet_name || payload.external_api_id}`,
-          });
-          refreshedList = true;
-        } else if (backendResponse.status === 200) {
-          console.log('Poll: Existing detection data processed/updated in backend.');
-          // Decide if a toast is needed for updates
+        if (backendResponse.status === 201 || backendResponse.status === 200) {
+          if(backendResponse.status === 201) {
+            toast.success("New Detection Saved!", { description: `Pet: ${detectionPayload.pet_name || detectionPayload.external_api_id}` });
+          }
           refreshedList = true;
         }
-
         if (refreshedList) {
-          await loadDetectionsFromBackend();
+          await loadDetectionsFromBackend(); // Refresh the displayed list of detections
         }
       } catch (postError: any) {
-        console.error('Poll: Failed POST to backend:', postError.response?.data || postError.message, 'Payload:', payload);
-        toast.error("Error Saving Detection", {
-          description: postError.response?.data?.message || postError.message,
-        });
+        console.error('Poll: Failed POST to backend /animal-detections:', postError.response?.data || postError.message, 'Payload:', detectionPayload);
+        toast.error("Error Saving Detection", { description: postError.response?.data?.message || postError.message });
       }
+
+      // ---- NEW: Check for match with registered pets ----
+      if (detectedAnimalData.pet_name && detectedAnimalData.pet_name !== 'none' && detectedAnimalData.breed) {
+        const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
+        const detectedBreedLower = detectedAnimalData.breed.toLowerCase();
+        const detectedPetTypeLower = detectedAnimalData.pet_type.toLowerCase();
+
+        for (const regPet of registeredPets.value) {
+          if (
+            regPet.pet_name.toLowerCase() === detectedNameLower &&
+            regPet.breed.toLowerCase() === detectedBreedLower &&
+            regPet.pet_type.toLowerCase() === detectedPetTypeLower // Optional: match pet_type too
+          ) {
+            console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.user_id}`);
+            // Send notification
+            await sendPetMatchNotification(regPet.user_id, detectedAnimalData, regPet);
+            // Optional: Break if you only want to notify for the first match
+            // break;
+          }
+        }
+      }
+      // ---- END NEW ----
+
     } else {
-      // console.log('Poll: No new data or invalid/incomplete data from /checknewimage. Data:', animalData);
+      // console.log('Poll: No new valid data from /checknewimage. Data:', detectedAnimalData);
     }
   } catch (error: any) {
     if (error.response && error.response.status === 204) {
@@ -263,14 +320,52 @@ async function pollExternalAPIAndStore() {
   }
 }
 
+
+function startMonitoring() {
+  if (POLLING_INTERVAL_MS > 0 && !pollingIntervalId) {
+    if (isLoadingRegisteredPets.value) {
+      toast.info("Hold on...", { description: "Loading registered pet data before starting monitoring." });
+      // Wait for registered pets to load, then start.
+      // This could be improved with a watcher or promise chain.
+      const unwatch = watch(isLoadingRegisteredPets, (newValue) => {
+        if (!newValue) {
+          unwatch(); // Stop watching once loaded
+          console.warn(`External API polling starting: every ${POLLING_INTERVAL_MS / 1000}s.`);
+          pollingIntervalId = window.setInterval(pollExternalAPIAndStore, POLLING_INTERVAL_MS);
+          isMonitoringActive.value = true;
+          toast.info("Monitoring Started", { description: `Checking for new detections every ${POLLING_INTERVAL_MS / 1000}s.`});
+        }
+      });
+    } else {
+        console.warn(`External API polling starting: every ${POLLING_INTERVAL_MS / 1000}s.`);
+        pollingIntervalId = window.setInterval(pollExternalAPIAndStore, POLLING_INTERVAL_MS);
+        isMonitoringActive.value = true;
+        toast.info("Monitoring Started", { description: `Checking for new detections every ${POLLING_INTERVAL_MS / 1000}s.`});
+    }
+  }
+}
+function stopMonitoring() {
+  if (pollingIntervalId !== undefined) {
+    clearInterval(pollingIntervalId);
+    pollingIntervalId = undefined;
+    isMonitoringActive.value = false;
+    console.log('External API polling stopped.');
+    toast.info("Monitoring Stopped", { description: "No longer checking for new detections automatically." });
+  }
+}
+
+function toggleMonitoring() {
+  if (isMonitoringActive.value) {
+    stopMonitoring();
+  } else {
+    startMonitoring();
+  }
+}
+
 async function loadDetectionsFromBackend() {
-  //isLoading.value = true; // Can be used if you want a spinner for main list reloads too
   try {
     const response = await axios.get<LaravelPagination<any>>('/animal-detections', {
-      params: {
-        page: tablePagination.value.pageIndex + 1,
-        per_page: tablePagination.value.pageSize,
-      },
+      params: { page: tablePagination.value.pageIndex + 1, per_page: tablePagination.value.pageSize },
     });
     const { data, ...paginationInfo } = response.data;
     detections.value = data.map((item: any) => ({
@@ -278,7 +373,6 @@ async function loadDetectionsFromBackend() {
       id: Number(item.id),
       external_api_id: item.external_api_id || null,
       external_api_type: item.external_api_type || null,
-      // If Flask added api_id and api_type, map them here too if needed for display elsewhere
       api_id: item.api_id || null,
       api_type: item.api_type || null,
       timestamp: formatBackendTimestamp(item.detected_at),
@@ -291,67 +385,43 @@ async function loadDetectionsFromBackend() {
     console.error('Error fetching main list from backend:', error);
     detections.value = [];
     backendPaginationData.value = { ...backendPaginationData.value, total:0, last_page:1, current_page:1 };
-    toast.error("Error Loading Detections", {
-      description: "Could not fetch the list of detections.",
-    });
-  } finally {
-    //isLoading.value = false;
+    toast.error("Error Loading Detections", { description: "Could not fetch the list of detections." });
   }
 }
 
 async function deleteDetection(detectionId: number) {
   console.log(`Attempting to delete detection with ID: ${detectionId}`);
   try {
-    // Your backend API endpoint for DELETE is typically `/animal-detections/{id}`
     await axios.delete(`/animal-detections/${detectionId}`);
-    toast.success("Detection Deleted", { // Or just toast("Detection Deleted", { ... })
-      description: `Detection ID ${detectionId} has been removed.`,
-    });
-
-    // Refresh the list:
-    // Option A: Simple reload of current page
+    toast.success("Detection Deleted", { description: `Detection ID ${detectionId} has been removed.` });
     await loadDetectionsFromBackend();
-
-    // Option B: More sophisticated (remove from local array, handle pagination if last item on page)
-    // detections.value = detections.value.filter(d => d.id !== detectionId);
-    // backendPaginationData.value.total--;
-    // // Potentially adjust current page if it becomes empty, etc.
-    // if (detections.value.length === 0 && backendPaginationData.value.current_page > 1) {
-    //    tablePagination.value.pageIndex--; // Go to previous page
-    //    await loadDetectionsFromBackend();
-    // } else if (detections.value.length === 0 && backendPaginationData.value.total === 0) {
-    //    // List is now completely empty
-    // }
-
   } catch (error: any) {
     console.error(`Error deleting detection ${detectionId}:`, error.response?.data || error.message);
-    toast.error("Error Deleting Detection", {
-      description: error.response?.data?.message || "Could not delete the detection.",
-    });
+    toast.error("Error Deleting Detection", { description: error.response?.data?.message || "Could not delete the detection." });
   } finally {
     showDeleteConfirmDialog.value = false;
     detectionToDelete.value = null;
   }
 }
 
-
 onMounted(async () => {
   isLoading.value = true;
-  await loadDetectionsFromBackend();
-  isLoading.value = false;
+  // Fetch both detections and registered pets in parallel
+  await Promise.all([
+    loadDetectionsFromBackend(),
+    fetchRegisteredPets() // Fetch registered pets on mount
+  ]);
+  isLoading.value = false; // Set to false after both are done
 
-  // Decide if monitoring should start automatically or be user-initiated
-  // For example, start it by default:
-  startMonitoring();
+  startMonitoring(); // Start monitoring after initial data is loaded
 });
 
 onUnmounted(() => {
-  stopMonitoring(); // Ensure polling stops when component is unmounted
+  stopMonitoring();
 });
 
-// For card pagination (assuming you want to keep client-side pagination for cards for now)
-const currentCardPage = ref(1); // Keep this if you use client-side pagination for cards
-const cardsPerPage = 8; // Example
+const currentCardPage = ref(1);
+const cardsPerPage = 8;
 
 const totalCardPages = computed(() => {
   return Math.ceil(filteredDetections.value.length / cardsPerPage);
@@ -364,8 +434,6 @@ const paginatedCards = computed(() => {
 });
 
 const getPageNumbers = computed(() => {
-    // ... (your existing complex pagination logic for cards) ...
-    // This example is simplified; adapt your existing logic
     const total = totalCardPages.value;
     const current = currentCardPage.value;
     const delta = 2;
@@ -381,11 +449,9 @@ const getPageNumbers = computed(() => {
 });
 
 const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
-
-// For rendering `h` in table cell
-import { h } from 'vue'
-
+import { h } from 'vue';
 </script>
+
 
 <template>
   <Head title="Detections" />

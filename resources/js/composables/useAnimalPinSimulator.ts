@@ -61,6 +61,8 @@ export function useAnimalPinSimulator(mapInstance: any) {
       <div>
         <strong>Type:</strong> ${pin.animal_type}<br>
         <strong>Status:</strong> ${pin.stray_status}
+        <strong>Longitude:</strong> ${pin.longitude}
+        <strong>Latitude:</strong> ${pin.latitude}
       </div>
     `)
 
