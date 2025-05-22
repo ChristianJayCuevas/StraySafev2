@@ -51,12 +51,12 @@ const mainNavItems: NavItem[] = [
         icon: Cctv,
         group: "Stray Management"
     },
-    {
-        title: 'CCTV View',
-        href: '/cctvmonitor',
-        icon: MonitorPlay,
-        group: "Stray Management"
-    },
+    // {
+    //     title: 'CCTV View',
+    //     href: '/cctvmonitor',
+    //     icon: MonitorPlay,
+    //     group: "Stray Management"
+    // },
 ];
 
 const footerNavItems: NavItem[] = [

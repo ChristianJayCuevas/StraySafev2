@@ -9,6 +9,7 @@ import Map from '@/components/map/Map.vue';
   :selectMap="false" 
   :legend="true"
   :heatmap="false" 
-  :mobile="true"/>
+  :mobile="true"
+  :mobileSelect="true"/>
     </AppLayout>
 </template>

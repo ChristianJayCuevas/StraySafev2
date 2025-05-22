@@ -448,13 +448,14 @@ const props = withDefaults(defineProps<{
   legend?: boolean
   heatmap?: boolean
   mobile?: boolean
+  mobileSelect?: boolean
 }>(), {
   control: true,
   currentMap: true,
   selectMap: true,
   legend: true,
   heatmap: false,
-  mobile: false,
+  mobileSelect: false,
 })
 
 // Watch heatmap prop and toggle mode accordingly
@@ -597,7 +598,12 @@ const selectedAreaId = ref('')
   </div>
   
   <!-- Select Map Button -->
+
   <div v-if="props.selectMap" class="flex flex-col gap-2 absolute top-6 right-6 z-10">
+    <MapCreate :selected-map="selectedMap?.id"/>
+  </div>
+
+  <div v-if="props.mobileSelect" class="flex flex-col gap-2 absolute top-20 right-6 z-10">
     <MapCreate :selected-map="selectedMap?.id"/>
   </div>
   
