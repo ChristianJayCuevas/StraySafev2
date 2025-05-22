@@ -58,15 +58,15 @@ Route::patch('/cameras/{id}/status', [CameraController::class, 'updateStatus']);
 Route::patch('/cameras/{id}/mode', [CameraController::class, 'updateMode']);
 Route::delete('/cameras/{id}', [CameraController::class, 'destroy']);
 
-Route::middleware([ValidateStaticToken::class])->group(function () {
-    Route::post('/api/user/image', [UserController::class, 'updateProfileImage']);
-    Route::post('/api/user/signup', [UserController::class, 'register']);
-    Route::post('/api/mobilelogin', [UserController::class, 'login']);
-    Route::get('/api/mobileusers', [UserController::class, 'fetchUsers']);
-    Route::get('api/mobileuser/me', [UserController::class, 'fetchLoggedInUser']);
-    Route::get('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'fetchRegisteredAnimals']);
-    Route::post('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
-});
+
+Route::post('/api/user/image', [UserController::class, 'updateProfileImage']);
+Route::post('/api/user/signup', [UserController::class, 'register']);
+Route::post('/api/mobilelogin', [UserController::class, 'login']);
+Route::get('/api/mobileusers', [UserController::class, 'fetchUsers']);
+Route::get('api/mobileuser/me', [UserController::class, 'fetchLoggedInUser']);
+Route::get('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'fetchRegisteredAnimals']);
+Route::post('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
+
 Route::get('/registered-animals', [RegisteredAnimalController::class, 'index']);
 Route::post('/registered-animals', [RegisteredAnimalController::class, 'store']);
 Route::put('/registered-animals/{id}', [RegisteredAnimalController::class, 'update']);

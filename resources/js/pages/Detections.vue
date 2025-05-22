@@ -486,6 +486,7 @@ import { h } from 'vue'
                         :hasLeash="animal.has_leash"
                         :leashColor="animal.leash_color"
                         :time="animal.timestamp"
+                        @delete="() => confirmDeleteDetection(animal)"
                         class="h-auto min-h-[280px] 2xl:min-h-[320px] relative group"
                       >
                         <!-- Delete Button Overlay for CardAnimal -->

@@ -33,10 +33,10 @@ function handleDelete() {
 </script>
 
 <template>
-  <Card class="hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300 flex flex-col text-[14px] 2xl:text-[18px] overflow-hidden py-0 rounded-xl shadow-sm relative group"> {/* Added relative group */}
+  <Card class="hover:border-black dark:hover:border-white hover:-translate-y-1 transition-all duration-300 flex flex-col text-[14px] 2xl:text-[18px] overflow-hidden py-0 rounded-xl shadow-sm relative group">
 
     <!-- Delete Button Overlay -->
-    <div class="absolute top-2 right-2 z-10"> {/* Ensure z-index if needed */}
+    <div class="absolute top-2 right-2 z-10"> 
         <Button @click="handleDelete" variant="destructive" size="icon" class="h-8 w-8 opacity-50 group-hover:opacity-100 transition-opacity">
             <Icon name="Trash2" class="h-4 w-4" />
             <span class="sr-only">Delete Detection</span>

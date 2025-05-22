@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3'; // Added router for navigation
 import { ref, onMounted, computed } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
@@ -21,13 +21,14 @@ import { Input } from '@/components/ui/input';
 import axios from 'axios';
 import {
   createColumnHelper,
-  FlexRender,
+  FlexRender, // Import FlexRender
   getCoreRowModel,
   getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useVueTable,
+  type ColumnDef, // Import ColumnDef for explicit typing
 } from '@tanstack/vue-table';
 
 import {
@@ -49,46 +50,44 @@ import {
 const breadcrumbs: BreadcrumbItem[] = [
   {
     title: 'Registered Pets',
-    href: '/pets/registered',
+    href: '/pets/registered', // Assuming this is the correct route for this page
   },
 ];
 
-interface Pet {
+// Interface for data used in TanStack Table and potentially cards if consistent
+interface PetDisplayData {
   id: number;
   name: string;
   breed: string;
   type: string;
-
   owner: string;
+  contact: string;
+  status: string;
   registered_date: string;
-
-
-  image: string;
+  image_base64: string | null; // Store the raw Base64 string
 }
 
-// Update the interface to match the API response structure
+// API response structure
 interface ApiPet {
   id: number;
   pet_name: string;
   animal_type: string;
-  picture: string;
+  picture: string | null; // This is the Base64 string from API
   status: string;
   owner: string;
   breed: string;
   contact: string;
   created_at: string;
+  // Add mime_type if your API provides it, e.g., mime_type: 'image/jpeg'
 }
 
-// Add interface for API response structure
 interface ApiResponse {
   status: string;
   data: ApiPet[];
 }
 
 const isLoading = ref(true);
-const pets = ref<Pet[]>([]);
-// Changed from an array to store the formatted API data
-const newpets = ref<ApiPet[]>([]);
+const allFetchedPets = ref<ApiPet[]>([]); // Store raw API data
 const searchQuery = ref('');
 const statusFilter = ref('all');
 
@@ -97,42 +96,49 @@ const cardsPerPage = 8;
 const currentCardPage = ref(1);
 
 // Filter pets based on search and status
-const filteredPets = computed(() => {
-  let filtered = newpets.value;
+const filteredAndSortedPets = computed(() => {
+  let filtered = allFetchedPets.value;
   
-  // Apply status filter
   if (statusFilter.value !== 'all') {
-    filtered = filtered.filter(pet => pet.status === statusFilter.value);
+    filtered = filtered.filter(pet => pet.status.toLowerCase() === statusFilter.value.toLowerCase());
   }
   
-  // Apply search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(pet =>
       pet.pet_name.toLowerCase().includes(query) ||
       pet.breed.toLowerCase().includes(query) ||
       pet.animal_type.toLowerCase().includes(query) ||
+      (pet.owner && pet.owner.toLowerCase().includes(query)) ||
       (pet.contact && pet.contact.toLowerCase().includes(query))
     );
   }
-  
-  return filtered;
+  // Sort by creation date, newest first
+  return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 });
-// Calculate total pages
-const totalCardPages = computed(() => Math.ceil(filteredPets.value.length / cardsPerPage));
 
-// Get paginated cards
-const paginatedCards = computed(() => {
+const totalCardPages = computed(() => Math.ceil(filteredAndSortedPets.value.length / cardsPerPage));
+
+const paginatedCardsData = computed(() => {
   const startIndex = (currentCardPage.value - 1) * cardsPerPage;
-  return filteredPets.value.slice(startIndex, startIndex + cardsPerPage);
+  return filteredAndSortedPets.value.slice(startIndex, startIndex + cardsPerPage);
 });
 
 // TanStack table configuration
-const columnHelper = createColumnHelper<Pet>();
-const columns = [
-  columnHelper.accessor('id', {
-    header: 'ID',
-    cell: info => info.getValue(),
+const columnHelper = createColumnHelper<PetDisplayData>();
+
+const columns: ColumnDef<PetDisplayData, any>[] = [
+  columnHelper.display({ // Using display for custom rendering
+    id: 'image',
+    header: 'Image',
+    cell: ({ row }) => h('div', { class: 'flex justify-center items-center' }, [
+        h('img', { 
+            src: row.original.image_base64 ? `data:image/jpeg;base64,${row.original.image_base64}` : 'https://placehold.co/60x60?text=N/A',
+            alt: row.original.name,
+            class: 'w-12 h-12 object-cover rounded',
+            onError: (e: Event) => { (e.target as HTMLImageElement).src = 'https://placehold.co/60x60?text=Error'; }
+        })
+    ]),
   }),
   columnHelper.accessor('name', {
     header: 'Name',
@@ -146,126 +152,125 @@ const columns = [
     header: 'Breed',
     cell: info => info.getValue(),
   }),
-
   columnHelper.accessor('owner', {
     header: 'Owner',
     cell: info => info.getValue(),
+  }),
+    columnHelper.accessor('contact', {
+    header: 'Contact',
+    cell: info => info.getValue(),
+  }),
+  columnHelper.accessor('status', {
+    header: 'Status',
+    cell: info => h(Badge, { class: getStatusColor(info.getValue()) + ' capitalize' }, () => info.getValue()),
   }),
   columnHelper.accessor('registered_date', {
     header: 'Registered',
     cell: info => info.getValue(),
   }),
-
 ];
+
+// Data for the table, derived and formatted from filteredAndSortedPets
+const tableData = computed<PetDisplayData[]>(() => {
+  return filteredAndSortedPets.value.map(apiPet => ({
+    id: apiPet.id,
+    name: apiPet.pet_name,
+    breed: apiPet.breed,
+    type: apiPet.animal_type,
+    owner: apiPet.owner,
+    contact: apiPet.contact,
+    status: apiPet.status,
+    registered_date: new Date(apiPet.created_at).toLocaleDateString(),
+    image_base64: apiPet.picture, // This is the raw Base64 string
+  }));
+});
 
 const table = useVueTable({
   get data() {
-    return pets.value;
+    return tableData.value; // Use the derived tableData
   },
   columns,
   getCoreRowModel: getCoreRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
+  getFilteredRowModel: getFilteredRowModel(), // Not strictly needed if filtering outside table
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
-  state: {
-    get globalFilter() {
-      return searchQuery.value;
-    },
-  },
+  // Tanstack table's global filter can be used if you prefer its filtering logic
+  // state: {
+  //   get globalFilter() { return searchQuery.value; },
+  // },
 });
 
-// Setup page size for table
 onMounted(() => {
   table.setPageSize(10);
+  fetchPets();
 });
 
 const fetchPets = async () => {
+  isLoading.value = true;
   try {
-    const response = await axios.get('/registered-animals');
-    // Check if response has data property and it's an array
+    // Use the correct API endpoint for fetching registered animals
+    const response = await axios.get<ApiResponse>('/api/mobileregisteredanimals');
     if (response.data && response.data.status === 'success' && Array.isArray(response.data.data)) {
-      newpets.value = response.data.data;
-    } else if (response.data && response.data.status === 'success' && response.data.data) {
-      // If API returns only one item in data property
-      newpets.value = [response.data.data];
-    } else if (response.data && response.data.data) {
-      // Directly access data property if that's where the array is
-      newpets.value = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+      allFetchedPets.value = response.data.data;
     } else {
-      // Empty array if no data
-      newpets.value = [];
-    }
-    
-    // Convert API data format to Pet format for the table (only if there's data)
-    if (newpets.value.length > 0) {
-      pets.value = newpets.value.map(pet => ({
-        id: pet.id,
-        name: pet.pet_name,
-        breed: pet.breed,
-        type: pet.animal_type,
-        owner: pet.owner,
-        registered_date: new Date(pet.created_at).toLocaleDateString(),
-        image: pet.picture || 'https://placehold.co/300x300?text=No+Image'
-      }));
-    } else {
-      pets.value = [];
+      allFetchedPets.value = [];
+      console.warn('API did not return expected data structure:', response.data);
     }
   } catch (error) {
     console.error('Failed to fetch registered pets:', error);
-    // Don't use dummy data, just set empty arrays
-    newpets.value = [];
-    pets.value = [];
+    allFetchedPets.value = [];
   } finally {
     isLoading.value = false;
   }
 };
 
-// Generate page numbers for pagination
 const getPageNumbers = computed(() => {
-  const totalPages = totalCardPages.value;
-  const currentPage = currentCardPage.value;
-  const maxVisiblePages = 5;
+  const total = totalCardPages.value;
+  const current = currentCardPage.value;
+  const maxVisible = 5;
+  const delta = Math.floor(maxVisible / 2);
 
-  if (totalPages <= maxVisiblePages) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
   }
 
-  let pages = [];
+  const range = {
+    start: Math.max(1, current - delta),
+    end: Math.min(total, current + delta),
+  };
 
-  pages.push(1);
-  let start = Math.max(2, currentPage - 1);
-  let end = Math.min(totalPages - 1, currentPage + 1);
+  if (range.start === 1 && range.end < total) {
+      range.end = Math.min(total, range.start + maxVisible -1);
+  }
+  if (range.end === total && range.start > 1) {
+      range.start = Math.max(1, range.end - maxVisible + 1);
+  }
 
-  if (end - start < 2) {
-    if (start === 2) {
-      end = Math.min(totalPages - 1, start + 2);
-    } else if (end === totalPages - 1) {
-      start = Math.max(2, end - 2);
+
+  const pages: (number | string)[] = [];
+  if (range.start > 1) {
+    pages.push(1);
+    if (range.start > 2) {
+      pages.push('ellipsis-start');
     }
   }
 
-  if (start > 2) {
-    pages.push('ellipsis-start');
-  }
-
-  for (let i = start; i <= end; i++) {
+  for (let i = range.start; i <= range.end; i++) {
     pages.push(i);
   }
 
-  if (end < totalPages - 1) {
-    pages.push('ellipsis-end');
+  if (range.end < total) {
+    if (range.end < total - 1) {
+      pages.push('ellipsis-end');
+    }
+    pages.push(total);
   }
-
-  if (totalPages > 1) {
-    pages.push(totalPages);
-  }
-
   return pages;
 });
 
-// Get status badge color
 const getStatusColor = (status: string) => {
-  switch (status) {
+  if (!status) return 'bg-gray-100 text-gray-800 border-gray-300';
+  switch (status.toLowerCase()) {
     case 'active': return 'bg-green-100 text-green-800 border-green-300';
     case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
     case 'inactive': return 'bg-red-100 text-red-800 border-red-300';
@@ -273,9 +278,10 @@ const getStatusColor = (status: string) => {
   }
 };
 
-onMounted(() => {
-  fetchPets();
-});
+const navigateToRegisterPet = () => {
+  router.get('/pets/register'); // Adjust if your route is different
+};
+
 </script>
 
 <template>
@@ -288,14 +294,13 @@ onMounted(() => {
             <h1 class="text-2xl font-bold tracking-tight">Registered Pets</h1>
             <p class="text-muted-foreground">Manage and view all registered pets in the system</p>
           </div>
-          <Button class="gap-2">
+          <Button @click="navigateToRegisterPet" class="gap-2">
             <Icon name="Plus" class="h-4 w-4" />
             Register New Pet
           </Button>
         </div>
         
-        <Tabs default-value="Cards">
-          <!-- Tabs with filters -->
+        <Tabs default-value="Cards" @update:modelValue="currentCardPage = 1"> <!-- Reset card page on tab change -->
           <div class="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-4 mb-4">
             <div class="flex gap-4 items-center w-full sm:w-auto">
               <TabsList>
@@ -309,26 +314,26 @@ onMounted(() => {
                 </TabsTrigger>
               </TabsList>
               
-              <div class="flex gap-2">
-                <Button @click="statusFilter = 'all'" 
+              <div class="flex gap-2 flex-wrap"> <!-- Added flex-wrap for smaller screens -->
+                <Button @click="statusFilter = 'all'; currentCardPage = 1" 
                         :variant="statusFilter === 'all' ? 'default' : 'outline'" 
                         size="sm" 
                         class="text-xs">
                   All
                 </Button>
-                <Button @click="statusFilter = 'active'" 
+                <Button @click="statusFilter = 'active'; currentCardPage = 1" 
                         :variant="statusFilter === 'active' ? 'default' : 'outline'" 
                         size="sm" 
                         class="text-xs">
                   Active
                 </Button>
-                <Button @click="statusFilter = 'pending'" 
+                <Button @click="statusFilter = 'pending'; currentCardPage = 1" 
                         :variant="statusFilter === 'pending' ? 'default' : 'outline'" 
                         size="sm" 
                         class="text-xs">
                   Pending
                 </Button>
-                <Button @click="statusFilter = 'inactive'" 
+                <Button @click="statusFilter = 'inactive'; currentCardPage = 1"
                         :variant="statusFilter === 'inactive' ? 'default' : 'outline'" 
                         size="sm" 
                         class="text-xs">
@@ -338,7 +343,7 @@ onMounted(() => {
             </div>
 
             <div class="w-full sm:w-64">
-              <Input v-model="searchQuery" placeholder="Search pets..." class="w-full" />
+              <Input v-model="searchQuery" @input="currentCardPage = 1" placeholder="Search pets..." class="w-full" />
             </div>
           </div>
           
@@ -348,12 +353,12 @@ onMounted(() => {
               <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
             
-            <div v-else-if="filteredPets.length === 0" class="flex justify-center items-center h-64">
+            <div v-else-if="filteredAndSortedPets.length === 0" class="flex justify-center items-center h-64">
               <div class="text-center">
                 <Icon name="PawPrint" class="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 class="text-lg font-medium mt-4">No Animals Registered Yet</h3>
-                <p class="text-muted-foreground mt-2">Click the "Register New Pet" button to add your first pet</p>
-                <Button class="mt-4 gap-2" @click="searchQuery = ''; statusFilter = 'all'">
+                <h3 class="text-lg font-medium mt-4">No Pets Found</h3>
+                <p class="text-muted-foreground mt-2">Try adjusting your filters or register a new pet.</p>
+                <Button class="mt-4 gap-2" @click="navigateToRegisterPet">
                   <Icon name="Plus" class="h-4 w-4" />
                   Register New Pet
                 </Button>
@@ -361,91 +366,90 @@ onMounted(() => {
             </div>
             
             <div v-else>
-              <!-- Pet Cards Grid -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <!-- Use paginatedCardsData which is derived from filteredAndSortedPets -->
                 <Card 
-                  v-for="pet in paginatedCards" 
+                  v-for="pet in paginatedCardsData" 
                   :key="pet.id" 
-                  class="h-full flex flex-col overflow-hidden hover:shadow-md transition-shadow"
+                  class="h-full flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-200 ease-in-out"
                 >
                   <div class="relative">
                     <img 
-                      :src="pet.picture || 'https://placehold.co/300x300?text=No+Image'" 
+                      :src="pet.picture ? `data:image/jpeg;base64,${pet.picture}` : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
                       :alt="pet.pet_name" 
-                      class="w-full aspect-square object-cover" 
-                      @error="(e) => e.target.src = 'https://placehold.co/300x300?text=No+Image'"
+                      class="w-full aspect-square object-cover bg-muted" 
+                      @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/E0E0E0/BDBDBD?text=Load+Error'"
                     />
                     <div class="absolute top-2 right-2">
-                      <Badge :class="getStatusColor(pet.status)" class="capitalize">
+                      <Badge :class="getStatusColor(pet.status)" class="capitalize shadow-sm">
                         {{ pet.status }}
                       </Badge>
                     </div>
                   </div>
                   
-                  <CardHeader class="pb-2">
+                  <CardHeader class="pb-2 pt-3">
                     <div class="flex justify-between items-start">
-                      <CardTitle class="text-xl">{{ pet.pet_name }}</CardTitle>
-                      <Badge variant="outline" class="ml-2">
+                      <CardTitle class="text-lg font-semibold">{{ pet.pet_name }}</CardTitle>
+                      <Badge variant="outline" class="ml-2 text-xs capitalize">
                         {{ pet.animal_type }}
                       </Badge>
                     </div>
                     <p class="text-sm text-muted-foreground">{{ pet.breed }}</p>
                   </CardHeader>
                   
-                  <CardContent class="flex-grow py-2">
-                    <div class="space-y-2">
-                      <div class="flex justify-between text-sm">
+                  <CardContent class="flex-grow py-2 text-sm">
+                    <div class="space-y-1.5">
+                      <div class="flex justify-between">
                         <span class="text-muted-foreground">Registered:</span>
                         <span>{{ new Date(pet.created_at).toLocaleDateString() }}</span>
                       </div>
-                      <div class="flex justify-between text-sm">
+                      <div class="flex justify-between">
                         <span class="text-muted-foreground">Contact:</span>
-                        <span>{{ pet.contact || 'N/A' }}</span>
+                        <span class="truncate" :title="pet.contact || 'N/A'">{{ pet.contact || 'N/A' }}</span>
                       </div>
                     </div>
                   </CardContent>
                   
                   <CardFooter class="pt-2 border-t">
                     <div class="flex items-center w-full">
-                      <Avatar class="h-8 w-8 mr-2">
+                      <Avatar class="h-8 w-8 mr-2 border">
+                        <AvatarImage v-if="false" src="placeholder_owner_avatar.png" /> <!-- If you have owner avatars -->
                         <AvatarFallback>
-                          {{ pet.owner?.split(' ').map(n => n[0]).join('') }}
+                          {{ pet.owner?.split(' ').map(n => n[0]).join('').toUpperCase() || 'O' }}
                         </AvatarFallback>
                       </Avatar>
                       <div class="flex-grow overflow-hidden">
-                        <p class="text-sm font-medium truncate">{{ pet.owner }}</p>
+                        <p class="text-sm font-medium truncate" :title="pet.owner">{{ pet.owner }}</p>
                         <p class="text-xs text-muted-foreground">Owner</p>
                       </div>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" class="h-8 w-8">
                         <Icon name="MoreVertical" class="h-4 w-4" />
+                        <span class="sr-only">More options</span>
                       </Button>
                     </div>
                   </CardFooter>
                 </Card>
               </div>
 
-              <!-- Cards Pagination -->
-              <div class="flex justify-center mt-6">
-                <Pagination v-if="filteredPets.length > cardsPerPage">
-                  <PaginationContent class="flex gap-2">
+              <div class="flex justify-center mt-6" v-if="filteredAndSortedPets.length > cardsPerPage">
+                <Pagination>
+                  <PaginationContent class="flex gap-1 sm:gap-2">
                     <PaginationPrevious 
                       @click="currentCardPage > 1 && (currentCardPage--)" 
                       :class="{ 'opacity-50 cursor-not-allowed': currentCardPage === 1 }" 
                     />
-
-                    <template v-for="(page, index) in getPageNumbers" :key="index">
-                      <PaginationItem v-if="typeof page === 'number'" :value="page" :is-active="page === currentCardPage">
+                    <template v-for="(page, index) in getPageNumbers" :key="`card-page-${index}`">
+                      <PaginationItem v-if="typeof page === 'number'" :value="page">
                         <Button 
-                          class="h-10 w-10" 
+                          class="h-9 w-9 sm:h-10 sm:w-10 text-xs sm:text-sm" 
                           :variant="page === currentCardPage ? 'default' : 'outline'"
                           @click="currentCardPage = page"
                         >
                           {{ page }}
                         </Button>
                       </PaginationItem>
-                      <PaginationEllipsis v-else :key="page" :index="index" />
+                      <PaginationEllipsis v-else :key="`card-ellipsis-${page}-${index}`" />
                     </template>
-
                     <PaginationNext 
                       @click="currentCardPage < totalCardPages && (currentCardPage++)" 
                       :class="{ 'opacity-50 cursor-not-allowed': currentCardPage === totalCardPages }" 
@@ -467,65 +471,73 @@ onMounted(() => {
                   <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
                 
-                <div v-else-if="pets.length === 0" class="flex justify-center items-center h-32">
+                <div v-else-if="tableData.length === 0" class="flex justify-center items-center h-32">
                   <div class="text-center">
                     <Icon name="PawPrint" class="mx-auto h-8 w-8 text-muted-foreground" />
-                    <h3 class="text-base font-medium mt-2">No Animals Registered Yet</h3>
-                    <p class="text-sm text-muted-foreground mt-1">Register your first pet to see it here</p>
+                    <h3 class="text-base font-medium mt-2">No Pets Found</h3>
+                    <p class="text-sm text-muted-foreground mt-1">Try adjusting your filters or register a new pet.</p>
                   </div>
                 </div>
                 
-                <div v-else>
+                <div v-else class="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead v-for="header in table.getFlatHeaders()" :key="header.id">
-                          <div class="flex items-center justify-center space-x-1 cursor-pointer"
-                            @click="header.column.toggleSorting()">
-                            {{ header.column.columnDef.header }}
-                            <span v-if="header.column.getIsSorted() === 'asc'">↑</span>
-                            <span v-else-if="header.column.getIsSorted() === 'desc'">↓</span>
-                          </div>
+                      <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+                        <TableHead v-for="header in headerGroup.headers" :key="header.id" 
+                                   :style="{ width: header.getSize() !== 150 ? `${header.getSize()}px` : undefined }"
+                                   class="text-center"
+                                   @click="header.column.getToggleSortingHandler()?.($event)">
+                          <FlexRender v-if="header.isPlaceholder" :render="header.placeholder" :props="header.getContext()" />
+                          <FlexRender v-else :render="header.column.columnDef.header" :props="header.getContext()" />
+                          <template v-if="header.column.getCanSort()">
+                            <Icon name="ArrowUpDown" v-if="!header.column.getIsSorted()" class="ml-2 h-3 w-3 inline-block" />
+                            <Icon name="ArrowUp" v-if="header.column.getIsSorted() === 'asc'" class="ml-2 h-3 w-3 inline-block" />
+                            <Icon name="ArrowDown" v-if="header.column.getIsSorted() === 'desc'" class="ml-2 h-3 w-3 inline-block" />
+                          </template>
                         </TableHead>
-                        <TableHead class="w-[100px]">Actions</TableHead>
+                        <TableHead class="w-[100px] text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       <TableRow v-for="row in table.getRowModel().rows" :key="row.id" class="hover:bg-muted/50">
-                        <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" class="text-center">
-                          <component :is="cell.column.columnDef.cell" :row="row" :getValue="() => cell.getValue()" />
+                        <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" class="text-center py-2 px-3">
+                           <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                         </TableCell>
-                        <TableCell class="text-center">
-                          <div class="flex items-center justify-center space-x-2">
+                        <TableCell class="text-center py-2 px-3">
+                          <div class="flex items-center justify-center space-x-1">
                             <Button variant="ghost" size="icon" class="h-8 w-8">
                               <Icon name="Edit" class="h-4 w-4" />
+                              <span class="sr-only">Edit</span>
                             </Button>
                             <Button variant="ghost" size="icon" class="h-8 w-8">
                               <Icon name="Eye" class="h-4 w-4" />
+                              <span class="sr-only">View</span>
                             </Button>
                           </div>
                         </TableCell>
                       </TableRow>
                     </TableBody>
-                    <TableCaption>
+                    <TableCaption v-if="tableData.length > 0">
                       Showing {{ table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1 }}
                       to {{ Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                        pets.length) }}
-                      of {{ pets.length }} results
+                        tableData.length) }}
+                      of {{ tableData.length }} results.
                     </TableCaption>
                   </Table>
 
-                  <!-- Table Pagination -->
-                  <div class="flex items-center justify-end space-x-2 py-4">
+                  <div class="flex items-center justify-end space-x-2 py-4" v-if="table.getPageCount() > 1">
                     <Button 
                       @click="table.previousPage()" 
                       :disabled="!table.getCanPreviousPage()" 
                       variant="outline"
                       size="sm"
                     >
-                      <Icon name="ChevronLeft" class="h-4 w-4 mr-2" />
+                      <Icon name="ChevronLeft" class="h-4 w-4 mr-1 sm:mr-2" />
                       Previous
                     </Button>
+                    <span class="text-sm text-muted-foreground">
+                      Page {{ table.getState().pagination.pageIndex + 1 }} of {{ table.getPageCount() }}
+                    </span>
                     <Button 
                       @click="table.nextPage()" 
                       :disabled="!table.getCanNextPage()" 
@@ -533,7 +545,7 @@ onMounted(() => {
                       size="sm"
                     >
                       Next
-                      <Icon name="ChevronRight" class="h-4 w-4 ml-2" />
+                      <Icon name="ChevronRight" class="h-4 w-4 ml-1 sm:ml-2" />
                     </Button>
                   </div>
                 </div>

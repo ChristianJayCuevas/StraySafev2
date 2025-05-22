@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/MobileAppLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { toast } from 'vue-sonner'
 import { type BreadcrumbItem } from '@/types';
 import { 
@@ -39,10 +39,8 @@ import {
   DialogFooter, 
   DialogHeader, 
   DialogTitle,
-  DialogTrigger, 
 } from '@/components/ui/dialog';
 import Icon from '@/components/Icon.vue';
-import axios from 'axios';
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -61,17 +59,14 @@ const form = useForm({
   animal_type: '',
   breed: '',
   contact: '',
-  picture: null as File | null,
-  picture_url: '' as string | null,
+  picture: null as string | null, // Now 'picture' will hold the Base64 string
 });
 
 // UI state
 const isUploading = ref(false);
-const isProcessing = ref(false);
-const detectionResult = ref(null);
 const error = ref('');
 const showConfirmDialog = ref(false);
-const imagePreview = ref('');
+const imagePreview = ref(''); // This will hold the Data URI for preview (e.g., data:image/jpeg;base64,...)
 
 // Computed values
 const isFormValid = computed(() => {
@@ -79,14 +74,12 @@ const isFormValid = computed(() => {
          form.animal_type && 
          form.breed && 
          form.contact && 
-         (form.picture || form.picture_url);
+         form.picture; // Check if Base64 picture string exists
 });
 
 const isSubmitting = computed(() => {
-  return form.processing || isUploading.value || isProcessing.value;
+  return form.processing || isUploading.value;
 });
-
-const uploadPercentage = ref(0);
 
 const handleImageSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -94,88 +87,50 @@ const handleImageSelect = async (event: Event) => {
   
   const file = input.files[0];
   
-  // Preview the image
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
-  
-  form.picture = file;
-  form.picture_url = null;
-  
-  // Analyze the image
-  await analyzeImage(file);
-};
-
-const analyzeImage = async (file: File) => {
-  isProcessing.value = true;
-  error.value = '';
-  detectionResult.value = null;
-  uploadPercentage.value = 0;
-  
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await axios.post('/api/pets/analyze-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          uploadPercentage.value = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-        }
-      },
-    });
-    
-    if (response.data.status === 'success') {
-      detectionResult.value = response.data;
-      form.animal_type = response.data.label;
-      form.picture_url = response.data.file_url;
-      toast.success(
-        `We detected a ${response.data.label} in your image.`,
-      );
-    } else if (response.data.status === 'rejected') {
-      error.value = response.data.message || 'Please upload a clearer image.';
-      toast.warning(
-        error.value,
-
-      );
-      imagePreview.value = '';
-      form.picture = null;
-    } else {
-      error.value = response.data.message || 'Failed to classify the image.';
-      toast.warning(
-        error.value
-      );
-    }
-  } catch (err) {
-    console.error('Image Upload Error:', err);
-    error.value = 'Failed to connect to classification service.';
-    toast.warning(
-    "Connection error"
-    );
+  // Max file size (e.g., 2MB) - important for Base64 to avoid huge strings
+  const maxSizeInBytes = 2 * 1024 * 1024; 
+  if (file.size > maxSizeInBytes) {
+    error.value = 'Image is too large. Maximum size is 2MB.';
+    toast.error(error.value);
     imagePreview.value = '';
     form.picture = null;
-  } finally {
-    isProcessing.value = false;
+    if (input) input.value = ''; // Reset file input
+    return;
   }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = e.target?.result as string;
+    imagePreview.value = result; // This is the Data URI (e.g., "data:image/jpeg;base64,iVBOR...")
+
+    // Store only the Base64 part in the form.
+    // The backend will expect just the encoded string, not the "data:mime/type;base64," prefix.
+    // If your backend expects the full Data URI, you can assign `result` directly.
+    // For this example, let's assume backend wants only the Base64 part.
+    if (result.includes(',')) {
+        form.picture = result.split(',')[1];
+    } else {
+        form.picture = result; // Should not happen if reader.readAsDataURL is used correctly
+    }
+  };
+  reader.onerror = (err) => {
+    console.error("FileReader error: ", err);
+    error.value = "Could not read the image file.";
+    toast.error(error.value);
+    form.picture = null;
+    imagePreview.value = '';
+  }
+  reader.readAsDataURL(file); // Reads the file as a Base64 encoded string (Data URI)
+  
+  error.value = ''; 
 };
 
 const handleSubmit = () => {
   if (!isFormValid.value) {
-    error.value = 'Please fill in all required fields and upload a verified pet photo.';
-    toast.warning(
-
-       error.value
-     
-    );
+    error.value = 'Please fill in all required fields and upload a pet photo.';
+    toast.warning(error.value);
     return;
   }
-  
   showConfirmDialog.value = true;
 };
 
@@ -183,25 +138,19 @@ const confirmSubmit = () => {
   isUploading.value = true;
   error.value = '';
   
-  // Use the URL from detection API instead of uploading again
-  form.post('/api/pets/register', {
+  // 'form.picture' now contains the Base64 string
+  form.post('/api/mobileregisteredanimals', { // Assuming this API endpoint matches your Laravel route
     onSuccess: () => {
-      toast.success(
-       "Your pet has been registered successfully."
-      );
+      toast.success("Your pet has been registered successfully.");
       form.reset();
       imagePreview.value = '';
-      detectionResult.value = null;
       showConfirmDialog.value = false;
     },
     onError: (errors) => {
       console.error('Registration Error:', errors);
-      error.value = Object.values(errors).join(', ') || 'Failed to register pet. Please try again.';
-      toast.warning(
- "Registration failed"
-
-        
-      );
+      const errorMessages = Object.values(errors).flat().join(', ');
+      error.value = errorMessages || 'Failed to register pet. Please try again.';
+      toast.error(error.value || "Registration failed");
       showConfirmDialog.value = false;
     },
     onFinish: () => {
@@ -210,7 +159,6 @@ const confirmSubmit = () => {
   });
 };
 
-// Define the available pet types
 const petTypes = [
   { value: 'Dog', label: 'Dog' },
   { value: 'Cat', label: 'Cat' },
@@ -240,6 +188,7 @@ const petTypes = [
                       class="w-48 h-48 rounded-full flex items-center justify-center overflow-hidden border-4 border-primary shadow-lg hover:opacity-90 transition-opacity"
                       :class="{ 'bg-muted': !imagePreview }"
                     >
+                      <!-- imagePreview will be the full Data URI: data:image/jpeg;base64,... -->
                       <img 
                         v-if="imagePreview" 
                         :src="imagePreview" 
@@ -262,35 +211,13 @@ const petTypes = [
                     <input 
                       type="file" 
                       id="pet-image"
-                      accept="image/*" 
+                      accept="image/jpeg, image/png, image/gif" 
                       class="hidden" 
                       @change="handleImageSelect" 
                       :disabled="isSubmitting"
                     />
                   </div>
-                  
-                  <!-- Progress & Detection Results -->
-                  <div v-if="isProcessing" class="w-full max-w-xs mb-4">
-                    <Label class="text-sm mb-1 block text-center">Analyzing image...</Label>
-                    <div class="w-full bg-muted rounded-full h-2 mb-2">
-                      <div 
-                        class="bg-primary h-2 rounded-full" 
-                        :style="{ width: `${uploadPercentage}%` }"
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="detectionResult" class="w-full max-w-md text-center">
-                    <Alert class="bg-green-50 border-green-200 text-green-800">
-                      <Icon name="Check" class="h-4 w-4" />
-                      <AlertTitle>Pet Detected</AlertTitle>
-                      <AlertDescription>
-                        Detected: {{ detectionResult.label }} 
-                        (Confidence: <span class="font-bold">{{ (detectionResult.confidence * 100).toFixed(2) }}%</span>)
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                  
+                                    
                   <div v-if="error" class="w-full max-w-md mt-2">
                     <Alert variant="destructive">
                       <Icon name="AlertCircle" class="h-4 w-4" />
@@ -304,26 +231,27 @@ const petTypes = [
               <!-- Pet Information Form -->
               <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField name="pet_name">
+                  <FormField name="pet_name" v-slot="{ componentField }">
                     <FormItem>
-                      <FormLabel>Pet Name <span class="text-red">*</span></FormLabel>
+                      <FormLabel>Pet Name <span class="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input 
-                          id="pet-name" 
-                          v-model="form.pet_name" 
+                          type="text"
                           placeholder="Enter your pet's name" 
+                          v-bind="componentField"
+                          v-model="form.pet_name" 
                           :disabled="isSubmitting"
                           required
                         />
                       </FormControl>
-                      <FormMessage v-if="form.errors.pet_name">{{ form.errors.pet_name }}</FormMessage>
+                      <FormMessage />
                     </FormItem>
                   </FormField>
                   
-                  <FormField name="pet_type">
+                   <FormField name="animal_type" v-slot="{ componentField }">
                     <FormItem>
-                      <FormLabel>Pet Type <span class="text-red">*</span></FormLabel>
-                      <Select v-model="form.animal_type" :disabled="isSubmitting">
+                      <FormLabel>Pet Type <span class="text-red-500">*</span></FormLabel>
+                      <Select v-model="form.animal_type" :disabled="isSubmitting" v-bind="componentField">
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select pet type" />
@@ -335,35 +263,36 @@ const petTypes = [
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage v-if="form.errors.animal_type">{{ form.errors.animal_type }}</FormMessage>
+                      <FormMessage />
                     </FormItem>
                   </FormField>
                   
-                  <FormField name="pet_breed">
+                  <FormField name="breed" v-slot="{ componentField }">
                     <FormItem>
-                      <FormLabel>Breed <span class="text-red">*</span></FormLabel>
+                      <FormLabel>Breed <span class="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input 
-                          id="pet-breed" 
-                          v-model="form.breed" 
+                          type="text"
                           placeholder="Enter breed (if known)" 
+                          v-bind="componentField"
+                          v-model="form.breed" 
                           :disabled="isSubmitting"
                           required
                         />
                       </FormControl>
-                      <FormMessage v-if="form.errors.breed">{{ form.errors.breed }}</FormMessage>
+                      <FormMessage />
                     </FormItem>
                   </FormField>
                   
-                  <FormField name="contact">
+                  <FormField name="contact" v-slot="{ componentField }">
                     <FormItem>
-                      <FormLabel>Contact Number <span class="text-red">*</span></FormLabel>
+                      <FormLabel>Contact Number <span class="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input 
-                          id="contact" 
-                          v-model="form.contact" 
-                          placeholder="Your contact number" 
                           type="tel"
+                          placeholder="Your contact number" 
+                          v-bind="componentField"
+                          v-model="form.contact" 
                           :disabled="isSubmitting"
                           required
                         />
@@ -371,7 +300,7 @@ const petTypes = [
                       <FormDescription>
                         This will be displayed on your pet's profile for contact purposes
                       </FormDescription>
-                      <FormMessage v-if="form.errors.contact">{{ form.errors.contact }}</FormMessage>
+                      <FormMessage />
                     </FormItem>
                   </FormField>
                 </div>
@@ -408,7 +337,8 @@ const petTypes = [
         </DialogHeader>
         
         <div class="grid gap-4 py-4">
-          <div class="grid grid-cols-3 items-center gap-4">
+          <!-- ... (display other form fields: name, type, breed, contact) ... -->
+           <div class="grid grid-cols-3 items-center gap-4">
             <span class="font-medium">Pet Name:</span>
             <span class="col-span-2">{{ form.pet_name }}</span>
           </div>
@@ -427,6 +357,7 @@ const petTypes = [
           
           <div class="flex justify-center mt-2">
             <div class="w-24 h-24 rounded-full overflow-hidden border border-muted">
+              <!-- imagePreview is the Data URI, perfect for src -->
               <img 
                 v-if="imagePreview" 
                 :src="imagePreview" 
@@ -455,5 +386,8 @@ const petTypes = [
 </template>
 
 <style scoped>
-
+/* Your existing styles (if any) */
+.text-red { /* If you were using a custom class, ensure it's defined or use Tailwind's text-red-500 etc. */
+  color: #ef4444; /* Example: text-red-500 */
+}
 </style>

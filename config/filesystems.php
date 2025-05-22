@@ -59,6 +59,12 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'registered_pets_storage' => [
+            'driver' => 'local',
+            'root' => '/home/straysafe/registeredanimalpets', // Your desired absolute path
+            'url' => env('APP_URL').'/storage/petimages', // The base URL for these files (see Step 3 for symlink)
+            'visibility' => 'public', // Files will be created with public permissions
+        ],
 
     ],
 

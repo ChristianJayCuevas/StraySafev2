@@ -6,30 +6,33 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\RegisteredAnimal;
 use Illuminate\Support\Facades\Validator;
+// No need for Storage facade if only using Base64 for DB
+
 class MobileRegisteredAnimalController extends Controller
 {
     public function fetchRegisteredAnimals()
     {
-        // Retrieve all registered animals from the database
         $animals = RegisteredAnimal::select('id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')->get();
 
+        // The 'picture' field now contains the Base64 string directly.
+        // The frontend will need to use it in a data URI: src="data:image/jpeg;base64,{{ base64String }}"
         return response()->json([
             'status' => 'success',
-            'data' => $animals,
+            'data' => $animals, // 'picture' field will have the Base64 string
         ]);
     }
 
     public function storeRegisteredAnimal(Request $request)
     {
-        // Validate the incoming request
         $validator = Validator::make($request->all(), [
-            'owner' => 'required|string|max:255',
-            'contact' => 'required|string|max:255',
-            'animal_type' => 'required|in:dog,cat,Dog,Cat,DOG,CAT',
-            'picture' => 'required|url', // Expecting a URL from a CDN
-            'status' => 'in:active,inactive',
-            'breed' => 'nullable|string|max:255',
+            // 'owner' => 'required|string|max:255',
             'pet_name' => 'required|string|max:255',
+            'animal_type' => 'required|in:dog,cat,Dog,Cat,DOG,CAT',
+            'breed' => 'nullable|string|max:255',
+            'contact' => 'required|string|max:255',
+            // Now we expect 'picture' to be a Base64 encoded string from the frontend
+            'picture' => 'required|string', // Or you could add a custom validation rule for Base64
+            // 'status' => 'in:active,inactive',
         ]);
 
         if ($validator->fails()) {
@@ -39,12 +42,28 @@ class MobileRegisteredAnimalController extends Controller
             ], 422);
         }
 
-        // Create a new registered animal record
+        // The request->picture is already the Base64 string sent from the frontend
+        $base64Image = $request->picture;
+
+        // You might want to extract the mime type if you need to store it separately
+        // or if you want to prepend it when displaying (e.g., "data:image/jpeg;base64,")
+        // For simplicity, we'll assume the frontend will handle prepending the data URI prefix.
+        // If the frontend sends the full data URI, you might need to strip the prefix:
+        // if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
+        //     $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
+        //     $mimeType = strtolower($type[1]); // e.g., jpeg, png
+        // } else {
+        //     // Handle error: not a valid data URI
+        //     return response()->json(['status' => 'error', 'message' => 'Invalid image format.'], 400);
+        // }
+
+
         $animal = RegisteredAnimal::create([
-            'owner' => $request->owner,
+            // 'owner' => $request->owner,
+            'owner' => $request->user() ? $request->user()->name : 'Unknown Owner',
             'contact' => $request->contact,
-            'animal_type' => $request->animal_type,
-            'picture' => $request->picture,
+            'animal_type' => strtolower($request->animal_type),
+            'picture' => $base64Image, // Store the Base64 string directly
             'status' => $request->status ?? 'active',
             'breed' => $request->breed,
             'pet_name' => $request->pet_name,
@@ -53,7 +72,7 @@ class MobileRegisteredAnimalController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Animal registered successfully.',
-            'data' => $animal,
+            'data' => $animal, // 'picture' field in $animal will have the Base64 string
         ], 201);
     }
 }
