@@ -496,13 +496,13 @@ import { h } from 'vue';
       </div>
 
        <!-- Polling Warning Banner -->
-      <div v-if="isMonitoringActive && POLLING_INTERVAL_MS > 0 && POLLING_INTERVAL_MS <= 5000"
+      <!-- <div v-if="isMonitoringActive && POLLING_INTERVAL_MS > 0 && POLLING_INTERVAL_MS <= 5000"
            class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm" role="alert">
         <p>
           <Icon name="AlertTriangle" class="inline h-5 w-5 mr-2" />
           <strong class="font-semibold">Aggressive Polling Active:</strong> External API is being checked every {{ POLLING_INTERVAL_MS / 1000 }} second(s).
         </p>
-      </div>
+      </div> -->
 
       <div class="flex flex-col gap-6">
         <div v-if="isLoading" class="flex justify-center items-center h-64">
