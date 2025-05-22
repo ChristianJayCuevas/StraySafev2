@@ -141,7 +141,7 @@ async function pollExternalAPIAndStore() {
   isPolling.value = true;
   // console.log('Starting external API poll...');
 
-  const API_BASE_URL = 'https://straysafe.me/info';
+  const API_BASE_URL = 'https://straysafe.me/checknewimage';
   const externalRequests = [];
 
   // WARNING: Fetching all these every second is extremely resource-intensive.
