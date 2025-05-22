@@ -64,7 +64,7 @@ const errorMessage = ref('');
     }
     
     // Step 2: Get detected animals from the API
-    const detectionResponse = await axios.get('https://straysafe.me/api2/detected');
+    const detectionResponse = await axios.get('/animal-detections');
 
     if (detectionResponse.data && detectionResponse.data.detected_animals) {
       const detectedAnimals = detectionResponse.data.detected_animals;
