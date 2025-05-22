@@ -57,18 +57,18 @@ export function useMapPins(mapInstance: any) {
       console.warn('⚠️ No location selected.');
       return;
     }
-    const match = hls.match(/\/hls\/([^/]+)\/index\.m3u8$/);
-    if (!match) return null;
-    console.log(match)
-    const streamId = match[1];
-    const thumbnailUrl = `https://straysafe.me/api2/debug-img/${streamId}/1_snapshot_with_detection.jpg`;
+    // const match = hls.match(/\/hls\/([^/]+)\/index\.m3u8$/);
+    // if (!match) return null;
+    // console.log(match)
+    // const streamId = match[1];
+    // const thumbnailUrl = `https://straysafe.me/api2/debug-img/${streamId}/1_snapshot_with_detection.jpg`;
     const payload = {
       camera_name: name,
       camera_description: description,
       hls_url: hls,
       latitude: selectedLocation.value.lat,
       longitude: selectedLocation.value.lng,
-      image_link: thumbnailUrl,
+      image_link: "hello",
       user_map_id: mapId,
       direction: direction, // 📍 save direction if you want (optional)
     };
