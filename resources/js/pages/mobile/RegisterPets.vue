@@ -314,14 +314,14 @@ const petTypes = [
                   
                   <FormField name="breed" v-slot="{ componentField, meta }">
                     <FormItem>
-                      <FormLabel>Breed <span class="text-red-500">*</span></FormLabel>
+                      <FormLabel>Breed </FormLabel>
                       <FormControl>
                         <Input 
                           type="text"
                           placeholder="Enter breed (if known)" 
                           v-model="form.breed" 
                           :disabled="isSubmitting"
-                          required
+                         
                           :aria-invalid="meta.touched && !meta.valid"
                         />
                       </FormControl>
