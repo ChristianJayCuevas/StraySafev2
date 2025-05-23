@@ -11,141 +11,8 @@ export function useAnimalPinSimulator(mapInstance: any) {
   const simulatedPins = ref<any[]>([])
 
   // Helper: Add animal pin to map with SVG and popup
+  
   const addAnimalPinToMap = (pin: any) => {
-    // Inject CSS styles if not already present
-    if (!document.getElementById('animal-popup-styles')) {
-      const styleSheet = document.createElement('style')
-      styleSheet.id = 'animal-popup-styles'
-      styleSheet.textContent = `
-        .animal-popup {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          max-width: 280px;
-          padding: 0;
-          margin: 0;
-        }
-        .popup-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 16px 8px;
-          border-bottom: 1px solid #e5e7eb;
-          margin-bottom: 12px;
-        }
-        .popup-title {
-          margin: 0;
-          font-size: 16px;
-          font-weight: 600;
-          color: #1f2937;
-          text-transform: capitalize;
-        }
-        .status-badge {
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 11px;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .status-badge.stray {
-          background-color: #fef3c7;
-          color: #d97706;
-          border: 1px solid #fcd34d;
-        }
-        .status-badge.not-stray {
-          background-color: #d1fae5;
-          color: #059669;
-          border: 1px solid #6ee7b7;
-        }
-        .popup-image-container {
-          margin-bottom: 12px;
-          padding: 0 16px;
-        }
-        .popup-image {
-          width: 100%;
-          height: 160px;
-          object-fit: cover;
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          transition: transform 0.2s ease;
-        }
-        .popup-image:hover {
-          transform: scale(1.02);
-        }
-        .popup-no-image {
-          margin-bottom: 12px;
-          padding: 0 16px;
-        }
-        .no-image-placeholder {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 120px;
-          background-color: #f9fafb;
-          border: 2px dashed #d1d5db;
-          border-radius: 8px;
-          color: #6b7280;
-          font-size: 12px;
-          gap: 8px;
-        }
-        .no-image-placeholder svg {
-          opacity: 0.5;
-        }
-        .popup-details {
-          padding: 0 16px 16px;
-        }
-        .detail-row {
-          display: flex;
-          margin-bottom: 8px;
-          align-items: flex-start;
-          gap: 8px;
-        }
-        .detail-row:last-child {
-          margin-bottom: 0;
-        }
-        .detail-label {
-          font-size: 12px;
-          font-weight: 500;
-          color: #6b7280;
-          min-width: 80px;
-          flex-shrink: 0;
-        }
-        .detail-value {
-          font-size: 12px;
-          color: #1f2937;
-          word-break: break-word;
-          line-height: 1.4;
-        }
-        .mapboxgl-popup-content {
-          padding: 0 !important;
-          border-radius: 12px !important;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-          border: 1px solid #e5e7eb !important;
-        }
-        .mapboxgl-popup-close-button {
-          font-size: 18px !important;
-          padding: 8px !important;
-          color: #6b7280 !important;
-          right: 8px !important;
-          top: 8px !important;
-        }
-        .mapboxgl-popup-close-button:hover {
-          background-color: #f3f4f6 !important;
-          color: #1f2937 !important;
-        }
-        .mapboxgl-popup-tip {
-          border-top-color: #ffffff !important;
-        }
-        @media (max-width: 480px) {
-          .animal-popup { max-width: 250px; }
-          .popup-image { height: 140px; }
-          .popup-header { padding: 10px 12px 6px; }
-          .popup-details { padding: 0 12px 12px; }
-        }
-      `
-      document.head.appendChild(styleSheet)
-    }
-
     const el = document.createElement('div')
     el.className = 'animal-pin'
     
@@ -191,60 +58,15 @@ export function useAnimalPinSimulator(mapInstance: any) {
       .setLngLat([pin.longitude, pin.latitude])
       .addTo(mapInstance.value)
 
-    // Enhanced popup with image and better styling
-    const popupContent = `
-      <div class="animal-popup">
-        <div class="popup-header">
-          <h3 class="popup-title">${pin.animal_type || 'Unknown Animal'}</h3>
-          <span class="status-badge ${pin.stray_status === 1 ? 'not-stray' : 'stray'}">
-            ${pin.stray_status === 1 ? 'Not Stray' : 'Stray'}
-          </span>
-        </div>
-        
-        ${pin.picture ? `
-          <div class="popup-image-container">
-            <img src="${pin.picture}" alt="${pin.animal_type}" class="popup-image" />
-          </div>
-        ` : `
-          <div class="popup-no-image">
-            <div class="no-image-placeholder">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21,15 16,10 5,21"/>
-              </svg>
-              <span>No image available</span>
-            </div>
-          </div>
-        `}
-        
-        <div class="popup-details">
-          <div class="detail-row">
-            <span class="detail-label">Coordinates:</span>
-            <span class="detail-value">${pin.latitude.toFixed(6)}, ${pin.longitude.toFixed(6)}</span>
-          </div>
-          ${pin.description ? `
-            <div class="detail-row">
-              <span class="detail-label">Description:</span>
-              <span class="detail-value">${pin.description}</span>
-            </div>
-          ` : ''}
-          ${pin.date_spotted ? `
-            <div class="detail-row">
-              <span class="detail-label">Spotted:</span>
-              <span class="detail-value">${new Date(pin.date_spotted).toLocaleDateString()}</span>
-            </div>
-          ` : ''}
-        </div>
+    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+      <div>
+        ${pin.picture ? `<img src="${pin.picture}" alt="Animal photo" style="width: 100%; max-width: 200px; height: auto; border-radius: 4px; margin-bottom: 8px;"><br>` : ''}
+        <strong>Type:</strong> ${pin.animal_type}<br>
+        <strong>Status:</strong> ${pin.stray_status === 1 ? 'Not Stray' : 'Stray'}<br>
+        <strong>Longitude:</strong> ${pin.longitude}<br>
+        <strong>Latitude:</strong> ${pin.latitude}
       </div>
-    `
-
-    const popup = new mapboxgl.Popup({ 
-      offset: 25,
-      closeButton: true,
-      closeOnClick: false,
-      maxWidth: '300px'
-    }).setHTML(popupContent)
+    `)
 
     marker.setPopup(popup)
     
@@ -288,7 +110,7 @@ export function useAnimalPinSimulator(mapInstance: any) {
     
     console.log('Added animal pin to map:', pin)
     return marker
-}
+  }
 
   // Fetch and display all animal pins on the map
   const fetchAnimalPins = async (userMapId: number) => {
