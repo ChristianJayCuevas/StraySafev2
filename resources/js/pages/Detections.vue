@@ -363,10 +363,10 @@ async function pollExternalAPIAndStore() {
             if (
               regPet.pet_name.toLowerCase() === detectedNameLower
             ) {
-              console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.user_id}`);
+              console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.id}`);
               
               // Now you can pass the file paths to the notification function
-              await sendPetMatchNotification(regPet.user_id, detectedAnimalData, regPet, {
+              await sendPetMatchNotification(regPet.id, detectedAnimalData, regPet, {
                 frame_path: savedDetection.frame_path,
                 reg_path: savedDetection.reg_path
               });
