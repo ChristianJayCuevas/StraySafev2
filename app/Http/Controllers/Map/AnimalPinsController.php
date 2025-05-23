@@ -125,6 +125,7 @@ class AnimalPinsController extends Controller
             'camera' => 'nullable|string|max:255', 
             'breed' => 'nullable|string|max:255', 
             'collar' => 'nullable|boolean', 
+            'picture' => 'nullable|string|max:255'
         
         ]);
         
@@ -135,7 +136,8 @@ class AnimalPinsController extends Controller
             'stray_status' => $validated['stray_status'],
             'camera' => $validated['camera'],
             'breed' => $validated['breed'],
-            'collar' => $validated['collar']
+            'collar' => $validated['collar'],
+            'picture' => validated['picture']
 
         ];
         

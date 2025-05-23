@@ -15,7 +15,8 @@ class AnimalPins extends Model
         'latitude',
         'longitude',
         'breed',
-        'collar'
+        'collar',
+        'picture'
     ];
 
     protected $hidden = [

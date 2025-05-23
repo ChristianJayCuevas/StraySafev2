@@ -134,6 +134,7 @@ async function postDetectedAnimalsToAnimalPins() {
             camera: animal.rtsp_url,
             breed: animal.breed,
             collar: animal.has_leash,
+            picture: animal.frame_path
           });
 
           uniqueAnimalStreamCombos[animalStreamKey] = animal.timestamp;
