@@ -68,7 +68,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'My Pets',
-        href: '/notifications',
+        href: '/mobilepets',
         icon: PawPrint,
     },
 ];
