@@ -716,7 +716,7 @@ export function useMapPins(mapInstance: any) {
           new mapboxgl.Popup({
             offset: [0, -20], // Adjust offset if needed
             anchor: 'bottom',
-            maxWidth: '320px', // Set a max-width for the popup
+            maxWidth: '400px', // Set a max-width for the popup
             className: 'animal-mapbox-popup' // Add a class for potential global CSS
           })
             .setHTML(`
