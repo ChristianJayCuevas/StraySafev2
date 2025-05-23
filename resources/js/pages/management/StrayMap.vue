@@ -125,14 +125,20 @@ const errorMessage = ref('');
             leash_color: animal.leash_color || null,
             pet_name: animal.pet_name || null,
             reg_base64: animal.reg_base64 || null,
+            
+            // NEW FIELDS: Add the meta data fields
+            rtsp_url: animal.rtsp_url || animal.stream_url || animal.camera_url || null,
+            track_id: animal.track_id || animal.tracking_id || null,
+            stable_class: animal.stable_class || animal.animal_type || null,
+            detection_timestamp: animal.detection_timestamp || animal.timestamp || null,
+            similarity_score: typeof animal.similarity_score === 'number' ? animal.similarity_score : null,
           });
 
           // Also post to animalpins if you still need that
           await axios.post('/animalpins', {
             animal_type: animal.animal_type,
             stray_status: animal.classification,
-            camera: animal.stream_id,
-            detection_id: animal.id, 
+            camera: animal.rtsp_url,
           });
 
           uniqueAnimalStreamCombos[animalStreamKey] = animal.timestamp;

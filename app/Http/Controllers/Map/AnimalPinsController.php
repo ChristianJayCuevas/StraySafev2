@@ -141,8 +141,8 @@ class AnimalPinsController extends Controller
             Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
             
             // Find camera by matching the identifier in the HLS URL
-            // $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
-            $camera = CameraPins::first();
+            $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
+            // $camera = CameraPins::first();
             if ($camera) {
                 Log::debug('Camera found:', ['camera' => $camera->toArray()]);
             } else {
