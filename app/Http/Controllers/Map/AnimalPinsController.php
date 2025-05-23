@@ -122,7 +122,9 @@ class AnimalPinsController extends Controller
         $validated = $request->validate([
             'animal_type' => 'required|string|max:255',
             'stray_status' => 'required|string|max:255',
-            'camera' => 'nullable|string|max:255', // Changed from 'stream_id' to 'camera'
+            'camera' => 'nullable|string|max:255', 
+            'breed' => 'nullable|string|max:255', 
+            'collar' => 'nullable|string|max:255', 
         
         ]);
         
@@ -132,6 +134,8 @@ class AnimalPinsController extends Controller
             'animal_type' => $validated['animal_type'],
             'stray_status' => $validated['stray_status'],
             'camera' => $validated['camera'],
+            'breed' => $validated['breed'],
+            'collar' => $validated['collar']
 
         ];
         

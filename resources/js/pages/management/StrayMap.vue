@@ -129,9 +129,11 @@ async function postDetectedAnimalsToAnimalPins() {
 
         try {
           await axios.post('/animalpins', {
-            animal_type: animal.animal_type,
-            stray_status: animal.classification,
+            animal_type: animal.pet_type,
+            stray_status: animal.is_registered,
             camera: animal.rtsp_url,
+            breed: animal.breed,
+            collar: animal.has_leash,
           });
 
           uniqueAnimalStreamCombos[animalStreamKey] = animal.timestamp;

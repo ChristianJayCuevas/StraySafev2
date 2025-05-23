@@ -14,6 +14,8 @@ class AnimalPins extends Model
         'camera_pin_id',
         'latitude',
         'longitude',
+        'breed',
+        'collar'
     ];
 
     protected $hidden = [

@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('animal_type')->nullable();
             $table->string('stray_status')->nullable();
+            $table->string('breed')->nullable();
+            $table->string('collar')->nullable();
             $table->text('camera')->nullable();
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
