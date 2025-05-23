@@ -229,6 +229,7 @@ Route::middleware(['auth'])->group(function () {
 Route::apiResource('animal-detections', AnimalDetectionController::class);
 
 Route::get('/my-pets', [MobileRegisteredAnimalController::class, 'fetchMyPets']);
+
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/unread-count', function () {
         $count = \App\Models\PushNotification::where('user_id', auth()->id())

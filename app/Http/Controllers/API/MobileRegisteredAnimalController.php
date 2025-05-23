@@ -26,7 +26,7 @@ class MobileRegisteredAnimalController extends Controller
         // If your 'owner' field stores the user's ID, use where('owner', $user->id)
         // If 'owner' stores the user's name, and you want to filter by that, use where('owner', $user->name)
         // But using user_id is generally more robust.
-        $animals = RegisteredAnimal::where('user_id', $user->id) // <<< KEY CHANGE HERE
+        $animals = RegisteredAnimal::where('id', $user->id) // <<< KEY CHANGE HERE
             ->select('id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')
             ->orderBy('created_at', 'desc') // Optional: show newest first
             ->get();
