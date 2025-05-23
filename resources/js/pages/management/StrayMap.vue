@@ -74,8 +74,17 @@ async function postDetectedAnimalsToAnimalPins() {
     const detectionResponse = await axios.get('/animal-detections');
     console.log('Detection response:', detectionResponse.data); // Debug log
 
-    if (detectionResponse.data && detectionResponse.data.detected_animals) {
-      const detectedAnimals = detectionResponse.data.detected_animals;
+    // Check for paginated response structure (data.data) or direct array (detected_animals)
+    let detectedAnimals = null;
+    if (detectionResponse.data && detectionResponse.data.data) {
+      // Paginated response structure
+      detectedAnimals = detectionResponse.data.data;
+    } else if (detectionResponse.data && detectionResponse.data.detected_animals) {
+      // Direct response structure
+      detectedAnimals = detectionResponse.data.detected_animals;
+    }
+
+    if (detectedAnimals && detectedAnimals.length > 0) {
       let newAnimalsCount = 0;
       let failedAnimals = 0;
       let skipCount = 0;
