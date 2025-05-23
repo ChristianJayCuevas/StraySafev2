@@ -224,40 +224,52 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
   );
 }
 // --- Notification Sending ---
-async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet) {
+
+async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet, savedDetectionPaths?: { frame_path?: string, reg_path?: string }) {
   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
   // ---- START Notification Limiting Logic ----
-  // Create a unique key for this specific match (detected external ID + registered pet ID)
-  // Ensure detectedAnimal.external_api_id is reliably populated. If not, use another unique ID from detectedAnimal.
   const matchKey = `${detectedAnimal.external_api_id || detectedAnimal.pet_name}-${matchedRegisteredPet.id}`;
 
   if (notifiedMatches.value.has(matchKey)) {
     console.log(`Notification for matchKey ${matchKey} already sent this session. Skipping.`);
-    return; // Already notified for this specific match in this session
+    return;
   }
   // ---- END Notification Limiting Logic ----
 
   let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
   // ... (rest of bodyMessage construction) ...
 
+  // Determine the best image to use for the notification
+  let notificationImage = savedDetectionPaths?.frame_path || 
+                         savedDetectionPaths?.reg_path || 
+                         detectedAnimal.frame_base64 || 
+                         detectedAnimal.reg_base64 || 
+                         'https://straysafe.me/images/default-pet-notification.png';
+
   const payload = {
-    user_id: 1, // Use the actual user_id from matchedRegisteredPet.user_id
+    user_id: userId, // Use the actual user_id parameter
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
-    action: '/notifications',
-    image: detectedAnimal.frame_base64 || detectedAnimal.reg_base64 || 'https://straysafe.me/images/default-pet-notification.png',
+    action: '/mobilemap',
+    image: notificationImage,
   };
 
   console.log('Sending notification payload:', payload);
+  console.log('Using image:', notificationImage);
 
   try {
     const response = await axios.post(NOTIFICATION_URL, payload);
     console.log('Notification sent successfully:', response.data);
-    toast.success("Match Notification Sent!", { description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` });
-    notifiedMatches.value.add(matchKey); // Add to set after successful send
+    toast.success("Match Notification Sent!", { 
+      description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` 
+    });
+    notifiedMatches.value.add(matchKey);
   } catch (error: any) {
-    // ... (error handling) ...
+    console.error('Failed to send notification:', error.response?.data || error.message);
+    toast.error("Notification Failed", { 
+      description: `Could not notify owner of ${matchedRegisteredPet.pet_name}` 
+    });
   }
 }
 
@@ -274,18 +286,14 @@ async function pollExternalAPIAndStore() {
   const API_URL = 'https://straysafe.me/checknewimage';
 
   try {
-    const response = await axios.get<Detection>(API_URL); // Assume animalData matches Detection structure
+    const response = await axios.get<Detection>(API_URL);
     const detectedAnimalData = response.data;
 
-    // Using pet_name and pet_type from Flask response as the primary identifiers for a detection
-    // This was the condition you had: animalData.pet_name && animalData.pet_type
-    // Let's ensure Flask provides these consistently.
     if (detectedAnimalData && Object.keys(detectedAnimalData).length > 0 && detectedAnimalData.pet_name && detectedAnimalData.pet_type) {
       console.log('Poll: New detection received:', detectedAnimalData);
 
-      // Prepare payload for saving the detection to your Laravel backend
       const detectionPayload = {
-        external_api_id: String(detectedAnimalData.pet_name), // Or use a more unique ID from Flask if available
+        external_api_id: String(detectedAnimalData.pet_name),
         external_api_type: detectedAnimalData.pet_type,
         breed: detectedAnimalData.breed || null,
         contact_number: detectedAnimalData.contact_number === 'none' ? null : (detectedAnimalData.contact_number || null),
@@ -294,58 +302,83 @@ async function pollExternalAPIAndStore() {
         has_leash: typeof detectedAnimalData.has_leash === 'boolean' ? detectedAnimalData.has_leash : null,
         is_registered: typeof detectedAnimalData.is_registered === 'boolean' ? detectedAnimalData.is_registered : null,
         leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
-        pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null), // This is the detected pet's name
+        pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null),
         pet_type: detectedAnimalData.pet_type,
-        // NEW FIELDS: Add the meta data from Python backend
         rtsp_url: detectedAnimalData.rtsp_url || null,
         track_id: detectedAnimalData.track_id || null,
         stable_class: detectedAnimalData.stable_class || null,
-        detection_timestamp: detectedAnimalData.timestamp || null, // ISO format timestamp from Python
+        detection_timestamp: detectedAnimalData.timestamp || null,
         similarity_score: typeof detectedAnimalData.similarity_score === 'number' ? detectedAnimalData.similarity_score : null,
-        // Include location data if Flask provides it
-        // latitude: detectedAnimalData.latitude || null,
-        // longitude: detectedAnimalData.longitude || null,
-        // camera_name: detectedAnimalData.camera_name || null,
       };
 
       // Save the detection to your backend
       try {
         const backendResponse = await axios.post('/animal-detections', detectionPayload);
         let refreshedList = false;
+        let savedDetection = null;
+
         if (backendResponse.status === 201 || backendResponse.status === 200) {
-          if(backendResponse.status === 201) {
+          // Get the saved detection with file paths
+          const savedDetectionId = backendResponse.data.data.id; // Assuming your Laravel response includes the ID
+          
+          try {
+            const getResponse = await axios.get(`/animal-detections/${savedDetectionId}`);
+            savedDetection = getResponse.data;
+            
+            console.log('Retrieved saved detection with paths:', {
+              id: savedDetection.id,
+              frame_path: savedDetection.frame_path,
+              reg_path: savedDetection.reg_path,
+              external_api_id: savedDetection.external_api_id
+            });
+            
+            // Now you have access to the file paths:
+            // savedDetection.frame_path - path to the saved frame image
+            // savedDetection.reg_path - path to the saved registration image
+            
+          } catch (getError) {
+            console.error('Failed to retrieve saved detection:', getError);
+            // Continue with the original flow even if GET fails
+            savedDetection = backendResponse.data.data;
+          }
+
+          if (backendResponse.status === 201) {
             toast.success("New Detection Saved!", { 
               description: `Pet: ${detectionPayload.pet_name || detectionPayload.external_api_id} from ${detectionPayload.rtsp_url || 'camera'}` 
             });
           }
           refreshedList = true;
         }
+
         if (refreshedList) {
           await loadDetectionsFromBackend(); // Refresh the displayed list of detections
         }
+
+        // Use savedDetection for further processing if needed
+        // For example, you could pass the file paths to the notification function
+        if (savedDetection && detectedAnimalData.pet_name && detectedAnimalData.breed) {
+          const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
+          const detectedBreedLower = detectedAnimalData.breed.toLowerCase();
+
+          for (const regPet of registeredPets.value) {
+            if (
+              regPet.pet_name.toLowerCase() === detectedNameLower &&
+              regPet.breed.toLowerCase() === detectedBreedLower 
+            ) {
+              console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.user_id}`);
+              
+              // Now you can pass the file paths to the notification function
+              await sendPetMatchNotification(regPet.user_id, detectedAnimalData, regPet, {
+                frame_path: savedDetection.frame_path,
+                reg_path: savedDetection.reg_path
+              });
+            }
+          }
+        }
+
       } catch (postError: any) {
         console.error('Poll: Failed POST to backend /animal-detections:', postError.response?.data || postError.message, 'Payload:', detectionPayload);
         toast.error("Error Saving Detection", { description: postError.response?.data?.message || postError.message });
-      }
-      // ---- NEW: Check for match with registered pets ----
-      if (detectedAnimalData.pet_name && detectedAnimalData.breed) {
-        const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
-        const detectedBreedLower = detectedAnimalData.breed.toLowerCase();
-       
-
-        for (const regPet of registeredPets.value) {
-          if (
-            regPet.pet_name.toLowerCase() === detectedNameLower &&
-            regPet.breed.toLowerCase() === detectedBreedLower 
-            // Optional: match pet_type too
-          ) {
-            console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.user_id}`);
-            // Send notification
-            await sendPetMatchNotification(regPet.user_id, detectedAnimalData, regPet);
-            // Optional: Break if you only want to notify for the first match
-            // break;
-          }
-        }
       }
 
     } else {
