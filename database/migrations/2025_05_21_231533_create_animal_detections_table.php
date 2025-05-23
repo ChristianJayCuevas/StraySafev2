@@ -34,6 +34,8 @@ return new class extends Migration
             $table->string('stable_class')->nullable();
             $table->timestamp('detection_timestamp')->nullable();
             $table->decimal('similarity_score', 5, 4)->nullable();
+            $table->string('frame_path')->nullable();
+            $table->string('reg_path')->nullable();
             $table->timestamps(); 
         });
            

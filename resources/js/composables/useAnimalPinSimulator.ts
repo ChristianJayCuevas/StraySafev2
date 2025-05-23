@@ -60,8 +60,8 @@ export function useAnimalPinSimulator(mapInstance: any) {
     const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
       <div>
         <strong>Type:</strong> ${pin.animal_type}<br>
-        <strong>Status:</strong> ${pin.stray_status}
-        <strong>Longitude:</strong> ${pin.longitude}
+        <strong>Status:</strong> ${pin.stray_status === 1 ? 'Not Stray' : 'Stray'}<br>
+        <strong>Longitude:</strong> ${pin.longitude}<br>
         <strong>Latitude:</strong> ${pin.latitude}
       </div>
     `)

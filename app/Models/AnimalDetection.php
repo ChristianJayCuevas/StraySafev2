@@ -29,6 +29,8 @@ class AnimalDetection extends Model
         'similarity_score',
         'detected_at',
         'external_data_updated_at',
+        'frame_path',
+        'reg_path'
     ];
 
     protected $casts = [

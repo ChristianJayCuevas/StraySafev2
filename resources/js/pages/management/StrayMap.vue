@@ -242,15 +242,7 @@ onMounted(async () => {
     <Head title="StrayMap" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <!-- Debug info -->
-        <div class="fixed top-4 right-4 z-50 bg-white p-4 rounded shadow-lg border">
-          <div class="text-sm">
-            <div>Polling: {{ isPolling ? 'Active' : 'Inactive' }}</div>
-            <div>Status: {{ pollingStatus }}</div>
-            <div v-if="errorMessage" class="text-red-500">{{ errorMessage }}</div>
-            <div>Processed IDs: {{ processedAnimalIds.size }}</div>
-          </div>
-        </div>
-
+       
         <transition name="fade-blur">
             <div v-if="isDrawing" class="fixed inset-0 z-40 backdrop-blur-sm bg-black/30 pointer-events-none"></div>
         </transition>

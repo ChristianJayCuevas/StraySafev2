@@ -6,10 +6,13 @@ use App\Models\AnimalDetection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class AnimalDetectionController extends Controller
 {
+    private const BASE_STORAGE_PATH = '/var/www/straysafesnapshots/';
+
     public function index(Request $request)
     {
         $perPage = $request->query('per_page', 15);
@@ -61,6 +64,20 @@ class AnimalDetectionController extends Controller
                 ]
             );
 
+            // Save base64 images before populating the model
+            $imagePaths = $this->saveBase64Images($validatedData, $now);
+            
+            // Update the validated data with file paths instead of base64 data
+            if (isset($imagePaths['frame_path'])) {
+                $validatedData['frame_path'] = $imagePaths['frame_path'];
+                unset($validatedData['frame_base64']); // Remove base64 data
+            }
+            
+            if (isset($imagePaths['reg_path'])) {
+                $validatedData['reg_path'] = $imagePaths['reg_path'];
+                unset($validatedData['reg_base64']); // Remove base64 data
+            }
+
             // Populate or update fields from the request
             $detection->fill($validatedData); // Fills all matching validated data
 
@@ -70,9 +87,6 @@ class AnimalDetectionController extends Controller
                 $message = 'New detection created.';
                 $statusCode = 201;
             } else {
-                // Optionally, you could compare $detection->getOriginal() with $validatedData
-                // to see if any actual data changed before deciding to save.
-                // For simplicity, we'll assume if it exists, we might be updating its details.
                 $message = 'Existing detection data processed/updated.';
                 $statusCode = 200;
             }
@@ -84,10 +98,8 @@ class AnimalDetectionController extends Controller
             return response()->json(['message' => $message, 'data' => $detection], $statusCode);
 
         } catch (\Illuminate\Database\QueryException $e) {
-            // This might catch race conditions if firstOrNew + save isn't atomic enough for very high concurrency
-            // The unique constraint should prevent duplicates.
             Log::error('Database query error saving detection: ' . $e->getMessage(), ['data' => $validatedData]);
-            if (str_contains($e->getMessage(), 'Duplicate entry')) { // Check for unique constraint violation
+            if (str_contains($e->getMessage(), 'Duplicate entry')) {
                  return response()->json(['message' => 'Error: Duplicate entry based on external ID and type (race condition likely).'], 409);
             }
             return response()->json(['message' => 'Error saving detection data due to database issue.'], 500);
@@ -105,11 +117,147 @@ class AnimalDetectionController extends Controller
     public function destroy(AnimalDetection $animalDetection)
     {
         try {
+            // Delete associated image files if they exist
+            $this->deleteAssociatedImages($animalDetection);
+            
             $animalDetection->delete();
             return response()->json(null, 204);
         } catch (\Exception $e) {
             Log::error('Error deleting detection: ' . $e->getMessage());
             return response()->json(['message' => 'Error deleting detection data.'], 500);
+        }
+    }
+
+    /**
+     * Save base64 images to the file system
+     */
+    private function saveBase64Images(array $data, Carbon $timestamp): array
+    {
+        $savedPaths = [];
+
+        if (empty($data['rtsp_url'])) {
+            return $savedPaths;
+        }
+
+        // Create folder name from RTSP URL (sanitize for filesystem)
+        $folderName = $this->sanitizeForFilename($data['rtsp_url']);
+        $folderPath = self::BASE_STORAGE_PATH . $folderName . '/';
+
+        // Create directory if it doesn't exist
+        if (!is_dir($folderPath)) {
+            if (!mkdir($folderPath, 0755, true)) {
+                Log::error('Failed to create directory: ' . $folderPath);
+                throw new \Exception('Failed to create storage directory');
+            }
+        }
+
+        // Save frame image if provided
+        if (!empty($data['frame_base64'])) {
+            $framePath = $this->saveBase64Image(
+                $data['frame_base64'],
+                $folderPath,
+                'frame_' . $data['external_api_id'] . '_' . $timestamp->format('Y-m-d_H-i-s'),
+                'jpg'
+            );
+            if ($framePath) {
+                $savedPaths['frame_path'] = $framePath;
+            }
+        }
+
+        // Save registration image if provided
+        if (!empty($data['reg_base64'])) {
+            $regPath = $this->saveBase64Image(
+                $data['reg_base64'],
+                $folderPath,
+                'reg_' . $data['external_api_id'] . '_' . $timestamp->format('Y-m-d_H-i-s'),
+                'jpg'
+            );
+            if ($regPath) {
+                $savedPaths['reg_path'] = $regPath;
+            }
+        }
+
+        return $savedPaths;
+    }
+
+    /**
+     * Save a single base64 image to file system
+     */
+    private function saveBase64Image(string $base64Data, string $folderPath, string $filename, string $extension): ?string
+    {
+        try {
+            // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+            if (strpos($base64Data, ',') !== false) {
+                $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
+            }
+
+            // Decode base64 data
+            $imageData = base64_decode($base64Data);
+            if ($imageData === false) {
+                Log::error('Failed to decode base64 image data');
+                return null;
+            }
+
+            // Create full file path
+            $fullPath = $folderPath . $filename . '.' . $extension;
+
+            // Save to file
+            if (file_put_contents($fullPath, $imageData) === false) {
+                Log::error('Failed to save image to: ' . $fullPath);
+                return null;
+            }
+
+            // Set proper permissions
+            chmod($fullPath, 0644);
+
+            Log::info('Image saved successfully: ' . $fullPath);
+            return $fullPath;
+
+        } catch (\Exception $e) {
+            Log::error('Error saving base64 image: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Sanitize string for use as filename/folder name
+     */
+    private function sanitizeForFilename(string $input): string
+    {
+        // Replace common URL characters and create a clean folder name
+        $sanitized = preg_replace('/[^a-zA-Z0-9\-_.]/', '_', $input);
+        $sanitized = preg_replace('/_+/', '_', $sanitized); // Remove multiple underscores
+        $sanitized = trim($sanitized, '_'); // Remove leading/trailing underscores
+        
+        // Limit length to prevent filesystem issues
+        return substr($sanitized, 0, 100);
+    }
+
+    /**
+     * Delete associated image files when deleting a detection record
+     */
+    private function deleteAssociatedImages(AnimalDetection $detection): void
+    {
+        try {
+            $pathsToDelete = [];
+            
+            if (!empty($detection->frame_path) && file_exists($detection->frame_path)) {
+                $pathsToDelete[] = $detection->frame_path;
+            }
+            
+            if (!empty($detection->reg_path) && file_exists($detection->reg_path)) {
+                $pathsToDelete[] = $detection->reg_path;
+            }
+
+            foreach ($pathsToDelete as $path) {
+                if (unlink($path)) {
+                    Log::info('Deleted image file: ' . $path);
+                } else {
+                    Log::warning('Failed to delete image file: ' . $path);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error deleting associated images: ' . $e->getMessage());
         }
     }
 }

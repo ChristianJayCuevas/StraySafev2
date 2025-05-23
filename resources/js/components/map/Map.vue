@@ -575,7 +575,7 @@ const selectedAreaId = ref('')
   <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" /> 
 </div>
   <!-- Controls panel -->
-   <Button @click="simulateStrayDog" />
+   <!-- <Button @click="simulateStrayDog" /> -->
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
     <MapControls 
       @drawing="emit('drawing', $event)" 
