@@ -137,7 +137,7 @@ class AnimalPinsController extends Controller
             'camera' => $validated['camera'],
             'breed' => $validated['breed'],
             'collar' => $validated['collar'],
-            'picture' => validated['picture']
+            'picture' => $validated['picture']
 
         ];
         
