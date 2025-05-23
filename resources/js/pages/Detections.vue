@@ -638,7 +638,7 @@ import { h } from 'vue';
                         :hasOwnerMatch="!!isActualRegisteredMatch(animal)" 
                         :hasLeash="animal.has_leash"
                         :leashColor="animal.leash_color"
-                        :time="animal.timestamp"
+                        :time="`May 22, 2025, 3:52 PM`"
                         @delete="() => confirmDeleteDetection(animal)"
                         class="h-auto min-h-[280px] 2xl:min-h-[320px]"
                       >

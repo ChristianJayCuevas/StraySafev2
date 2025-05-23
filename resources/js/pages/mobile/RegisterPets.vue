@@ -314,7 +314,7 @@ const petTypes = [
                   
                   <FormField name="breed" v-slot="{ componentField, meta }">
                     <FormItem>
-                      <FormLabel>Breed </FormLabel>
+                      <FormLabel>Breed</FormLabel>
                       <FormControl>
                         <Input 
                           type="text"
