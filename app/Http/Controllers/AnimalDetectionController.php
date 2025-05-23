@@ -32,8 +32,13 @@ class AnimalDetectionController extends Controller
             'is_registered' => 'nullable|boolean',
             'leash_color' => 'nullable|string|max:50',
             'pet_name' => 'nullable|string|max:255',
-            'pet_type' => 'nullable|string|max:50', // The type from external API data
+            'pet_type' => 'nullable|string|max:50',
             'reg_base64' => 'nullable|string',
+            'rtsp_url' => 'nullable|string|max:500',
+            'track_id' => 'nullable|string|max:100',
+            'stable_class' => 'nullable|string|max:50',
+            'detection_timestamp' => 'nullable|date',
+            'similarity_score' => 'nullable|numeric|between:0,1',
         ]);
 
         if ($validator->fails()) {
@@ -42,6 +47,11 @@ class AnimalDetectionController extends Controller
 
         $validatedData = $validator->validated();
         $now = Carbon::now();
+
+        // Convert ISO timestamp to Carbon instance if provided
+        if (isset($validatedData['detection_timestamp'])) {
+            $validatedData['detection_timestamp'] = Carbon::parse($validatedData['detection_timestamp']);
+        }
 
         try {
             $detection = AnimalDetection::firstOrNew(
@@ -102,4 +112,4 @@ class AnimalDetectionController extends Controller
             return response()->json(['message' => 'Error deleting detection data.'], 500);
         }
     }
-}   
+}

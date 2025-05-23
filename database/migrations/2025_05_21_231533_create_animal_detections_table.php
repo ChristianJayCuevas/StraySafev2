@@ -29,6 +29,11 @@ return new class extends Migration
             $table->string('external_api_type')->nullable()->comment('Type from the external API, e.g., dog, cat');
             $table->timestamp('external_data_updated_at')->nullable()->comment('Timestamp when this external record was last processed');
             $table->unique(['external_api_id', 'external_api_type'], 'animal_detections_external_unique');
+            $table->string('rtsp_url')->nullable();
+            $table->string('track_id')->nullable();
+            $table->string('stable_class')->nullable();
+            $table->timestamp('detection_timestamp')->nullable();
+            $table->decimal('similarity_score', 5, 4)->nullable();
             $table->timestamps(); 
         });
            

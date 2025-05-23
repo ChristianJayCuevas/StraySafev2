@@ -291,6 +291,12 @@ async function pollExternalAPIAndStore() {
         leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
         pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null), // This is the detected pet's name
         pet_type: detectedAnimalData.pet_type,
+        // NEW FIELDS: Add the meta data from Python backend
+        rtsp_url: detectedAnimalData.rtsp_url || null,
+        track_id: detectedAnimalData.track_id || null,
+        stable_class: detectedAnimalData.stable_class || null,
+        detection_timestamp: detectedAnimalData.timestamp || null, // ISO format timestamp from Python
+        similarity_score: typeof detectedAnimalData.similarity_score === 'number' ? detectedAnimalData.similarity_score : null,
         // Include location data if Flask provides it
         // latitude: detectedAnimalData.latitude || null,
         // longitude: detectedAnimalData.longitude || null,
@@ -303,7 +309,9 @@ async function pollExternalAPIAndStore() {
         let refreshedList = false;
         if (backendResponse.status === 201 || backendResponse.status === 200) {
           if(backendResponse.status === 201) {
-            toast.success("New Detection Saved!", { description: `Pet: ${detectionPayload.pet_name || detectionPayload.external_api_id}` });
+            toast.success("New Detection Saved!", { 
+              description: `Pet: ${detectionPayload.pet_name || detectionPayload.external_api_id} from ${detectionPayload.rtsp_url || 'camera'}` 
+            });
           }
           refreshedList = true;
         }
@@ -408,6 +416,12 @@ async function loadDetectionsFromBackend() {
       external_data_timestamp: formatBackendTimestamp(item.external_data_updated_at),
       frame_base64: formatBase64Image(item.frame_base64, item.pet_type === 'dog' ? 'jpeg' : 'png'),
       reg_base64: formatBase64Image(item.reg_base64, item.pet_type === 'dog' ? 'jpeg' : 'png'),
+      // NEW FIELDS: Add the meta data fields
+      rtsp_url: item.rtsp_url || null,
+      track_id: item.track_id || null,
+      stable_class: item.stable_class || null,
+      detection_timestamp: item.detection_timestamp ? formatBackendTimestamp(item.detection_timestamp) : null,
+      similarity_score: item.similarity_score ? Number(item.similarity_score) : null,
     }));
     backendPaginationData.value = paginationInfo;
   } catch (error) {
