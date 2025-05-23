@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import Icon from '@/components/Icon.vue';
 import axios from 'axios';
+import {toast} from 'vue-sonner';
 
 // Simplified Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
@@ -79,9 +80,9 @@ const fetchMyPetsData = async () => {
     if (error.response && error.response.status === 401) {
       // Handle unauthenticated state, e.g., redirect to login
       // router.visit('/login'); // Example for Inertia
-      alert('You are not logged in. Please login to see your pets.');
+      toast.error('You are not logged in. Please login to see your pets.');
     } else {
-      alert('Could not load your pets. Please try again later.');
+      toast.info('Could not load your pets. Please try again later.');
     }
   } finally {
     isLoading.value = false;
@@ -99,7 +100,7 @@ const getStatusColor = (status: string) => {
 };
 
 const navigateToRegisterPet = () => {
-  router.get('/pets/register'); // Adjust if your route is different
+  router.get('/registeredpetsmobile'); // Adjust if your route is different
 };
 
 // Simplified pagination display logic
@@ -143,7 +144,7 @@ const getPageNumbers = computed(() => {
 <template>
   <Head title="My Pets" />
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="container mx-auto py-4 px-2 sm:px-4"> {/* Reduced padding for mobile */}
+    <div class="container mx-auto py-4 px-2 sm:px-4"> 
       <div class="flex flex-col gap-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
