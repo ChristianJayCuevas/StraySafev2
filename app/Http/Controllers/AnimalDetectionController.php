@@ -49,6 +49,10 @@ class AnimalDetectionController extends Controller
         }
 
         $validatedData = $validator->validated();
+        if (!empty($validatedData['rtsp_url'])) {
+            // Remove "_expired" at the end of the rtsp_url if it exists
+            $validatedData['rtsp_url'] = preg_replace('/_expired$/', '', $validatedData['rtsp_url']);
+        }
         $now = Carbon::now();
 
         // Convert ISO timestamp to Carbon instance if provided
@@ -63,25 +67,25 @@ class AnimalDetectionController extends Controller
                     'external_api_type' => $validatedData['external_api_type'],
                 ]
             );
-
+        
             // Save base64 images before populating the model
             $imagePaths = $this->saveBase64Images($validatedData, $now);
             
-            // Update the validated data with file paths instead of base64 data
+            // Add file paths to the validated data (keep base64 data as well)
             if (isset($imagePaths['frame_path'])) {
                 $validatedData['frame_path'] = $imagePaths['frame_path'];
-                unset($validatedData['frame_base64']); // Remove base64 data
+                // DON'T unset frame_base64 - keep it for database storage
             }
             
             if (isset($imagePaths['reg_path'])) {
                 $validatedData['reg_path'] = $imagePaths['reg_path'];
-                unset($validatedData['reg_base64']); // Remove base64 data
+                // DON'T unset reg_base64 - keep it for database storage
             }
-
-            // Populate or update fields from the request
-            $detection->fill($validatedData); // Fills all matching validated data
-
-            // If it's a new record, set 'detected_at'
+        
+            // Populate or update fields from the request (now includes both paths and base64)
+            $detection->fill($validatedData);
+        
+            // Rest of your code remains the same...
             if (!$detection->exists) {
                 $detection->detected_at = $now;
                 $message = 'New detection created.';
@@ -90,12 +94,12 @@ class AnimalDetectionController extends Controller
                 $message = 'Existing detection data processed/updated.';
                 $statusCode = 200;
             }
-
-            // Always update when we last processed this external data
+        
             $detection->external_data_updated_at = $now;
             $detection->save();
-
+        
             return response()->json(['message' => $message, 'data' => $detection], $statusCode);
+        
 
         } catch (\Illuminate\Database\QueryException $e) {
             Log::error('Database query error saving detection: ' . $e->getMessage(), ['data' => $validatedData]);
@@ -210,8 +214,8 @@ class AnimalDetectionController extends Controller
             // Set proper permissions
             chmod($fullPath, 0644);
 
-            Log::info('Image saved successfully: ' . $fullPath);
-            return $fullPath;
+            $relativePath = str_replace(self::BASE_STORAGE_PATH, '', $fullPath);
+            return 'https://straysafe.me/straysafesnapshots/' . $relativePath;
 
         } catch (\Exception $e) {
             Log::error('Error saving base64 image: ' . $e->getMessage());
