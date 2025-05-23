@@ -109,32 +109,7 @@ const errorMessage = ref('');
         }
 
         try {
-          // Step 3: Post to AnimalDetectionController with correct field names
-          await axios.post('/animal-detections', {
-            // Required fields
-            external_api_id: animal.id.toString(), // Convert to string as required
-            external_api_type: 'detection_api', // You may need to adjust this based on your API source
-            
-            // Optional fields - map from your animal object to controller fields
-            pet_type: animal.animal_type, // Maps animal_type to pet_type
-            breed: animal.breed || null,
-            contact_number: animal.contact_number || null,
-            frame_base64: animal.frame_base64 || null,
-            has_leash: animal.has_leash || null,
-            is_registered: animal.is_registered || null,
-            leash_color: animal.leash_color || null,
-            pet_name: animal.pet_name || null,
-            reg_base64: animal.reg_base64 || null,
-            
-            // NEW FIELDS: Add the meta data fields
-            rtsp_url: animal.rtsp_url || animal.stream_url || animal.camera_url || null,
-            track_id: animal.track_id || animal.tracking_id || null,
-            stable_class: animal.stable_class || animal.animal_type || null,
-            detection_timestamp: animal.detection_timestamp || animal.timestamp || null,
-            similarity_score: typeof animal.similarity_score === 'number' ? animal.similarity_score : null,
-          });
 
-          // Also post to animalpins if you still need that
           await axios.post('/animalpins', {
             animal_type: animal.animal_type,
             stray_status: animal.classification,

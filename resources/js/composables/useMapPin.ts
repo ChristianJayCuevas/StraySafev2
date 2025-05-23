@@ -444,7 +444,7 @@ export function useMapPins(mapInstance: any) {
                   overflow: hidden;
                 ">
                   <img 
-                    src="${pin.image_link  || '/images/camera-placeholder.jpg'}" 
+                    src="/images/newlogo1.png" 
                     alt="CCTV Feed"
                     style="
                       width: 100%;
