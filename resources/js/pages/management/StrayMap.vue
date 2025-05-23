@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { ref, onMounted,onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { Card } from '@/components/ui/card'
@@ -9,12 +9,14 @@ import CardData from '@/components/CardData.vue'
 import MapControls from '@/components/map/MapControls.vue'
 import { Skeleton } from '@/components/ui/skeleton'
 import axios from 'axios';
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Stray Map',
         href: '/straymap',
     },
 ];
+
 const isDrawing = ref(false)
 const isLoading = ref(true)
 const stats = ref({
@@ -22,6 +24,14 @@ const stats = ref({
   animal_pins: 0,
   total_area: 0
 });
+
+// Reactive state to track processed animal IDs to avoid duplicates
+const processedAnimalIds = ref(new Set());
+const isPolling = ref(false);
+const pollingInterval = ref(null);
+const pollingStatus = ref('Idle');
+const errorMessage = ref('');
+
 const fetchStats = async () => {
   try {
     const response = await axios.get('/stats/summary');
@@ -30,26 +40,23 @@ const fetchStats = async () => {
     console.error('Error fetching stats:', error);
   }
 };
+
 function updateProcessedIds(id) {
   processedAnimalIds.value.add(id);
   localStorage.setItem('processedAnimalIds', 
     JSON.stringify([...processedAnimalIds.value]));
 }
-// Reactive state to track processed animal IDs to avoid duplicates
-const processedAnimalIds = ref(new Set());
-const isPolling = ref(false);
-const pollingInterval = ref(null);
-const pollingStatus = ref('Idle');
-const errorMessage = ref('');
 
 /**
  * Fetches animal detection data and posts it to the animal pins endpoint
  * @returns {Promise<void>}
  */
- async function postDetectedAnimalsToAnimalPins() {
+async function postDetectedAnimalsToAnimalPins() {
   try {
     pollingStatus.value = 'Fetching data...';
     errorMessage.value = '';
+    
+    console.log('Starting animal detection polling...'); // Debug log
     
     // Step 1: Get existing animal pins from your database
     const existingPinsResponse = await axios.get('/animalpins2');
@@ -65,6 +72,7 @@ const errorMessage = ref('');
     
     // Step 2: Get detected animals from the API
     const detectionResponse = await axios.get('/animal-detections');
+    console.log('Detection response:', detectionResponse.data); // Debug log
 
     if (detectionResponse.data && detectionResponse.data.detected_animals) {
       const detectedAnimals = detectionResponse.data.detected_animals;
@@ -78,6 +86,8 @@ const errorMessage = ref('');
       const sortedAnimals = [...detectedAnimals].sort((a, b) => {
         return new Date(a.timestamp) - new Date(b.timestamp);
       });
+
+      console.log(`Processing ${sortedAnimals.length} detected animals...`); // Debug log
 
       for (const animal of sortedAnimals) {
         const animalStreamKey = `${animal.animal_id}_${animal.stream_id}`;
@@ -109,7 +119,6 @@ const errorMessage = ref('');
         }
 
         try {
-
           await axios.post('/animalpins', {
             animal_type: animal.animal_type,
             stray_status: animal.classification,
@@ -118,6 +127,7 @@ const errorMessage = ref('');
 
           uniqueAnimalStreamCombos[animalStreamKey] = animal.timestamp;
           processedAnimalIds.value.add(animal.id);
+          updateProcessedIds(animal.id); // Save to localStorage
           newAnimalsCount++;
         } catch (animalError) {
           console.error(`Error posting animal ${animal.id}:`, animalError);
@@ -127,14 +137,17 @@ const errorMessage = ref('');
 
       // Step 4: Optionally, update stats after processing
       if (newAnimalsCount > 0) {
-        fetchStats();
+        await fetchStats();
       }
 
       pollingStatus.value = `Processed ${newAnimalsCount} new animals` +
         (skipCount > 0 ? ` (${skipCount} skipped as duplicates)` : '') +
         (failedAnimals > 0 ? ` (${failedAnimals} failed)` : '');
+        
+      console.log(pollingStatus.value); // Debug log
     } else {
       pollingStatus.value = 'No detected animals found in the API response';
+      console.log('No detected animals in response'); // Debug log
     }
   } catch (error) {
     console.error('Error fetching detected animals:', error);
@@ -142,23 +155,34 @@ const errorMessage = ref('');
     pollingStatus.value = 'Error occurred while fetching data';
   }
 }
+
 function startPolling() {
-  if (isPolling.value) return;
+  if (isPolling.value) {
+    console.log('Polling already active, skipping start');
+    return;
+  }
   
+  console.log('Starting polling...'); // Debug log
   isPolling.value = true;
+  pollingStatus.value = 'Starting polling...';
+  
   // Run immediately on start
   postDetectedAnimalsToAnimalPins();
   
   // Then set up interval for every 10 seconds
   pollingInterval.value = setInterval(() => {
+    console.log('Polling interval triggered'); // Debug log
     postDetectedAnimalsToAnimalPins();
   }, 10000); // 10 seconds
+  
+  console.log('Polling started with interval ID:', pollingInterval.value);
 }
 
 // Stop polling function
 function stopPolling() {
   if (!isPolling.value) return;
   
+  console.log('Stopping polling...'); // Debug log
   clearInterval(pollingInterval.value);
   pollingInterval.value = null;
   isPolling.value = false;
@@ -166,13 +190,14 @@ function stopPolling() {
 }
 
 // Component lifecycle hooks
-
-
 onBeforeUnmount(() => {
+  console.log('Component unmounting, stopping polling'); // Debug log
   stopPolling(); // Clean up when component unmounts
 });
 
-onMounted(() => {
+onMounted(async () => {
+  console.log('Component mounted'); // Debug log
+  
   // Load processed IDs from localStorage
   const savedIds = localStorage.getItem('processedAnimalIds');
   if (savedIds) {
@@ -187,20 +212,33 @@ onMounted(() => {
     }
   }
   
-  startPolling();
-  fetchStats();
+  // Fetch initial stats
+  await fetchStats();
   
-  // Your existing setTimeout for isLoading if needed
+  // Start polling after a short delay to ensure everything is initialized
+  setTimeout(() => {
+    startPolling();
+  }, 1000);
+  
+  // Set loading to false after delay
   setTimeout(() => {
     isLoading.value = false
-  }, 2000)
+  }, 2000);
 });
 </script>
 
 <template>
-
     <Head title="StrayMap" />
     <AppLayout :breadcrumbs="breadcrumbs">
+        <!-- Debug info -->
+        <div class="fixed top-4 right-4 z-50 bg-white p-4 rounded shadow-lg border">
+          <div class="text-sm">
+            <div>Polling: {{ isPolling ? 'Active' : 'Inactive' }}</div>
+            <div>Status: {{ pollingStatus }}</div>
+            <div v-if="errorMessage" class="text-red-500">{{ errorMessage }}</div>
+            <div>Processed IDs: {{ processedAnimalIds.size }}</div>
+          </div>
+        </div>
 
         <transition name="fade-blur">
             <div v-if="isDrawing" class="fixed inset-0 z-40 backdrop-blur-sm bg-black/30 pointer-events-none"></div>
