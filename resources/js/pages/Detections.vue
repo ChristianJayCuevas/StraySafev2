@@ -358,12 +358,10 @@ async function pollExternalAPIAndStore() {
         // For example, you could pass the file paths to the notification function
         if (savedDetection && detectedAnimalData.pet_name && detectedAnimalData.breed) {
           const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
-          const detectedBreedLower = detectedAnimalData.breed.toLowerCase();
 
           for (const regPet of registeredPets.value) {
             if (
-              regPet.pet_name.toLowerCase() === detectedNameLower &&
-              regPet.breed.toLowerCase() === detectedBreedLower 
+              regPet.pet_name.toLowerCase() === detectedNameLower
             ) {
               console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.user_id}`);
               

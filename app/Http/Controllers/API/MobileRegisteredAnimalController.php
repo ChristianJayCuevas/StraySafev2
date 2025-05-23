@@ -10,6 +10,33 @@ use Illuminate\Support\Facades\Validator;
 
 class MobileRegisteredAnimalController extends Controller
 {
+    public function fetchMyPets(Request $request)
+    {
+        $user = $request->user(); // Or Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        // Assuming your RegisteredAnimal model has a 'user_id' field
+        // linking it to the user who registered it.
+        // If your 'owner' field stores the user's ID, use where('owner', $user->id)
+        // If 'owner' stores the user's name, and you want to filter by that, use where('owner', $user->name)
+        // But using user_id is generally more robust.
+        $animals = RegisteredAnimal::where('user_id', $user->id) // <<< KEY CHANGE HERE
+            ->select('id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')
+            ->orderBy('created_at', 'desc') // Optional: show newest first
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $animals,
+        ]);
+    }
+
     public function fetchRegisteredAnimals()
     {
         $animals = RegisteredAnimal::select('id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')->get();

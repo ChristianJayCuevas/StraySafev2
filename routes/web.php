@@ -224,7 +224,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/notifications/{id}', [NotificationController::class, 'delete'])->name('notifications.delete');
 });
 Route::apiResource('animal-detections', AnimalDetectionController::class);
-
+Route::get('/my-pets', [MobileRegisteredAnimalController::class, 'fetchMyPets']);
+Route::post('/my-pets', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/unread-count', function () {
         $count = \App\Models\PushNotification::where('user_id', auth()->id())
