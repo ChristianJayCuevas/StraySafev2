@@ -197,7 +197,7 @@ const getPageNumbers = computed(() => {
                   </div>
                 </div>
                 
-                <CardHeader class="pb-2 pt-3 px-3 sm:px-4"> {/* Adjust padding */}
+                <CardHeader class="pb-2 pt-3 px-3 sm:px-4"> 
                   <div class="flex justify-between items-start">
                     <CardTitle class="text-md sm:text-lg font-semibold truncate" :title="pet.pet_name">{{ pet.pet_name }}</CardTitle>
                     <Badge variant="outline" class="ml-2 text-xs capitalize shrink-0">
@@ -220,10 +220,10 @@ const getPageNumbers = computed(() => {
                   </div>
                 </CardContent>
                 
-                <CardFooter class="pt-2 pb-3 px-3 sm:px-4 border-t"> {/* Adjust padding */}
+                <CardFooter class="pt-2 pb-3 px-3 sm:px-4 border-t"> 
                   <div class="flex items-center justify-end w-full">
                     <!-- Example: Link to a pet detail page or edit action -->
-                    <Button variant="ghost" size="sm" @click="router.get(`/pets/${pet.id}/edit`)"> {/* Adjust route */}
+                    <Button variant="ghost" size="sm" @click="router.get(`/pets/${pet.id}/edit`)"> 
                       <Icon name="Edit3" class="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> Edit
                     </Button>
                      <Button variant="ghost" size="icon" class="h-7 w-7 sm:h-8 sm:w-8 ml-1">
