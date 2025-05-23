@@ -344,7 +344,7 @@ async function pollExternalAPIAndStore() {
 
           if (backendResponse.status === 201) {
             toast.success("New Detection Saved!", { 
-              description: `Pet: ${detectionPayload.pet_name || detectionPayload.external_api_id} from ${detectionPayload.rtsp_url || 'camera'}` 
+              description: `From ${detectionPayload.rtsp_url || 'camera'}` 
             });
           }
           refreshedList = true;

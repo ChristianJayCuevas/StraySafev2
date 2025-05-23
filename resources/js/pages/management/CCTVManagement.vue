@@ -57,13 +57,13 @@ interface CCTVCamera {
   streamUrl: string;
   status: 'live' | 'demo' | 'offline';
   lastUpdated: string;
-  mode: 'highquality' | 'lowquality';
+  mode: 'highquality' | 'lowquality'; // Added camera mode property
 }
 
 // State variables
 const isLoading = ref(true);
 const cameras = ref<CCTVCamera[]>([]);
-const gridLayout = ref('grid-cols-2');
+const gridLayout = ref('grid-cols-2'); // Default 2 columns
 const searchQuery = ref('');
 
 // Column layout options
@@ -74,30 +74,22 @@ const columnOptions = [
   { value: 'grid-cols-4', label: '4 Columns' },
 ];
 
-// Form state for adding camera
+// Form state
 const showAddDialog = ref(false);
-const newCamera = ref<Partial<CCTVCamera & { sourceType?: string; videoFile?: File }>>({ // Added sourceType and videoFile for form
+const newCamera = ref<Partial<CCTVCamera>>({
   name: '',
   location: '',
   streamUrl: '',
   status: 'demo',
-  mode: 'highquality',
-  sourceType: 'stream', // Default to stream
+  mode: 'highquality', // Changed from 'ai' to 'highquality'
 });
-
-// NEW: State for stream control
-const showStreamControlDialog = ref(false);
-const streamNameToControl = ref('');
-const isStreamActionLoading = ref(false);
-const currentActionInProgress = ref<'start' | 'stop' | null>(null);
-
-
 // Dashboard stats
 const totalCameras = computed(() => cameras.value.length);
 const onlineCameras = computed(() => cameras.value.filter(cam => cam.status !== 'offline').length);
 const offlineCameras = computed(() => cameras.value.filter(cam => cam.status === 'offline').length);
 const liveCameras = computed(() => cameras.value.filter(cam => cam.status === 'live').length);
-// Removed aiCameras and directCameras as they seem to be duplicates of mode filtering if needed later
+const aiCameras = computed(() => cameras.value.filter(cam => cam.mode === 'highquality').length);
+const directCameras = computed(() => cameras.value.filter(cam => cam.mode === 'lowquality').length);
 
 // Filter cameras based on search query
 const filteredCameras = computed(() => {
@@ -112,26 +104,94 @@ const filteredCameras = computed(() => {
   );
 });
 
-// Generate player URL
+// Generate player URL for each camera based on mode
 const getPlayerUrl = (camera: CCTVCamera) => {
   if (!camera || !camera.streamUrl) return '';
+
+  // Extract camera number
   const cameraMatch = camera.streamUrl.match(/cam-(\d+)/);
   const cameraNumber = cameraMatch ? cameraMatch[1] : '1';
+
+  // Adjust URL for low quality mode
   let streamUrl = camera.streamUrl;
   if (camera.mode === 'lowquality') {
     streamUrl = `https://straysafe.me/hls2/cam${cameraNumber}/index.m3u8`;
   }
+
+  // Encode the stream URL to be used as a parameter
   const encodedUrl = encodeURIComponent(streamUrl);
   return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
 };
 
-// Mock data (existing)
+
+// Mock data for development
 const dummyData: CCTVCamera[] = [
-  // ... (dummy data remains the same)
+  {
+    id: 1,
+    name: 'Main Entrance',
+    location: 'Front Gate',
+    streamUrl: 'https://straysafe.me/hls/cam-1/playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-07 14:30',
+    mode: 'highquality',
+  },
+  {
+    id: 2,
+    name: 'Parking Area',
+    location: 'North Lot',
+    streamUrl: 'https://straysafe.me/hls/cam-2/playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-07 14:15',
+    mode: 'highquality',
+  },
+  {
+    id: 3,
+    name: 'Back Entrance',
+    location: 'Loading Bay',
+    streamUrl: 'https://straysafe.me/hls/cam-3/playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-07 13:45',
+    mode: 'highquality',
+  },
+  {
+    id: 4,
+    name: 'Side Alley',
+    location: 'East Wing',
+    streamUrl: 'https://straysafe.me/hls/static-demo1/processed_playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-06 23:10',
+    mode: 'highquality',
+  },
+  {
+    id: 4,
+    name: 'Side Alley',
+    location: 'East Wing',
+    streamUrl: 'https://straysafe.me/hls/static-demo2/processed_playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-06 23:10',
+    mode: 'highquality',
+  },
+  {
+    id: 4,
+    name: 'Side Alley',
+    location: 'East Wing',
+    streamUrl: 'https://straysafe.me/hls/static-demo3/processed_playlist.m3u8',
+    status: 'live',
+    lastUpdated: '2025-05-06 23:10',
+    mode: 'highquality',
+  }
 ];
 
-// API Interaction functions (existing and modified)
-const transformCameraData = (apiCamera: any) => {
+// Fetch cameras from API
+
+
+// Clear search query
+const clearSearch = () => {
+  searchQuery.value = '';
+};
+
+// Add a new camera
+const transformCameraData = (apiCamera) => {
   return {
     id: apiCamera.id,
     name: apiCamera.name,
@@ -143,14 +203,18 @@ const transformCameraData = (apiCamera: any) => {
   };
 };
 
+// Update your fetchCameras function
 const fetchCameras = async () => {
   isLoading.value = true;
   try {
     const response = await axios.get('/cameras');
-    cameras.value = response.data.map(transformCameraData);
+    
+    // Transform each camera from the API response
+    cameras.value = response.data.map(camera => transformCameraData(camera));
   } catch (error) {
     console.error('Failed to fetch cameras:', error);
     toast.error('Failed to load cameras');
+    // Fallback to dummy data only in development
     if (import.meta.env.DEV) {
       cameras.value = dummyData;
     }
@@ -159,35 +223,32 @@ const fetchCameras = async () => {
   }
 };
 
+// Update your addCamera function to handle the response correctly
 const addCamera = async () => {
-  // Basic validation
-  if (!newCamera.value.name || !newCamera.value.location) {
-    toast.error('Name and Location are required.');
+  if (!newCamera.value.name || !newCamera.value.location || !newCamera.value.streamUrl) {
+    toast.error('Please fill all required fields');
     return;
   }
-  if (newCamera.value.sourceType === 'stream' && !newCamera.value.streamUrl) {
-    toast.error('Stream URL is required for stream source type.');
-    return;
-  }
-  // Add validation for file upload if needed
-
+  
   try {
+    // Convert frontend property names to backend format
     const cameraData = {
       name: newCamera.value.name,
       location: newCamera.value.location,
-      stream_url: newCamera.value.streamUrl, // This will be empty if sourceType is 'upload' unless handled
+      stream_url: newCamera.value.streamUrl,
       status: newCamera.value.status,
       mode: newCamera.value.mode,
-      // Potentially include sourceType or file data if backend supports it
     };
     
     const response = await axios.post('/cameras', cameraData);
     
+    // Transform the response data and add to local state
     if (response.data.camera) {
       cameras.value.push(transformCameraData(response.data.camera));
     }
     
     toast.success('Camera added successfully');
+    
     showAddDialog.value = false;
     newCamera.value = {
       name: '',
@@ -195,125 +256,102 @@ const addCamera = async () => {
       streamUrl: '',
       status: 'demo',
       mode: 'highquality',
-      sourceType: 'stream',
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to add camera:', error);
     toast.error(error.response?.data?.message || 'Failed to add camera');
   }
 };
 
-// NEW: Stream Control Functions
-const controlStream = async (action: 'start' | 'stop') => {
-  if (!streamNameToControl.value.trim()) {
-    toast.error('Please enter a stream identifier.');
-    return;
-  }
-
-  isStreamActionLoading.value = true;
-  currentActionInProgress.value = action;
-  try {
-    const streamId = streamNameToControl.value.trim();
-    // IMPORTANT: The URL is absolute (http://straysafe.me). 
-    // If your Vue app is on a different domain, straysafe.me must have CORS configured
-    // to allow requests from your app's origin. Alternatively, use a backend proxy.
-    const url = `http://straysafe.me/streamcontrol/stream/${streamId}/${action}`;
-    
-    await axios.post(url); // These POST requests typically don't need a data payload
-
-    toast.success(`Stream '${streamId}' ${action} command sent successfully.`);
-    // Optionally, clear input or close dialog:
-    // streamNameToControl.value = '';
-    // showStreamControlDialog.value = false; 
-  } catch (error: any) {
-    console.error(`Failed to ${action} stream '${streamNameToControl.value.trim()}':`, error);
-    const backendMessage = error.response?.data?.message || error.response?.data?.error;
-    const errorMessage = backendMessage || `Failed to ${action} stream. Please check the console for more details.`;
-    toast.error(errorMessage);
-  } finally {
-    isStreamActionLoading.value = false;
-    currentActionInProgress.value = null;
-  }
-};
-
-const handleStreamStart = () => {
-  controlStream('start');
-};
-
-const handleStreamStop = () => {
-  controlStream('stop');
-};
-
-
-// ... (removeCamera, toggleCameraStatus, toggleCameraMode functions remain the same)
-const removeCamera = async (id: number) => {
+// Remove a camera
+const removeCamera = async (id) => {
   try {
     await axios.delete(`/cameras/${id}`);
+    
+    // Filter out the camera from local state
     cameras.value = cameras.value.filter(camera => camera.id !== id);
+    
     toast.success('Camera removed successfully');
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to remove camera:', error);
     toast.error(error.response?.data?.message || 'Failed to remove camera');
   }
 };
 
-const toggleCameraStatus = async (camera: CCTVCamera) => {
-  const statusMap = { 'live': 'demo', 'demo': 'offline', 'offline': 'live' } as const;
+// Toggle camera status
+const toggleCameraStatus = async (camera) => {
+  const statusMap = {
+    'live': 'demo',
+    'demo': 'offline',
+    'offline': 'live'
+  };
+  
   const newStatus = statusMap[camera.status];
+  
   try {
-    await axios.patch(`/cameras/${camera.id}/status`, { status: newStatus });
+    await axios.patch(`/cameras/${camera.id}/status`, {
+      status: newStatus
+    });
+    
+    // Update local state
     camera.status = newStatus;
-    camera.lastUpdated = new Date().toLocaleString(); // Corrected property name
+    camera.last_updated = new Date().toLocaleString();
+    
     toast(`Camera ${camera.name} is now ${camera.status}`, {
       icon: camera.status === 'live' ? '🟢' : camera.status === 'demo' ? '🟡' : '🔴'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to update camera status:', error);
     toast.error(error.response?.data?.message || 'Failed to update camera status');
   }
 };
 
-const toggleCameraMode = async (camera: CCTVCamera) => {
+// Toggle camera mode
+const toggleCameraMode = async (camera) => {
   const newMode = camera.mode === 'highquality' ? 'lowquality' : 'highquality';
+  
   try {
-    await axios.patch(`/cameras/${camera.id}/mode`, { mode: newMode });
+    await axios.patch(`/cameras/${camera.id}/mode`, {
+      mode: newMode
+    });
+    
+    // Update local state
     camera.mode = newMode;
-    camera.lastUpdated = new Date().toLocaleString(); // Corrected property name
+    camera.last_updated = new Date().toLocaleString();
+    
     toast.success(`Camera ${camera.name} mode changed to ${camera.mode === 'highquality' ? 'High Quality' : 'Low Quality'}`);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to update camera mode:', error);
     toast.error(error.response?.data?.message || 'Failed to update camera mode');
   }
 };
-
 
 // Lifecycle hooks
 onMounted(() => {
   fetchCameras();
 });
 
-// Helper functions for UI (existing)
-const getStatusColor = (status: string) => { /* ... */ return status === 'live' ? 'bg-green-500' : status === 'demo' ? 'bg-yellow-500' : 'bg-red-500'; };
-const getStatusBadgeVariant = (status: string) => { /* ... */ return status === 'live' ? 'success' : status === 'demo' ? 'warning' : 'destructive'; };
-const getModeBadgeVariant = (mode: string) => { /* ... */ return mode === 'highquality' ? 'secondary' : 'primary'; };
-const clearSearch = () => { searchQuery.value = ''; };
-
-// Placeholder for functions mentioned in template but not fully defined
-const handleSourceTypeChange = (value: string) => {
-  if (newCamera.value) {
-    newCamera.value.sourceType = value;
-    if (value === 'upload') newCamera.value.streamUrl = ''; // Clear streamUrl if switching to upload
-    // else newCamera.value.videoFile = undefined; // Clear videoFile if switching to stream
-  }
-};
-const handleFileUpload = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  if (target.files && target.files[0] && newCamera.value) {
-    newCamera.value.videoFile = target.files[0];
-    // Potentially set streamUrl to represent the file or handle it on backend
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'live': return 'bg-green-500';
+    case 'demo': return 'bg-yellow-500';
+    case 'offline': return 'bg-red-500';
+    default: return 'bg-gray-500';
   }
 };
 
+const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case 'live': return 'success';
+    case 'demo': return 'warning';
+    case 'offline': return 'destructive';
+    default: return 'outline';
+  }
+};
+
+const getModeBadgeVariant = (mode: string) => {
+  return mode === 'highquality' ? 'secondary' : 'primary';
+};
 </script>
 
 <template>
@@ -322,15 +360,34 @@ const handleFileUpload = (event: Event) => {
     <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-6 bg-background">
       <!-- Stats Cards -->
       <div class="grid auto-rows-min gap-4 md:grid-cols-4">
-        <!-- ... existing stats cards ... -->
-         <template v-if="isLoading">
-          <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 4" :key="'stat-skeleton-' + i" />
+        <template v-if="isLoading">
+          <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 6" :key="i" />
         </template>
         <template v-else>
-          <CardData title="Total Cameras" :value="totalCameras" icon="video" description="All registered cameras" />
-          <CardData title="Online Cameras" :value="onlineCameras" icon="wifi" description="Currently accessible cameras" />
-          <CardData title="Offline Cameras" :value="offlineCameras" icon="wifiOff" description="Currently inaccessible cameras" />
-          <CardData title="Live Feeds" :value="liveCameras" icon="radioTower" description="Real-time streaming cameras" />
+          <CardData 
+            title="Total Cameras" 
+            :value="totalCameras" 
+            icon="video" 
+            description="All registered cameras" 
+          />
+          <CardData 
+            title="Online Cameras" 
+            :value="onlineCameras" 
+            icon="wifi" 
+            description="Currently accessible cameras" 
+          />
+          <CardData 
+            title="Offline Cameras" 
+            :value="offlineCameras" 
+            icon="wifiOff" 
+            description="Currently inaccessible cameras" 
+          />
+          <CardData 
+            title="Live Feeds" 
+            :value="liveCameras" 
+            icon="radioTower" 
+            description="Real-time streaming cameras" 
+          />
         </template>
       </div>
 
@@ -355,13 +412,12 @@ const handleFileUpload = (event: Event) => {
           </button>
         </div>
         
-        <!-- Column Layout Control & Action Buttons -->
-        <div class="flex space-x-2 md:space-x-4 items-center">
+        <!-- Column Layout Control -->
+        <div class="flex space-x-4 items-center">
           <div class="flex items-center space-x-2">
-            <Label for="grid-layout" class="sr-only">Grid Layout</Label>
-            <Select v-model="gridLayout">
-              <SelectTrigger id="grid-layout" class="w-[130px] md:w-40">
-                <SelectValue placeholder="Columns" />
+            <Select v-model="gridLayout" class="w-40">
+              <SelectTrigger id="grid-layout">
+                <SelectValue placeholder="Select columns" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="option in columnOptions" :key="option.value" :value="option.value">
@@ -371,152 +427,99 @@ const handleFileUpload = (event: Event) => {
             </Select>
           </div>
           
-          <!-- NEW: Stream Control Dialog & Trigger -->
-          <Dialog v-model:open="showStreamControlDialog">
-            <DialogTrigger asChild>
-              <Button variant="outline" @click="showStreamControlDialog = true">
-                <Icon name="settings-2" class="mr-2 h-4 w-4" />
-                Stream Control
-              </Button>
-            </DialogTrigger>
-            <DialogContent class="sm:max-w-[480px]">
-              <DialogHeader>
-                <DialogTitle>Control Stream</DialogTitle>
-                <DialogDescription>
-                  Enter the stream identifier (e.g., mylive_loop) to start or stop its broadcast.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div class="grid gap-4 py-4">
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="streamName" class="text-right col-span-1">Stream ID</Label>
-                  <Input 
-                    id="streamName" 
-                    v-model="streamNameToControl" 
-                    class="col-span-3" 
-                    placeholder="e.g., mylive_loop"
-                    @keyup.enter="if (streamNameToControl.trim() && !isStreamActionLoading) handleStreamStart()"
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" @click="showStreamControlDialog = false" :disabled="isStreamActionLoading">Cancel</Button>
-                <div class="flex space-x-2">
-                  <Button 
-                    @click="handleStreamStart" 
-                    :disabled="isStreamActionLoading || !streamNameToControl.trim()"
-                    class="bg-green-500 hover:bg-green-600 text-white"
-                  >
-                    <Icon v-if="currentActionInProgress === 'start' && isStreamActionLoading" name="loader-2" class="mr-2 h-4 w-4 animate-spin" />
-                    <Icon v-else name="play" class="mr-2 h-4 w-4" />
-                    Start
-                  </Button>
-                  <Button 
-                    @click="handleStreamStop" 
-                    :disabled="isStreamActionLoading || !streamNameToControl.trim()"
-                    variant="destructive"
-                  >
-                    <Icon v-if="currentActionInProgress === 'stop' && isStreamActionLoading" name="loader-2" class="mr-2 h-4 w-4 animate-spin" />
-                    <Icon v-else name="stop-circle" class="mr-2 h-4 w-4" />
-                    Stop
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <!-- Existing Add Camera Dialog & Trigger -->
-          <Dialog v-model:open="showAddDialog">
-            <DialogTrigger asChild>
-              <Button variant="default" @click="showAddDialog = true">
-                <Icon name="plus" class="mr-2 h-4 w-4" />
-                Add Camera
-              </Button>
-            </DialogTrigger>
-            <DialogContent class="sm:max-w-[525px]"> <!-- Adjusted width slightly for more content -->
-              <DialogHeader>
-                <DialogTitle>Add New Camera</DialogTitle>
-                <DialogDescription>
-                  Add a new CCTV camera to your monitoring system.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div class="grid gap-4 py-4">
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="name" class="text-right">Name</Label>
-                  <Input id="name" v-model="newCamera.name" class="col-span-3" placeholder="Main Entrance" />
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="location" class="text-right">Location</Label>
-                  <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="sourceType" class="text-right">Source Type</Label>
-                  <Select v-model="newCamera.sourceType" @update:modelValue="handleSourceTypeChange">
-                    <SelectTrigger class="col-span-3">
-                      <SelectValue placeholder="Select source type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="stream">Stream URL</SelectItem>
-                      <SelectItem value="upload">Upload Video</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
-                  <Label for="streamUrl" class="text-right">Stream URL</Label>
-                  <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3" placeholder="https://example.com/stream.m3u8" />
-                </div>
-                
-                <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
-                  <Label for="videoUpload" class="text-right">Upload Video</Label>
-                  <div class="col-span-3">
-                    <Input 
-                      id="videoUpload" 
-                      type="file" 
-                      accept="video/*" 
-                      @change="handleFileUpload"
-                    />
-                    <p v-if="newCamera.videoFile" class="text-sm text-muted-foreground mt-1">
-                      Selected: {{ newCamera.videoFile.name }}
-                    </p>
-                  </div>
-                </div>
-                
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="status" class="text-right">Status</Label>
-                  <Select v-model="newCamera.status">
-                    <SelectTrigger class="col-span-3">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="demo">Demo</SelectItem>
-                      <SelectItem value="offline">Offline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                  <Label for="mode" class="text-right">Camera Mode</Label>
-                  <Select v-model="newCamera.mode">
-                    <SelectTrigger class="col-span-3">
-                      <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="highquality">High Quality CCTV</SelectItem>
-                      <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" @click="showAddDialog = false">Cancel</Button>
-                <Button @click="addCamera">Add Camera</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        
+<Dialog v-model:open="showAddDialog">
+  <DialogTrigger asChild>
+    <Button variant="default" @click="showAddDialog = true">
+      <Icon name="plus" class="mr-2 h-4 w-4" />
+      Add Camera
+    </Button>
+  </DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Add New Camera</DialogTitle>
+      <DialogDescription>
+        Add a new CCTV camera to your monitoring system.
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div class="grid gap-4 py-4">
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="name" class="text-right">Name</Label>
+        <Input id="name" v-model="newCamera.name" class="col-span-3" placeholder="Main Entrance" />
+      </div>
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="location" class="text-right">Location</Label>
+        <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
+      </div>
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="sourceType" class="text-right">Source Type</Label>
+        <Select v-model="newCamera.sourceType" class="col-span-3" @update:modelValue="handleSourceTypeChange">
+          <SelectTrigger>
+            <SelectValue placeholder="Select source type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="stream">Stream URL</SelectItem>
+            <SelectItem value="upload">Upload Video</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <!-- Conditional fields based on sourceType -->
+      <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
+        <Label for="streamUrl" class="text-right">Stream URL</Label>
+        <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3" placeholder="https://example.com/stream.m3u8" />
+      </div>
+      
+      <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
+        <Label for="videoUpload" class="text-right">Upload Video</Label>
+        <div class="col-span-3">
+          <Input 
+            id="videoUpload" 
+            type="file" 
+            accept="video/*" 
+            @change="handleFileUpload"
+            class="col-span-3" 
+          />
+          <p v-if="newCamera.videoFile" class="text-sm text-gray-500 mt-1">
+            Selected: {{ newCamera.videoFile.name }}
+          </p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="status" class="text-right">Status</Label>
+        <Select v-model="newCamera.status" class="col-span-3">
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="live">Live</SelectItem>
+            <SelectItem value="demo">Demo</SelectItem>
+            <SelectItem value="offline">Offline</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div class="grid grid-cols-4 items-center gap-4">
+        <Label for="mode" class="text-right">Camera Mode</Label>
+        <Select v-model="newCamera.mode" class="col-span-3">
+          <SelectTrigger>
+            <SelectValue placeholder="Select mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="highquality">High Quality CCTV</SelectItem>
+            <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+    
+    <DialogFooter>
+      <Button variant="outline" @click="showAddDialog = false">Cancel</Button>
+      <Button @click="addCamera">Add Camera</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
         </div>
       </div>
 
@@ -528,12 +531,11 @@ const handleFileUpload = (event: Event) => {
 
       <!-- Camera Grid -->
       <div v-if="isLoading" class="grid gap-4" :class="gridLayout">
-        <Skeleton class="h-[300px] w-full rounded-xl" v-for="i in 4" :key="'grid-skeleton-' + i" />
+        <Skeleton class="h-[300px] w-full rounded-xl" v-for="i in 4" :key="i" />
       </div>
       
       <div v-else-if="filteredCameras.length === 0" class="flex items-center justify-center h-64 bg-background/50 rounded-lg border border-dashed">
-        <!-- ... existing no cameras found message ... -->
-         <div class="text-center p-8">
+        <div class="text-center p-8">
           <Icon name="video-off" class="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 class="text-lg font-medium">No Cameras Found</h3>
           <p class="text-muted-foreground mb-4">
@@ -575,7 +577,7 @@ const handleFileUpload = (event: Event) => {
                   {{ camera.mode === 'highquality' ? 'HIGH QUALITY' : 'LOW QUALITY' }}
                 </Badge>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild> <!-- Added asChild for proper trigger behavior -->
+                  <DropdownMenuTrigger>
                     <Button variant="ghost" size="icon" class="h-8 w-8">
                       <Icon name="moreVertical" class="h-4 w-4" />
                     </Button>
@@ -587,9 +589,9 @@ const handleFileUpload = (event: Event) => {
                     </DropdownMenuItem>
                     <DropdownMenuItem @click="toggleCameraMode(camera)">
                       <Icon name="switch" class="mr-2 h-4 w-4" />
-                      Toggle Mode ({{ camera.mode === 'highquality' ? 'Low' : 'High' }} Quality)
+                      Toggle Mode ({{ camera.mode === 'highquality' ? 'Low Quality' : 'High Quality' }})
                     </DropdownMenuItem>
-                    <DropdownMenuItem @click="removeCamera(camera.id)" class="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <DropdownMenuItem @click="removeCamera(camera.id)" class="text-destructive">
                       <Icon name="trash" class="mr-2 h-4 w-4" />
                       Remove Camera
                     </DropdownMenuItem>
@@ -601,8 +603,7 @@ const handleFileUpload = (event: Event) => {
           
           <CardContent class="p-0">
             <div v-if="camera.status === 'offline'" class="h-56 bg-muted flex items-center justify-center">
-              <!-- ... existing offline state ... -->
-                <div class="text-center p-4">
+              <div class="text-center p-4">
                 <Icon name="wifiOff" class="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
                 <p class="text-muted-foreground">Camera offline</p>
                 <Button variant="outline" size="sm" class="mt-2" @click="toggleCameraStatus(camera)">
@@ -612,8 +613,7 @@ const handleFileUpload = (event: Event) => {
               </div>
             </div>
             <div v-else class="relative aspect-video bg-black">
-              <!-- ... existing player iframe ... -->
-               <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width:100%;">
+              <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width:100%;">
                 <iframe 
                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" 
                   webkitAllowFullScreen mozallowfullscreen allowfullscreen 
@@ -622,8 +622,7 @@ const handleFileUpload = (event: Event) => {
                 ></iframe>
               </div>
               <div class="absolute top-2 right-2">
-                 <!-- ... existing status/mode badges on player ... -->
-                 <div class="flex space-x-2">
+                <div class="flex space-x-2">
                   <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
                     <div :class="['h-2 w-2 rounded-full animate-pulse', getStatusColor(camera.status)]"></div>
                     <span>{{ camera.status === 'live' ? 'LIVE' : 'DEMO' }}</span>
