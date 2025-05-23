@@ -46,12 +46,17 @@ interface Detection {
   reg_base64: string | null;
   timestamp: string;
   external_data_timestamp: string | null;
+  // NEW FIELDS: Meta data from Python backend
+  rtsp_url: string | null;
+  track_id: string | null;
+  stable_class: string | null;
+  detection_timestamp: string | null; // ISO timestamp from original detection
+  similarity_score: number | null; // 0-1 similarity score
   // For notification context
   latitude?: string | null;
   longitude?: string | null;
   camera_name?: string | null;
 }
-
 // NEW: Interface for Registered Pet
 interface RegisteredPet {
   id: number;         // Registered Pet's own ID
