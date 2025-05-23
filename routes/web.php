@@ -51,6 +51,9 @@ Route::get('registered-pets', function(){
     return Inertia::render('RegisteredPets');
 })->middleware(['auth', 'verified'])->name('registeredpets');
 
+Route::get('/mobilepets', function(){
+    return Inertia::render('mobile/MobileRegistered');
+})->middleware(['auth', 'verified'])->name('mobilepets');
 Route::get('/cameras', [CameraController::class, 'getCameras']);
 Route::post('/cameras', [CameraController::class, 'store']);
 Route::put('/cameras/{id}', [CameraController::class, 'update']);
@@ -224,8 +227,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/notifications/{id}', [NotificationController::class, 'delete'])->name('notifications.delete');
 });
 Route::apiResource('animal-detections', AnimalDetectionController::class);
+
 Route::get('/my-pets', [MobileRegisteredAnimalController::class, 'fetchMyPets']);
-Route::post('/my-pets', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/unread-count', function () {
         $count = \App\Models\PushNotification::where('user_id', auth()->id())
