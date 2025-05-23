@@ -121,10 +121,10 @@ class AnimalPinsController extends Controller
         // Validate the request
         $validated = $request->validate([
             'animal_type' => 'required|string|max:255',
-            'stray_status' => 'required|string|max:255',
+            'stray_status' => 'required|boolean',
             'camera' => 'nullable|string|max:255', 
             'breed' => 'nullable|string|max:255', 
-            'collar' => 'nullable|string|max:255', 
+            'collar' => 'nullable|boolean', 
         
         ]);
         
