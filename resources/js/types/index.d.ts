@@ -67,8 +67,11 @@ export interface CameraPin {
   
   export interface AnimalPinInput {
     animal_type: string
-    stray_status: string
+    stray_status: boolean
     cameraName: string
+    breed: string
+    collar: boolean
+    picture: string
   }
   
   export interface AnimalPin {

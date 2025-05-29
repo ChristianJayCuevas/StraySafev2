@@ -87,23 +87,61 @@ const {
   fetchCameraPins,
   displayCameraPins,
   onPinLocationSelected,
-  saveCameraPin
+  saveCameraPin,
+  toggleCameraMarkers // Add this
 } = useMapPins(mainMap)
+
 const {
   cameraPins2,
   simulateAnimalPin,
   fetchCameraPins2,
   animalPins,
-  fetchAnimalPins
+  fetchAnimalPins,
+  toggleAnimalMarkers
 } = useAnimalPinSimulator(mainMap)
 
-
+// 2. Initialize heatmap with animalPins
 const {
   isHeatmapMode,
-  toggleHeatmap
+  toggleHeatmap,
+  createHeatmapLayers,
+  removeHeatmapLayers
 } = useHeatmap(mainMap, cameraPins, areas, animalPins)
+watch(cameraPins, (newPins) => {
+  console.log('📹 Camera pins updated, count:', newPins.length)
+  // Apply current heatmap visibility state to new pins
+  if (toggleCameraMarkers && isHeatmapMode.value) {
+    console.log('🔄 Hiding newly loaded camera pins due to active heatmap')
+    setTimeout(() => {
+      toggleCameraMarkers(false)
+    }, 100) // Small delay to ensure markers are rendered first
+  }
+}, { flush: 'post' })
+// 3. Add debug watcher to control animal marker visibility
+watch(isHeatmapMode, (newValue) => {
+  console.log('🔥 Heatmap mode changed to:', newValue)
+  console.log('🐕 toggleAnimalMarkers function exists:', !!toggleAnimalMarkers)
+  
+  if (toggleAnimalMarkers) {
+    console.log('🔄 Calling toggleAnimalMarkers with visible:', !newValue)
+    toggleAnimalMarkers(!newValue) // Hide when heatmap is ON, show when OFF
+  } else {
+    console.warn('⚠️ toggleAnimalMarkers function not available')
+  }
+}, { immediate: true })
 
-
+// 4. Also watch when animal pins are fetched to apply visibility
+watch(animalPins, (newPins) => {
+  console.log('🐾 Animal pins updated, count:', newPins.length)
+  // Apply current heatmap visibility state to new pins
+  if (toggleAnimalMarkers && isHeatmapMode.value) {
+    console.log('🔄 Hiding newly loaded animal pins due to active heatmap')
+    setTimeout(() => {
+      toggleAnimalMarkers(false)
+    }, 100) // Small delay to ensure markers are rendered first
+  }
+}, { flush: 'post' }) // Run after DOM updates
+provide('toggleAnimalMarkers', toggleAnimalMarkers)
 provide('isAddPinMode', isAddPinMode);
 provide('enableAddPinMode', enableAddPinMode);
 provide('cancelAddPinMode', cancelAddPinMode);
@@ -156,8 +194,13 @@ watch(() => props.heatmap, (newValue) => {
 const simulateStrayDog = async () => {
   await simulateAnimalPin({
     animal_type: 'dog',
-    stray_status: 'stray',
+    stray_status: true,
     cameraName: 'Camera 1',
+    breed: 'hehe',
+    collar: true,
+    picture: 'haha'
+
+
   })
 }
 
@@ -238,7 +281,12 @@ async function initializeMap() {
       fetchCameraPins(selectedMap.value.id)
       fetchUserAreas(selectedMap.value.id, props.heatmap)
       fetchCameraPins2(selectedMap.value.id)
-      fetchAnimalPins(selectedMap.value.id)
+      fetchAnimalPins(selectedMap.value.id).then(() => {
+    // Ensure animal pins are hidden if heatmap is already active
+    if (isHeatmapMode.value && toggleAnimalMarkers) {
+      toggleAnimalMarkers(false)
+    }
+  })
 
       if (props.heatmap) {
         toggleHeatmap(true)
@@ -274,7 +322,9 @@ const selectedAreaId = ref('')
     <div v-else> 
       <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" /> 
     </div>
-    
+    <Button @click="simulateStrayDog" class="absolute top-4 right-4 z-10 bg-blue-500 text-white">
+      Simulate Stray Dog
+    </Button>
     <!-- Controls panel -->
     <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
       <MapControls 
