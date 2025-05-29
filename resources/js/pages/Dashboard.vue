@@ -94,7 +94,7 @@ onMounted(() => {
   :control="false" 
   :currentMap="true" 
   :selectMap="false" 
-  :legend="false"
+  :legend="true"
   :heatmap="true" 
 />
             </div>

@@ -250,7 +250,7 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       source: 'saved-areas',
       paint: {
         'fill-color': '#008000',
-        'fill-opacity': 0.7
+        'fill-opacity': 0.5
       }
     });
   
@@ -299,13 +299,6 @@ export function useUserAreas(drawRef: any, mapInstance: any) {
       labelMarkers.value.push(marker);
     });
   };
-  
-  
-  
-  
-  
-  
-  
   
   return {
     areas,

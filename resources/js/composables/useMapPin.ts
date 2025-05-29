@@ -594,198 +594,12 @@ export function useMapPins(mapInstance: any) {
       const response = await axios.post('/animal-pins', payload);
       const pin = response.data.pin;
       animalPins.value.push(pin);
-      displayAnimalPins();
       selectedLocation.value = null;
     } catch (error) {
       console.error('❌ Failed to save animal pin:', error);
     }
   };
 
-  const fetchAnimalPins = async (userMapId: number) => {
-    try {
-      if (!userMapId) {
-        console.warn('No userMapId provided to fetchAnimalPins');
-        return;
-      }
-
-      const response = await axios.get('/animal-pins', {
-        params: { user_map_id: userMapId }
-      });
-
-      console.log('🐾 Animal Pins Fetched:', response.data);
-
-      const pins = Array.isArray(response.data) ? response.data : response.data.pins ?? [];
-      animalPins.value = pins;
-      displayAnimalPins();
-    } catch (error) {
-      console.error('❌ Failed to fetch animal pins:', error);
-      animalPins.value = [];
-    }
-  };
-
-  const displayAnimalPins = () => {
-    if (!mapInstance.value) {
-      console.warn('⚠️ Map not ready');
-      return;
-    }
-
-    // Remove existing animal markers
-    Object.values(animalMarkerRefs.value).forEach(marker => marker.remove());
-    animalMarkerRefs.value = {};
-
-    // Group animal pins by camera_pin_id for clustering
-    const pinsByCamera = animalPins.value.reduce<Record<string, AnimalPin[]>>((acc, pin) => {
-      const key = String(pin.camera_pin_id); // Ensure key is a string
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(pin);
-      return acc;
-    }, {});
-
-    // Create markers for each camera's animal pins
-    Object.entries(pinsByCamera).forEach(([cameraId, pins]) => {
-      const cameraPin = cameraPins.value.find(cp => String(cp.id) === cameraId); // Compare as strings
-      if (!cameraPin) {
-        console.warn(`Camera pin with ID ${cameraId} not found.`);
-        return;
-      }
-
-      const angle = ((cameraPin.direction + 180) % 360 + 360) % 360;
-      const radius = 50; // Distance from camera center in meters
-      const offsetX = radius * Math.cos((angle * Math.PI) / 180);
-      const offsetY = radius * Math.sin((angle * Math.PI) / 180);
-
-      // Create a container for the animal pins marker
-      const animalMarkerEl = document.createElement('div');
-      animalMarkerEl.style.position = 'absolute';
-      animalMarkerEl.style.transform = 'translate(-50%, -50%)';
-      animalMarkerEl.style.cursor = 'pointer'; // Make it clear it's clickable
-
-      // Create the animal icon
-      const animalIcon = document.createElement('div');
-      animalIcon.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#FF6B6B" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14.5 9.5a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1Z"/>
-          <path d="M12 14.5a1 1 0 0 1-1 1H9.5a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1Z"/>
-          <path d="M17 9.5a1 1 0 0 0-1-1h-1.5a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H16a1 1 0 0 0 1-1v-1Z"/>
-          <path d="M9.5 12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-1.5a1 1 0 0 1 1-1H8a1 1 0 0 1 1 1V12Z"/>
-          <path d="M12 2a10 10 0 1 1-4.472 18.994A10 10 0 0 1 12 2Z"/>
-        </svg>
-      `; // Changed icon to something like a paw print/cluster
-
-      // Add count badge if multiple animals
-      if (pins.length > 1) {
-        const badge = document.createElement('div');
-        badge.style.position = 'absolute';
-        badge.style.top = '-6px';
-        badge.style.right = '-6px';
-        badge.style.backgroundColor = '#1E90FF'; // DodgerBlue for contrast
-        badge.style.color = 'white';
-        badge.style.borderRadius = '50%';
-        badge.style.width = '18px';
-        badge.style.height = '18px';
-        badge.style.display = 'flex';
-        badge.style.alignItems = 'center';
-        badge.style.justifyContent = 'center';
-        badge.style.fontSize = '11px';
-        badge.style.fontWeight = 'bold';
-        badge.style.border = '1px solid white';
-        badge.textContent = pins.length.toString();
-        animalIcon.appendChild(badge);
-      }
-
-      animalMarkerEl.appendChild(animalIcon);
-
-      // Calculate position based on camera direction
-      // Note: The conversion from meters to degrees is approximate and works best for small distances.
-      // For more accuracy, especially at higher latitudes, use geospatial libraries.
-      const earthRadius = 6378137; // Earth's radius in meters
-      const dLat = offsetY / earthRadius;
-      const dLon = offsetX / (earthRadius * Math.cos(Math.PI * cameraPin.latitude / 180));
-
-      const newLatitude = cameraPin.latitude + dLat * 180 / Math.PI;
-      const newLongitude = cameraPin.longitude + dLon * 180 / Math.PI;
-
-      const marker = new mapboxgl.Marker({
-        element: animalMarkerEl,
-        anchor: 'center'
-      })
-        .setLngLat([newLongitude, newLatitude])
-        .setPopup(
-          new mapboxgl.Popup({
-            offset: [0, -20], // Adjust offset if needed
-            anchor: 'bottom',
-            maxWidth: '400px', // Set a max-width for the popup
-            className: 'animal-mapbox-popup' // Add a class for potential global CSS
-          })
-            .setHTML(`
-              <div style="
-                font-family: 'Arial', sans-serif;
-                color: #333;
-              ">
-                <h3 style="
-                  margin: 0 0 12px;
-                  padding-bottom: 10px;
-                  font-size: 18px;
-                  color: #005A9C; /* Darker blue for title */
-                  font-weight: 600;
-                  border-bottom: 1px solid #eee;
-                ">
-                  ${pins.length > 1 ? 'Animals Detected' : 'Animal Detected'}
-                  <span style="font-size: 12px; color: #777; font-weight: normal;">(Near Camera ${cameraPin.id})</span>
-                </h3>
-                <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                  ${pins.map((pin: AnimalPin, index: number) => `
-                    <div class="animal-popup-item" style="
-                      display: flex;
-                      align-items: flex-start; /* Align items to the top */
-                      margin-bottom: ${index === pins.length - 1 ? '0' : '15px'};
-                      padding-bottom: ${index === pins.length - 1 ? '0' : '15px'};
-                      border-bottom: ${index === pins.length - 1 ? 'none' : '1px dashed #ddd'};
-                    ">
-                      <div class="animal-image-placeholder" style="
-                        width: 80px;
-                        height: 80px;
-                        background-color: #e9ecef;
-                        border-radius: 8px;
-                        margin-right: 15px;
-                        flex-shrink: 0; /* Prevent image container from shrinking */
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        overflow: hidden; /* To make sure image fits nicely */
-                      ">
-                        ${pin.picture
-                          ? `<img src="${pin.picture}" alt="${pin.animal_name || 'Animal'}" style="width: 100%; height: 100%; object-fit: cover;">`
-                          : `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>` /* Placeholder icon */
-                        }
-                      </div>
-                      <div class="animal-details" style="flex-grow: 1; font-size: 14px;">
-                        <p style="margin: 0 0 6px; font-size: 15px; color: #222; font-weight: bold;">
-                          ${pin.animal_name || 'Unnamed Animal'}
-                        </p>
-                        <p style="margin: 0 0 4px; color: #555;">
-                          <strong>Type:</strong> ${pin.animal_type}
-                        </p>
-                        <p style="margin: 0 0 4px; color: #555;">
-                          <strong>Status:</strong> ${pin.stray_status}
-                        </p>
-                        <!-- You can add more details here -->
-                        ${pin.camera_pin_id ? `<p style="margin: 0; font-size: 12px; color: #777;">Spotted by Cam: ${pin.camera_pin_id}</p>` : ''}
-                      </div>
-                    </div>
-                  `).join('')}
-                  ${pins.length === 0 ? '<p style="text-align:center; color: #888;">No specific animal data.</p>' : ''}
-                </div>
-              </div>
-            `)
-        )
-        .addTo(mapInstance.value);
-
-      animalMarkerRefs.value[String(cameraPin.id)] = marker; // Use cameraPin.id as key
-    });
-  };
 
   return {
     isAddPinMode,
@@ -796,9 +610,7 @@ export function useMapPins(mapInstance: any) {
     saveAnimalPin,
     cancelAddPinMode,
     fetchCameraPins,
-    fetchAnimalPins,
     displayCameraPins,
-    displayAnimalPins,
     onPinLocationSelected,
     markerRefs,
     animalMarkerRefs
