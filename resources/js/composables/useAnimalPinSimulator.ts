@@ -63,6 +63,8 @@ export function useAnimalPinSimulator(mapInstance: any) {
         ${pin.picture ? `<img src="${pin.picture}" alt="Animal photo" style="width: 100%; max-width: 200px; height: auto; border-radius: 4px; margin-bottom: 8px;"><br>` : ''}
         <strong>Type:</strong> ${pin.animal_type}<br>
         <strong>Status:</strong> ${pin.stray_status === 1 ? 'Stray' : 'Not Stray'}<br>
+        <strong>Breed:</strong> ${pin.breed}<br>
+        <strong>Collar:</strong> ${pin.collar}<br>
         <strong>Longitude:</strong> ${pin.longitude}<br>
         <strong>Latitude:</strong> ${pin.latitude}
       </div>
@@ -183,6 +185,9 @@ export function useAnimalPinSimulator(mapInstance: any) {
         animal_type: data.animal_type,
         stray_status: data.stray_status,
         camera: data.cameraName,
+        breed: data.breed,
+        collar: data.collar,
+        picture: data.picture
       })
 
       const pin = response.data.pin

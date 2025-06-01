@@ -41,7 +41,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import Icon from '@/components/Icon.vue';
-import axios from 'axios'; // Make sure axios is imported
+import axios from 'axios';
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -54,129 +54,229 @@ const breadcrumbs: BreadcrumbItem[] = [
   },
 ];
 
-// Form state - useForm is still great for managing form data and its state
+// Form state - now includes additional pictures and location
 const form = useForm({
   pet_name: '',
   animal_type: '',
   breed: '',
   contact: '',
-  picture: null as string | null, // Now 'picture' will hold the Base64 string
-  // You could add 'owner' here if it's part of the form
-  // owner: '',
+  picture: null as string | null, // Main picture
+  picture_2: null as string | null, // Additional picture 1
+  picture_3: null as string | null, // Additional picture 2
+  location: '',
+  latitude: null as number | null,
+  longitude: null as number | null,
 });
 
 // UI state
-const isUploading = ref(false); // We'll manage this manually with axios
+const isUploading = ref(false);
 const error = ref('');
 const showConfirmDialog = ref(false);
+const showLocationModal = ref(false);
 const imagePreview = ref('');
+const imagePreview2 = ref('');
+const imagePreview3 = ref('');
+const isLoadingLocation = ref(false);
+
+// Location picker state
+const searchQuery = ref('');
+const searchResults = ref<Array<{
+  display_name: string;
+  lat: string;
+  lon: string;
+  address: any;
+}>>([]);
+const isSearching = ref(false);
 
 const isFormValid = computed(() => {
   return form.pet_name && 
          form.animal_type && 
          form.breed && 
          form.contact && 
-         form.picture;
+         form.picture &&
+         form.location;
 });
 
-// form.processing from useForm won't be directly used by axios,
-// so isUploading is our primary indicator.
 const isSubmitting = computed(() => {
   return isUploading.value;
 });
 
-const handleImageSelect = async (event: Event) => {
+// Helper function to handle image selection
+const handleImageSelect = async (event: Event, imageType: 'main' | 'second' | 'third') => {
   const input = event.target as HTMLInputElement;
   if (!input.files || input.files.length === 0) return;
+  
   const file = input.files[0];
   const maxSizeInBytes = 2 * 1024 * 1024; 
+  
   if (file.size > maxSizeInBytes) {
     error.value = 'Image is too large. Maximum size is 2MB.';
     toast.error(error.value);
-    imagePreview.value = '';
-    form.picture = null;
+    
+    // Reset the specific image
+    if (imageType === 'main') {
+      imagePreview.value = '';
+      form.picture = null;
+    } else if (imageType === 'second') {
+      imagePreview2.value = '';
+      form.picture_2 = null;
+    } else if (imageType === 'third') {
+      imagePreview3.value = '';
+      form.picture_3 = null;
+    }
+    
     if (input) input.value = '';
     return;
   }
+  
   const reader = new FileReader();
   reader.onload = (e) => {
     const result = e.target?.result as string;
-    imagePreview.value = result;
-    if (result.includes(',')) {
-        form.picture = result.split(',')[1];
-    } else {
-        form.picture = result;
+    const base64 = result.includes(',') ? result.split(',')[1] : result;
+    
+    if (imageType === 'main') {
+      imagePreview.value = result;
+      form.picture = base64;
+    } else if (imageType === 'second') {
+      imagePreview2.value = result;
+      form.picture_2 = base64;
+    } else if (imageType === 'third') {
+      imagePreview3.value = result;
+      form.picture_3 = base64;
     }
   };
+  
   reader.onerror = () => {
     error.value = "Could not read the image file.";
     toast.error(error.value);
-    form.picture = null;
-    imagePreview.value = '';
+    
+    if (imageType === 'main') {
+      form.picture = null;
+      imagePreview.value = '';
+    } else if (imageType === 'second') {
+      form.picture_2 = null;
+      imagePreview2.value = '';
+    } else if (imageType === 'third') {
+      form.picture_3 = null;
+      imagePreview3.value = '';
+    }
   }
+  
   reader.readAsDataURL(file);
   error.value = ''; 
 };
 
+// Location functions
+const getCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    toast.error('Geolocation is not supported by this browser.');
+    return;
+  }
+  
+  isLoadingLocation.value = true;
+  
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const { latitude, longitude } = position.coords;
+      form.latitude = latitude;
+      form.longitude = longitude;
+      
+      try {
+        // Reverse geocoding to get address
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        form.location = response.data.display_name;
+        toast.success('Location detected successfully!');
+      } catch (err) {
+        form.location = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        toast.success('Location coordinates saved!');
+      }
+      
+      isLoadingLocation.value = false;
+    },
+    (error) => {
+      isLoadingLocation.value = false;
+      toast.error('Unable to retrieve your location. Please search manually.');
+    }
+  );
+};
+
+const searchLocation = async () => {
+  if (!searchQuery.value.trim()) return;
+  
+  isSearching.value = true;
+  
+  try {
+    const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery.value)}&limit=5`);
+    searchResults.value = response.data;
+  } catch (err) {
+    toast.error('Failed to search locations. Please try again.');
+  }
+  
+  isSearching.value = false;
+};
+
+const selectLocation = (location: any) => {
+  form.location = location.display_name;
+  form.latitude = parseFloat(location.lat);
+  form.longitude = parseFloat(location.lon);
+  showLocationModal.value = false;
+  searchQuery.value = '';
+  searchResults.value = [];
+  toast.success('Location selected successfully!');
+};
+
 const handleSubmit = () => {
   if (!isFormValid.value) {
-    error.value = 'Please fill in all required fields and upload a pet photo.';
+    error.value = 'Please fill in all required fields, upload at least one pet photo, and select a location.';
     toast.warning(error.value);
     return;
   }
   showConfirmDialog.value = true;
 };
 
-// MODIFIED confirmSubmit function
-const confirmSubmit = async () => { // Make it async
+const confirmSubmit = async () => {
   isUploading.value = true;
-  form.processing = true; // You can still set this if other UI elements depend on form.processing
+  form.processing = true;
   error.value = '';
   
-  // Manually construct the payload from the form object
-  // This ensures you only send what the API expects.
   const payload = {
     pet_name: form.pet_name,
     animal_type: form.animal_type,
     breed: form.breed,
     contact: form.contact,
-    picture: form.picture, // This is the Base64 string
-    // owner: form.owner, // If you added 'owner' to the useForm object
-    // status: 'active', // If you want to send a default status
+    picture: form.picture,
+    picture_2: form.picture_2,
+    picture_3: form.picture_3,
+    location: form.location,
+    latitude: form.latitude,
+    longitude: form.longitude,
   };
 
   try {
-    // Use axios.post for a standard API request
-    // The URL '/api/mobileregisteredanimals' should match your Laravel API route
     const response = await axios.post('/api/mobileregisteredanimals', payload);
 
-    // Check the response from your Laravel API
-    // (assuming your API returns { status: 'success', message: '...' })
     if (response.data && response.data.status === 'success') {
       toast.success(response.data.message || "Your pet has been registered successfully.");
-      form.reset(); // Reset form fields using useForm's utility
+      form.reset();
       imagePreview.value = '';
+      imagePreview2.value = '';
+      imagePreview3.value = '';
       showConfirmDialog.value = false;
     } else {
-      // Handle cases where API call was successful (2xx) but your custom status isn't 'success'
       const apiMessage = response.data?.message || "Registration failed with an unexpected server response.";
       error.value = apiMessage;
       toast.error(apiMessage);
     }
 
-  } catch (axiosError: any) { // Catching errors from the axios request
+  } catch (axiosError: any) {
     console.error('Registration Axios Error:', axiosError);
     let errorMessage = "Failed to register pet. Please try again.";
 
     if (axiosError.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx (e.g., 422, 500)
       if (axiosError.response.data) {
         if (axiosError.response.data.errors) {
-          // Laravel validation errors (typically from a 422 response)
           errorMessage = Object.values(axiosError.response.data.errors).flat().join(' ');
         } else if (axiosError.response.data.message) {
-          // Custom error message from your API
           errorMessage = axiosError.response.data.message;
         } else {
           errorMessage = `Error ${axiosError.response.status}: An unexpected server error occurred.`;
@@ -185,20 +285,16 @@ const confirmSubmit = async () => { // Make it async
         errorMessage = `Error ${axiosError.response.status}: Server error.`;
       }
     } else if (axiosError.request) {
-      // The request was made but no response was received
       errorMessage = "No response from server. Please check your network connection.";
     } else {
-      // Something happened in setting up the request that triggered an Error
       errorMessage = axiosError.message || "An unknown error occurred during registration.";
     }
     
     error.value = errorMessage;
     toast.error(errorMessage);
-    // Decide if you want to keep the dialog open on error
-    // showConfirmDialog.value = false; 
   } finally {
     isUploading.value = false;
-    form.processing = false; // Reset processing state
+    form.processing = false;
   }
 };
 
@@ -222,14 +318,11 @@ const petTypes = [
           </CardHeader>
           
           <CardContent>
-            <!-- The <Form> component from shadcn-vue typically works with vee-validate under the hood.
-                 If you're not using its built-in submission handling (which you aren't when using axios directly),
-                 its primary role here becomes structural and for styling.
-                 The @submit.prevent="handleSubmit" still correctly calls your handleSubmit function. -->
             <Form @submit.prevent="handleSubmit">
               <!-- Image Upload Section -->
               <div class="mb-8">
                 <div class="flex flex-col items-center">
+                  <!-- Main Image Upload -->
                   <div class="relative mb-4 group">
                     <div 
                       class="w-48 h-48 rounded-full flex items-center justify-center overflow-hidden border-4 border-primary shadow-lg hover:opacity-90 transition-opacity"
@@ -243,24 +336,98 @@ const petTypes = [
                       />
                       <div v-else class="text-center p-4">
                         <Icon name="Camera" class="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                        <span class="text-sm text-muted-foreground font-medium">Add Pet Photo</span>
+                        <span class="text-sm text-muted-foreground font-medium">Main Pet Photo</span>
                       </div>
                     </div>
                     <Label 
-                      for="pet-image" 
+                      for="pet-image-main" 
                       class="absolute bottom-0 right-0 p-3 rounded-full bg-primary text-white shadow cursor-pointer"
                     >
                       <Icon name="Plus" class="h-5 w-5" />
                     </Label>
                     <input 
                       type="file" 
-                      id="pet-image"
+                      id="pet-image-main"
                       accept="image/jpeg, image/png, image/gif" 
                       class="hidden" 
-                      @change="handleImageSelect" 
+                      @change="(e) => handleImageSelect(e, 'main')" 
                       :disabled="isSubmitting"
                     />
                   </div>
+                  
+                  <!-- Additional Images -->
+                  <div class="flex gap-4 mb-4">
+                    <!-- Second Image -->
+                    <div class="relative group">
+                      <div 
+                        class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden border-2 border-muted shadow hover:opacity-90 transition-opacity"
+                        :class="{ 'bg-muted': !imagePreview2 }"
+                      >
+                        <img 
+                          v-if="imagePreview2" 
+                          :src="imagePreview2" 
+                          alt="Pet preview 2" 
+                          class="w-full h-full object-cover" 
+                        />
+                        <div v-else class="text-center p-2">
+                          <Icon name="Camera" class="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <span class="text-xs text-muted-foreground">Photo 2</span>
+                        </div>
+                      </div>
+                      <Label 
+                        for="pet-image-2" 
+                        class="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-white shadow cursor-pointer"
+                      >
+                        <Icon name="Plus" class="h-3 w-3" />
+                      </Label>
+                      <input 
+                        type="file" 
+                        id="pet-image-2"
+                        accept="image/jpeg, image/png, image/gif" 
+                        class="hidden" 
+                        @change="(e) => handleImageSelect(e, 'second')" 
+                        :disabled="isSubmitting"
+                      />
+                    </div>
+                    
+                    <!-- Third Image -->
+                    <div class="relative group">
+                      <div 
+                        class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden border-2 border-muted shadow hover:opacity-90 transition-opacity"
+                        :class="{ 'bg-muted': !imagePreview3 }"
+                      >
+                        <img 
+                          v-if="imagePreview3" 
+                          :src="imagePreview3" 
+                          alt="Pet preview 3" 
+                          class="w-full h-full object-cover" 
+                        />
+                        <div v-else class="text-center p-2">
+                          <Icon name="Camera" class="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <span class="text-xs text-muted-foreground">Photo 3</span>
+                        </div>
+                      </div>
+                      <Label 
+                        for="pet-image-3" 
+                        class="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-white shadow cursor-pointer"
+                      >
+                        <Icon name="Plus" class="h-3 w-3" />
+                      </Label>
+                      <input 
+                        type="file" 
+                        id="pet-image-3"
+                        accept="image/jpeg, image/png, image/gif" 
+                        class="hidden" 
+                        @change="(e) => handleImageSelect(e, 'third')" 
+                        :disabled="isSubmitting"
+                      />
+                    </div>
+                  </div>
+                  
+                  <p class="text-sm text-muted-foreground text-center">
+                    Upload multiple photos to help identify your pet from different angles
+                  </p>
+                  
                   <div v-if="error" class="w-full max-w-md mt-2">
                     <Alert variant="destructive">
                       <Icon name="AlertCircle" class="h-4 w-4" />
@@ -288,12 +455,10 @@ const petTypes = [
                         />
                       </FormControl>
                       <FormMessage v-if="form.errors.pet_name">{{ form.errors.pet_name }}</FormMessage>
-                       <!-- Manual error display if not relying on form.errors from useForm -->
-                       <!-- <FormMessage v-if="!meta.valid && meta.touched && error.includes('pet name')" /> -->
                     </FormItem>
                   </FormField>
                   
-                   <FormField name="animal_type" v-slot="{ componentField, meta }">
+                  <FormField name="animal_type" v-slot="{ componentField, meta }">
                     <FormItem>
                       <FormLabel>Pet Type <span class="text-red-500">*</span></FormLabel>
                       <Select v-model="form.animal_type" :disabled="isSubmitting">
@@ -314,14 +479,14 @@ const petTypes = [
                   
                   <FormField name="breed" v-slot="{ componentField, meta }">
                     <FormItem>
-                      <FormLabel>Breed</FormLabel>
+                      <FormLabel>Breed <span class="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           type="text"
-                          placeholder="Enter breed (if known)" 
+                          placeholder="Enter breed" 
                           v-model="form.breed" 
                           :disabled="isSubmitting"
-                         
+                          required
                           :aria-invalid="meta.touched && !meta.valid"
                         />
                       </FormControl>
@@ -349,6 +514,51 @@ const petTypes = [
                     </FormItem>
                   </FormField>
                 </div>
+                
+                <!-- Location Field -->
+                <FormField name="location" v-slot="{ componentField, meta }">
+                  <FormItem>
+                    <FormLabel>Location <span class="text-red-500">*</span></FormLabel>
+                    <div class="flex gap-2">
+                      <FormControl class="flex-1">
+                        <Input 
+                          type="text"
+                          placeholder="Pet's location" 
+                          v-model="form.location" 
+                          :disabled="isSubmitting"
+                          readonly
+                          required
+                          :aria-invalid="meta.touched && !meta.valid"
+                        />
+                      </FormControl>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        @click="getCurrentLocation"
+                        :disabled="isSubmitting || isLoadingLocation"
+                        class="shrink-0"
+                      >
+                        <Icon name="MapPin" class="h-4 w-4 mr-2" />
+                        <span v-if="isLoadingLocation">Getting...</span>
+                        <span v-else>Current</span>
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        @click="showLocationModal = true"
+                        :disabled="isSubmitting"
+                        class="shrink-0"
+                      >
+                        <Icon name="Search" class="h-4 w-4 mr-2" />
+                        Search
+                      </Button>
+                    </div>
+                    <FormDescription>
+                      Location helps others know where your pet was last seen
+                    </FormDescription>
+                    <FormMessage v-if="form.errors.location">{{ form.errors.location }}</FormMessage>
+                  </FormItem>
+                </FormField>
               </div>
             </Form>
           </CardContent>
@@ -371,6 +581,65 @@ const petTypes = [
       </div>
     </div>
     
+    <!-- Location Picker Modal -->
+    <Dialog v-model:open="showLocationModal">
+      <DialogContent class="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Select Location</DialogTitle>
+          <DialogDescription>
+            Search for your pet's location or use current location
+          </DialogDescription>
+        </DialogHeader>
+        <div class="space-y-4">
+          <div class="flex gap-2">
+            <Input 
+              v-model="searchQuery" 
+              placeholder="Search for a location..." 
+              @keyup.enter="searchLocation"
+              class="flex-1"
+            />
+            <Button @click="searchLocation" :disabled="isSearching" variant="outline">
+              <Icon name="Search" class="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div class="text-center">
+            <Button 
+              @click="getCurrentLocation" 
+              :disabled="isLoadingLocation"
+              variant="outline"
+              class="w-full"
+            >
+              <Icon name="MapPin" class="h-4 w-4 mr-2" />
+              <span v-if="isLoadingLocation">Getting Current Location...</span>
+              <span v-else>Use Current Location</span>
+            </Button>
+          </div>
+          
+          <div v-if="searchResults.length > 0" class="max-h-60 overflow-y-auto space-y-2">
+            <div 
+              v-for="(result, index) in searchResults" 
+              :key="index"
+              @click="selectLocation(result)"
+              class="p-3 border rounded-lg cursor-pointer hover:bg-muted transition-colors"
+            >
+              <div class="font-medium text-sm">{{ result.display_name }}</div>
+            </div>
+          </div>
+          
+          <div v-if="isSearching" class="text-center py-4">
+            <Icon name="Loader2" class="h-6 w-6 animate-spin mx-auto mb-2" />
+            <p class="text-sm text-muted-foreground">Searching locations...</p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="showLocationModal = false">
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    
     <!-- Confirmation Dialog -->
     <Dialog v-model:open="showConfirmDialog">
       <DialogContent>
@@ -381,7 +650,7 @@ const petTypes = [
           </DialogDescription>
         </DialogHeader>
         <div class="grid gap-4 py-4">
-           <div class="grid grid-cols-3 items-center gap-4">
+          <div class="grid grid-cols-3 items-center gap-4">
             <span class="font-medium">Pet Name:</span>
             <span class="col-span-2">{{ form.pet_name }}</span>
           </div>
@@ -397,14 +666,24 @@ const petTypes = [
             <span class="font-medium">Contact:</span>
             <span class="col-span-2">{{ form.contact }}</span>
           </div>
-          <div class="flex justify-center mt-2">
-            <div class="w-24 h-24 rounded-full overflow-hidden border border-muted">
+          <div class="grid grid-cols-3 items-center gap-4">
+            <span class="font-medium">Location:</span>
+            <span class="col-span-2 text-sm">{{ form.location }}</span>
+          </div>
+          <div class="flex justify-center mt-2 gap-2">
+            <div class="w-24 h-24 rounded-lg overflow-hidden border border-muted">
               <img 
                 v-if="imagePreview" 
                 :src="imagePreview" 
                 alt="Pet preview" 
                 class="w-full h-full object-cover" 
               />
+            </div>
+            <div v-if="imagePreview2" class="w-16 h-16 rounded overflow-hidden border border-muted">
+              <img :src="imagePreview2" alt="Pet preview 2" class="w-full h-full object-cover" />
+            </div>
+            <div v-if="imagePreview3" class="w-16 h-16 rounded overflow-hidden border border-muted">
+              <img :src="imagePreview3" alt="Pet preview 3" class="w-full h-full object-cover" />
             </div>
           </div>
         </div>

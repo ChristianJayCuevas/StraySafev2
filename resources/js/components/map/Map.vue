@@ -343,6 +343,7 @@ import type { Feature } from 'geojson'
 import { area } from '@unovis/ts/components/area/style'
 import { toast } from 'vue-sonner'
 // Token
+
 const mapboxToken = 'pk.eyJ1IjoiMS1heWFub24iLCJhIjoiY20ycnAzZW5pMWZpZTJpcThpeTJjdDU1NCJ9.7AVb_LJf6sOtb-QAxwR-hg'
 
 // Sidebar state
@@ -465,13 +466,144 @@ watch(() => props.heatmap, (newValue) => {
 
 //Map state
 
+
+const dummyDogs = [
+  {
+    breed: 'Aspin',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/Q7qgfQhL/Screenshot-2025-05-23-142052.png',
+  },
+  {
+    breed: 'Aspin',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/4RhkFRCZ/Screenshot-2025-05-23-142058.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/tMtjXm07/Screenshot-2025-05-23-142106.png',
+  },
+  {
+    breed: 'Border Collie',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/Mymjzfcn/Screenshot-2025-05-23-142110.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/d4JxkLyz/Screenshot-2025-05-23-142118.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/CKWVwY6k/Screenshot-2025-05-23-142123.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/ym00zV3r/Screenshot-2025-05-23-142128.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/wNXHSrVZ/Screenshot-2025-05-23-142132.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/9z9gX8Y/Screenshot-2025-05-23-142137.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/Lzp7h8Pp/Screenshot-2025-05-23-142145.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/DP7q6tjJ/Screenshot-2025-05-23-142153.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/N4zR5X0/Screenshot-2025-05-23-142158.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/Lh2xCZV9/Screenshot-2025-05-23-142204.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/XfwYbH1T/Screenshot-2025-05-23-142211.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/fzq1qDTN/Screenshot-2025-05-23-142217.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/nMSqYbJH/Screenshot-2025-05-23-142222.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/j9hmTXrW/Screenshot-2025-05-23-142227.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/Q7bQr7MS/Screenshot-2025-05-23-142233.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/SDm90XN5/Screenshot-2025-05-23-142238.png',
+  },
+  {
+    breed: 'Labrador',
+    has_leash: false,
+    frame_path: 'https://i.ibb.co/9kRgZRgm/Screenshot-2025-05-23-142244.png',
+  }
+];
+
+
+
+const currentIndex = ref(0)
+
 const simulateStrayDog = async () => {
+  const dog = dummyDogs[currentIndex.value]
+
   await simulateAnimalPin({
-    animal_type: 'dog',
-    stray_status: 'stray',
+    animal_type: 'Dog',
+    stray_status: true,
     cameraName: 'Camera 1',
+    breed: dog.breed,
+    collar: dog.has_leash,
+    picture: dog.frame_path,
   })
+
+  // Cycle through dummy data
+  currentIndex.value = (currentIndex.value + 1) % dummyDogs.length
 }
+
+// const simulateStrayDog = async () => {
+//   await simulateAnimalPin({
+//     animal_type: 'dog',
+//     stray_status: 'stray',
+//     cameraName: 'Camera 1',
+//   })
+// }
+
+// animal_type: animal.pet_type,
+//             stray_status: animal.is_registered,
+//             camera: animal.rtsp_url,
+//             breed: animal.breed,
+//             collar: animal.has_leash,
+//             picture: animal.frame_path
 
 const handleSaveArea = async () => {
   if (!pendingFeature.value) {
@@ -575,7 +707,7 @@ const selectedAreaId = ref('')
   <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" /> 
 </div>
   <!-- Controls panel -->
-   <!-- <Button @click="simulateStrayDog" /> -->
+   <Button @click="simulateStrayDog" />
   <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
     <MapControls 
       @drawing="emit('drawing', $event)" 
