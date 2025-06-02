@@ -10,6 +10,7 @@ class RegisteredAnimal extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'owner',
         'contact',
         'animal_type',
@@ -18,4 +19,8 @@ class RegisteredAnimal extends Model
         'breed',
         'pet_name'
     ];
+     public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

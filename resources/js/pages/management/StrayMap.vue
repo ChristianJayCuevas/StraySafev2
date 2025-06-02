@@ -235,7 +235,7 @@ onMounted(async () => {
   // Set loading to false after delay
   setTimeout(() => {
     isLoading.value = false
-  }, 2000);
+  }, 1000);
 });
 </script>
 

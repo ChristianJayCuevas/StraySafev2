@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { AnimalPinInput, AnimalPin } from '@/types'
 import axios from 'axios'
 import mapboxgl from 'mapbox-gl'
@@ -9,9 +9,9 @@ export function useAnimalPinSimulator(mapInstance: any) {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const simulatedPins = ref<any[]>([])
+  const animalMarkers = ref<mapboxgl.Marker[]>([]) // Store all animal markers
 
   // Helper: Add animal pin to map with SVG and popup
-  
   const addAnimalPinToMap = (pin: any) => {
     const el = document.createElement('div')
     el.className = 'animal-pin'
@@ -73,7 +73,7 @@ export function useAnimalPinSimulator(mapInstance: any) {
     marker.setPopup(popup)
     
     // Add zoom-based resizing
-    mapInstance.value.on('zoom', () => {
+    const handleZoom = () => {
       const zoom = mapInstance.value.getZoom()
       let size
       
@@ -91,27 +91,38 @@ export function useAnimalPinSimulator(mapInstance: any) {
       // Apply the new size
       el.style.width = `${size}px`
       el.style.height = `${Math.floor(size * 1.4)}px` // Keep aspect ratio
-    })
+    }
+
+    mapInstance.value.on('zoom', handleZoom)
     
     // Trigger initial resize based on current zoom
-    const initialZoom = mapInstance.value.getZoom()
-    let initialSize
+    handleZoom()
     
-    if (initialZoom < 10) {
-      initialSize = 15
-    } else if (initialZoom < 13) {
-      initialSize = 20
-    } else if (initialZoom < 15) {
-      initialSize = 25
-    } else {
-      initialSize = 30
-    }
-    
-    el.style.width = `${initialSize}px`
-    el.style.height = `${Math.floor(initialSize * 1.4)}px`
+    // Store the marker reference
+    animalMarkers.value.push(marker)
+    console.log(`📍 Added animal marker, total count: ${animalMarkers.value.length}`)
     
     console.log('Added animal pin to map:', pin)
     return marker
+  }
+
+  // Function to show/hide all animal markers
+  const toggleAnimalMarkers = (visible: boolean) => {
+    console.log(`🔄 toggleAnimalMarkers called with visible: ${visible}, markers count: ${animalMarkers.value.length}`)
+    
+    animalMarkers.value.forEach((marker, index) => {
+      try {
+        if (visible) {
+          console.log(`👁️ Showing marker ${index}`)
+          marker.addTo(mapInstance.value)
+        } else {
+          console.log(`🙈 Hiding marker ${index}`)
+          marker.remove()
+        }
+      } catch (error) {
+        console.error(`❌ Error toggling marker ${index}:`, error)
+      }
+    })
   }
 
   // Fetch and display all animal pins on the map
@@ -131,6 +142,11 @@ export function useAnimalPinSimulator(mapInstance: any) {
       console.log('Processed pins array:', pins)
   
       animalPins.value = pins
+
+      // Clear existing markers
+      console.log('🧹 Clearing existing animal markers:', animalMarkers.value.length)
+      animalMarkers.value.forEach(marker => marker.remove())
+      animalMarkers.value = []
   
       if (pins.length === 0) {
         console.warn('No pins found in response')
@@ -147,6 +163,8 @@ export function useAnimalPinSimulator(mapInstance: any) {
           console.warn(`Pin ${index} missing coordinates:`, pin)
         }
       })
+
+      // Don't need to check heatmap mode here since it's handled by the watcher in main component
   
     } catch (err) {
       console.error('Error fetching animal pins:', err)
@@ -155,6 +173,7 @@ export function useAnimalPinSimulator(mapInstance: any) {
       isLoading.value = false
     }
   }
+  
   // Fetch available camera pins
   const fetchCameraPins2 = async (userMapId: number) => {
     try {
@@ -192,9 +211,11 @@ export function useAnimalPinSimulator(mapInstance: any) {
 
       const pin = response.data.pin
       simulatedPins.value.push(pin)
+      animalPins.value.push(pin) // Add to the main array
 
       if (pin.longitude && pin.latitude) {
         addAnimalPinToMap(pin)
+        // Visibility will be handled by the watcher in main component
       }
 
       return pin
@@ -212,8 +233,10 @@ export function useAnimalPinSimulator(mapInstance: any) {
     isLoading,
     error,
     simulatedPins,
+    animalMarkers,
     fetchCameraPins2,
     fetchAnimalPins,
     simulateAnimalPin,
+    toggleAnimalMarkers
   }
 }

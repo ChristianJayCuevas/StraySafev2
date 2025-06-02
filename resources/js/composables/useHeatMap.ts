@@ -2,10 +2,11 @@ import { ref, watch, computed } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import * as turf from '@turf/turf'
 
-export function useHeatmap(mapInstance: any, cameraPins: any, areas: any) {
+export function useHeatmap(mapInstance: any, cameraPins: any, areas: any, animalPins: any) {
   const isHeatmapMode = ref(false)
   const areaHeatmapId = 'area-heatmap-layer'
   const pinHeatmapId = 'pin-heatmap-layer'
+  const animalHeatmapId = 'animal-heatmap-layer' // New layer for animal pins
   
   // Using computed properties to prevent recalculation on every render
   const areaHeatmapData = computed(() => {
@@ -85,15 +86,47 @@ export function useHeatmap(mapInstance: any, cameraPins: any, areas: any) {
       features
     }
   })
+
+  // NEW: Using computed property for animal pin data
+  const animalHeatmapData = computed(() => {
+    if (!animalPins.value || animalPins.value.length === 0) {
+      return { type: 'FeatureCollection', features: [] }
+    }
+    
+    const features = []
+    for (let i = 0; i < animalPins.value.length; i++) {
+      const pin = animalPins.value[i]
+      // Make sure the pin has valid coordinates
+      if (pin.longitude && pin.latitude) {
+        features.push({
+          type: 'Feature',
+          properties: { 
+            weight: 1.2, // Slightly higher weight for animal pins to make them more prominent
+            animal_type: pin.animal_type,
+            stray_status: pin.stray_status
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [pin.longitude, pin.latitude]
+          }
+        })
+      }
+    }
+    
+    return {
+      type: 'FeatureCollection',
+      features
+    }
+  })
   
-  // Create both heatmap layers
+  // Create all heatmap layers
   const createHeatmapLayers = () => {
     if (!mapInstance.value) return
     
     // Remove existing layers if any
     removeHeatmapLayers()
     
-    // Add pin heatmap
+    // Add pin heatmap (cameras)
     const pinData = pinHeatmapData.value
     if (pinData.features.length > 0) {
       // Add source for pin heatmap
@@ -110,7 +143,7 @@ export function useHeatmap(mapInstance: any, cameraPins: any, areas: any) {
         paint: {
           // Fixed intensity for better performance
           'heatmap-intensity': 1.5,
-          // Red color ramp for pins
+          // Red color ramp for camera pins
           'heatmap-color': [
             'interpolate',
             ['linear'],
@@ -126,6 +159,45 @@ export function useHeatmap(mapInstance: any, cameraPins: any, areas: any) {
           'heatmap-radius': 25,
           // Fixed opacity for better performance
           'heatmap-opacity': 0.8,
+          // Use the 'weight' property
+          'heatmap-weight': ['get', 'weight']
+        }
+      })
+    }
+
+    // NEW: Add animal heatmap
+    const animalData = animalHeatmapData.value
+    if (animalData.features.length > 0) {
+      // Add source for animal heatmap
+      mapInstance.value.addSource('animal-heatmap-source', {
+        type: 'geojson',
+        data: animalData
+      })
+      
+      // Add the heatmap layer for animal pins
+      mapInstance.value.addLayer({
+        id: animalHeatmapId,
+        type: 'heatmap',
+        source: 'animal-heatmap-source',
+        paint: {
+          // Fixed intensity for better performance
+          'heatmap-intensity': 1.8, // Slightly higher intensity for animals
+          // Orange/Yellow color ramp for animal pins
+          'heatmap-color': [
+            'interpolate',
+            ['linear'],
+            ['heatmap-density'],
+            0, 'rgba(255, 165, 0, 0)', // Transparent orange
+            0.2, 'rgba(255, 165, 0, 0.3)', // Light orange
+            0.4, 'rgba(255, 140, 0, 0.5)', // Orange
+            0.6, 'rgba(255, 69, 0, 0.7)', // Red-orange
+            0.8, 'rgba(255, 0, 0, 0.85)', // Red
+            1, 'rgba(139, 0, 0, 1)' // Dark red
+          ],
+          // Fixed radius for better performance
+          'heatmap-radius': 30, // Slightly larger radius for animal pins
+          // Fixed opacity for better performance
+          'heatmap-opacity': 0.7,
           // Use the 'weight' property
           'heatmap-weight': ['get', 'weight']
         }
@@ -177,10 +249,18 @@ export function useHeatmap(mapInstance: any, cameraPins: any, areas: any) {
     if (mapInstance.value.getSource('pin-heatmap-source')) {
       mapInstance.value.removeSource('pin-heatmap-source')
     }
+
+    // NEW: Remove animal heatmap
+    if (mapInstance.value.getLayer(animalHeatmapId)) {
+      mapInstance.value.removeLayer(animalHeatmapId)
+    }
+    if (mapInstance.value.getSource('animal-heatmap-source')) {
+      mapInstance.value.removeSource('animal-heatmap-source')
+    }
   }
   
-  // Watch for changes in area or pin data and update heatmap if it's active
-  watch([areas, cameraPins], () => {
+  // Watch for changes in area, pin, or animal data and update heatmap if it's active
+  watch([areas, cameraPins, animalPins], () => {
     if (isHeatmapMode.value) {
       debouncedCreateLayers()
     }

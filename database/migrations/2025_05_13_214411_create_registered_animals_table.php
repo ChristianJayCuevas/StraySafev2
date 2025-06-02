@@ -13,6 +13,7 @@ class CreateRegisteredAnimalsTable extends Migration
     {
         Schema::create('registered_animals', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('owner');
             $table->string('contact');
             $table->enum('animal_type', ['dog', 'cat']);

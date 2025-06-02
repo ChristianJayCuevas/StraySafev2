@@ -39,7 +39,7 @@ class MobileRegisteredAnimalController extends Controller
 
     public function fetchRegisteredAnimals()
     {
-        $animals = RegisteredAnimal::select('id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')->get();
+        $animals = RegisteredAnimal::select('id', 'user_id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')->get();
 
         // The 'picture' field now contains the Base64 string directly.
         // The frontend will need to use it in a data URI: src="data:image/jpeg;base64,{{ base64String }}"
