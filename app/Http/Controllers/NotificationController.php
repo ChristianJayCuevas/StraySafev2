@@ -7,7 +7,7 @@ use App\Notifications\PushNotification;
 use App\Models\PushNotificationHistory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use Intervention\Image\ImageManager;
 
 class NotificationController extends Controller
 {
@@ -19,15 +19,10 @@ class NotificationController extends Controller
             'body' => 'required|string',
             'action' => 'nullable|string',
         ]);
-        $imageManager = new \Intervention\Image\ImageManager(['driver' => 'gd']);
-        if ($request->image) {
-            $image = $imageManager->make(base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->image)))
-                ->encode('jpg', 50); // 50 = quality
-
-            $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($image);
-        } else {
-            $compressedBase64 = null;
-        }
+        $manager = new ImageManager('gd'); // or 'imagick' if you have it
+        $image = $manager->read(base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->image)));
+        $encoded = $image->encode('jpg', quality: 50)->toString();
+        $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
         
         $user = User::find($request->user_id);
         $user->notify(new PushNotification(
