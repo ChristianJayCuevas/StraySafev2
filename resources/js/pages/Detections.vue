@@ -249,7 +249,7 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
   );
 }
 // --- Notification Sending ---
-async function sendNewDetectionNotification(detectedAnimal: Detection) {
+async function sendNewDetectionNotification(detectedAnimal: Detection, savedDetectionPaths?: { frame_path?: string, reg_path?: string }) {
   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
   // --- Notification Limiting Logic for General Detections ---
@@ -283,7 +283,8 @@ async function sendNewDetectionNotification(detectedAnimal: Detection) {
     title: `New Animal Detected: ${detectedAnimal.pet_type?.toUpperCase() || 'Unknown'}`,
     body: bodyMessage,
     action: '/mobilemap', // Or a different action URL for general alerts
-    image: detectedAnimal.frame_path || 'https://straysafe.me/images/default-pet-notification.png',
+    image: savedDetectionPaths?.frame_path || 
+                         savedDetectionPaths?.reg_path,
   };
 
   console.log('Sending generic detection notification:', payload);
@@ -490,17 +491,42 @@ async function handleNewDetection(detectionPayload: Detection) {
     try {
         // --- 1. Save the detection to your Laravel backend ---
         const backendResponse = await axios.post('/animal-detections', detectionPayload);
-        
+        let savedDetection = null;
         if (backendResponse.status === 201 || backendResponse.status === 200) {
             toast.success("New Detection Saved!", { 
               description: `From camera: ${detectionPayload.camera_name}` 
             });
             // Refresh the UI list with the new data
+            const savedDetectionId = backendResponse.data.data.id;
             await loadDetectionsFromBackend();
+            try {
+            const getResponse = await axios.get(`/animal-detections/${savedDetectionId}`);
+            savedDetection = getResponse.data;
+            
+            console.log('Retrieved saved detection with paths:', {
+              id: savedDetection.id,
+              frame_path: savedDetection.frame_path,
+              reg_path: savedDetection.reg_path,
+              external_api_id: savedDetection.external_api_id
+            });
+            
+            // Now you have access to the file paths:
+            // savedDetection.frame_path - path to the saved frame image
+            // savedDetection.reg_path - path to the saved registration image
+            
+          } catch (getError) {
+            console.error('Failed to retrieve saved detection:', getError);
+            // Continue with the original flow even if GET fails
+            savedDetection = backendResponse.data.data;
+          }
+
 
             // --- 2. Send the generic "New Detection" notification to admins ---
             // We use the full payload which now includes the camera_name etc.
-            await sendNewDetectionNotification(detectionPayload);
+            await sendNewDetectionNotification(detectionPayload, {
+                frame_path: savedDetection.frame_path,
+                reg_path: savedDetection.reg_path
+              });
             
             // --- 3. Check for a match with a registered pet ---
             const matchedPet = isActualRegisteredMatch(detectionPayload);
