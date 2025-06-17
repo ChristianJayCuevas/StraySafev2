@@ -493,13 +493,13 @@ const getModeBadgeVariant = (mode: string) => {
                 </div> -->
 
                 <!-- Conditional fields based on sourceType -->
-                <!-- <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
+                <div class="grid grid-cols-4 items-center gap-4">
                   <Label for="streamUrl" class="text-right">Stream URL</Label>
                   <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3"
                     placeholder="https://example.com/stream.m3u8" />
                 </div>
 
-                <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
+                <!-- <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
                   <Label for="videoUpload" class="text-right">Upload Video</Label>
                   <div class="col-span-3">
                     <Input id="videoUpload" type="file" accept="video/*" @change="handleFileUpload"
