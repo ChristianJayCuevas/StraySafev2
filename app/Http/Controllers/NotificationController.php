@@ -26,7 +26,7 @@ class NotificationController extends Controller
             base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->image))
         );
 
-        $encoded = $image->encode('jpg', quality: 50)->toString();
+        $encoded = $image->encode('jpg', 50)->toString();
         $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
         
         $user = User::find($request->user_id);
