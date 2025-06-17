@@ -54,10 +54,14 @@ interface CCTVCamera {
   id: number;
   name: string;
   location: string;
-  streamUrl: string;
-  status: 'live' | 'demo' | 'offline';
+  streamUrl: string; // This might become the Python stream_name
+  status: 'live' | 'demo' | 'offline'; // Status from Laravel DB
   lastUpdated: string;
-  mode: 'highquality' | 'lowquality'; // Added camera mode property
+  mode: 'highquality' | 'lowquality';
+  // --- ADD THESE NEW PROPERTIES ---
+  streamName: string;         // e.g., 'myvideo4_loop'
+  isRunning: boolean;         // true if the Python stream is active
+  hlsPlaylistUri: string;     // The actual HLS URL from Python
 }
 
 // State variables
@@ -105,85 +109,33 @@ const filteredCameras = computed(() => {
 });
 
 // Generate player URL for each camera based on mode
+// const getPlayerUrl = (camera: CCTVCamera) => {
+//   if (!camera || !camera.streamUrl) return '';
+
+//   // Extract camera number
+//   const cameraMatch = camera.streamUrl.match(/cam-(\d+)/);
+//   const cameraNumber = cameraMatch ? cameraMatch[1] : '1';
+
+//   // Adjust URL for low quality mode
+//   let streamUrl = camera.streamUrl;
+//   if (camera.mode === 'lowquality') {
+//     streamUrl = `https://straysafe.me/hls2/cam${cameraNumber}/index.m3u8`;
+//   }
+
+//   // Encode the stream URL to be used as a parameter
+//   const encodedUrl = encodeURIComponent(streamUrl);
+//   return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
+// };
 const getPlayerUrl = (camera: CCTVCamera) => {
-  if (!camera || !camera.streamUrl) return '';
+  // Use the hlsPlaylistUri if the stream is running, otherwise use the stored streamUrl as a fallback
+  const urlToPlay = camera.isRunning && camera.hlsPlaylistUri ? camera.hlsPlaylistUri : camera.streamUrl;
+  
+  if (!urlToPlay) return '';
 
-  // Extract camera number
-  const cameraMatch = camera.streamUrl.match(/cam-(\d+)/);
-  const cameraNumber = cameraMatch ? cameraMatch[1] : '1';
-
-  // Adjust URL for low quality mode
-  let streamUrl = camera.streamUrl;
-  if (camera.mode === 'lowquality') {
-    streamUrl = `https://straysafe.me/hls2/cam${cameraNumber}/index.m3u8`;
-  }
-
-  // Encode the stream URL to be used as a parameter
-  const encodedUrl = encodeURIComponent(streamUrl);
+  const encodedUrl = encodeURIComponent(urlToPlay);
   return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
 };
-
-
-// Mock data for development
-const dummyData: CCTVCamera[] = [
-  {
-    id: 1,
-    name: 'Main Entrance',
-    location: 'Front Gate',
-    streamUrl: 'https://straysafe.me/hls/cam-1/playlist.m3u8',
-    status: 'live',
-    lastUpdated: '2025-05-07 14:30',
-    mode: 'highquality',
-  },
-  {
-    id: 2,
-    name: 'Parking Area',
-    location: 'North Lot',
-    streamUrl: 'https://straysafe.me/hls/cam-2/playlist.m3u8',
-    status: 'live',
-    lastUpdated: '2025-05-07 14:15',
-    mode: 'highquality',
-  },
-  {
-    id: 3,
-    name: 'Back Entrance',
-    location: 'Loading Bay',
-    streamUrl: 'https://straysafe.me/hls/cam-3/playlist.m3u8',
-    status: 'live',
-    lastUpdated: '2025-05-07 13:45',
-    mode: 'highquality',
-  },
-  {
-    id: 4,
-    name: 'Side Alley',
-    location: 'East Wing',
-    streamUrl: 'https://straysafe.me/hls/static-demo1/processed_playlist.m3u8',
-    status: 'live',
-    lastUpdated: '2025-05-06 23:10',
-    mode: 'highquality',
-  },
-  {
-    id: 4,
-    name: 'Side Alley',
-    location: 'East Wing',
-    streamUrl: 'https://straysafe.me/hls/static-demo2/processed_playlist.m3u8',
-    status: 'live',
-    lastUpdated: '2025-05-06 23:10',
-    mode: 'highquality',
-  },
-  {
-    id: 4,
-    name: 'Side Alley',
-    location: 'East Wing',
-    streamUrl: 'https://straysafe.me/hls/static-demo3/processed_playlist.m3u8',
-    status: 'live',
-    lastUpdated: '2025-05-06 23:10',
-    mode: 'highquality',
-  }
-];
-
-// Fetch cameras from API
-
+const STREAM_CONTROL_API_BASE = 'https://straysafe.me/streamcontrol'; // Or http://localhost:5000 for local dev
 
 // Clear search query
 const clearSearch = () => {
@@ -202,27 +154,92 @@ const transformCameraData = (apiCamera) => {
     lastUpdated: apiCamera.last_updated || new Date(apiCamera.updated_at).toLocaleString()
   };
 };
+// In <script setup>
 
-// Update your fetchCameras function
+// This helper function extracts the stream name from a URL like 'https://straysafe.me/hls3/myvideo4_loop/playlist.m3u8'
+const extractStreamNameFromUrl = (url: string): string => {
+  if (!url) return '';
+  const match = url.match(/\/([a-zA-Z0-9_-]+)\/playlist\.m3u8$/);
+  return match ? match[1] : '';
+};
+
+
 const fetchCameras = async () => {
   isLoading.value = true;
   try {
-    const response = await axios.get('/cameras');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // --- Step 1: Fetch camera list from your main (Laravel) backend ---
+    const camerasResponse = await axios.get('/cameras');
+    
+    // --- Step 2: Fetch runtime status from your Python backend ---
+    const streamStatusResponse = await axios.get(`${STREAM_CONTROL_API_BASE}/stream/status`);
+    const streamStatuses = streamStatusResponse.data; // The JSON object of all stream statuses
 
-    // Transform each camera from the API response
-    cameras.value = response.data.map(camera => transformCameraData(camera));
+    // --- Step 3: Merge the data by extracting the stream name from the URL ---
+    cameras.value = camerasResponse.data.map(dbCamera => {
+      // Use our new helper function to get the stream name from the URL
+      const streamName = extractStreamNameFromUrl(dbCamera.stream_url);
+      
+      // Look up this camera's runtime status in the object from the Python backend
+      const runtimeStatus = streamStatuses[streamName];
+
+      // Determine the final HLS URL to use for the player
+      let finalHlsUrl = dbCamera.stream_url; // Default to the URL from the DB
+      if (runtimeStatus && runtimeStatus.status === 'running' && runtimeStatus.hls_playlist_uri !== 'N/A') {
+        // If the stream is running, use the more accurate URI from the Python backend.
+        // This handles converting local file paths (file:///) to public URLs.
+        const pythonUri = runtimeStatus.hls_playlist_uri;
+        if (pythonUri.startsWith('file:///')) {
+          // This logic is for converting local dev paths to production URLs
+           finalHlsUrl = pythonUri.replace(/^file:\/\/\/[A-Z]:/, 'https://straysafe.me').replace(/\\/g, '/');
+        } else {
+           finalHlsUrl = pythonUri;
+        }
+      }
+
+      return {
+        // Data from Laravel DB
+        id: dbCamera.id,
+        name: dbCamera.name,
+        location: dbCamera.location,
+        streamUrl: dbCamera.stream_url, // Keep the original URL from the DB
+        status: dbCamera.status,
+        mode: dbCamera.mode,
+        lastUpdated: new Date(dbCamera.updated_at).toLocaleString(),
+
+        // Dynamically added data from Python Backend
+        streamName: streamName, // The extracted name, e.g., 'myvideo4_loop'
+        isRunning: runtimeStatus ? runtimeStatus.status === 'running' : false,
+        hlsPlaylistUri: finalHlsUrl, // The best available URL for the player
+      };
+    });
+
   } catch (error) {
-    console.error('Failed to fetch cameras:', error);
-    toast.error('Failed to load cameras');
-    // Fallback to dummy data only in development
-    if (import.meta.env.DEV) {
-      cameras.value = dummyData;
-    }
+    console.error('Failed to fetch cameras or stream status:', error);
+    toast.error('Failed to load real-time camera status.');
   } finally {
     isLoading.value = false;
   }
 };
+// Update your fetchCameras function
+// const fetchCameras = async () => {
+//   isLoading.value = true;
+//   try {
+//     const response = await axios.get('/cameras');
+//     await new Promise(resolve => setTimeout(resolve, 2000));
+
+//     // Transform each camera from the API response
+//     cameras.value = response.data.map(camera => transformCameraData(camera));
+//   } catch (error) {
+//     console.error('Failed to fetch cameras:', error);
+//     toast.error('Failed to load cameras');
+//     // Fallback to dummy data only in development
+//     if (import.meta.env.DEV) {
+//       cameras.value = dummyData;
+//     }
+//   } finally {
+//     isLoading.value = false;
+//   }
+// };
 
 // Update your addCamera function to handle the response correctly
 const addCamera = async () => {
@@ -307,6 +324,39 @@ const toggleCameraStatus = async (camera) => {
   }
 };
 
+const startStream = async (camera: CCTVCamera) => {
+  if (!camera.streamName) {
+    toast.error('Stream name is missing for this camera.');
+    return;
+  }
+  try {
+    toast.info(`Sending start command for ${camera.name}...`);
+    const response = await axios.post(`${STREAM_CONTROL_API_BASE}/stream/${camera.streamName}/start`);
+    toast.success(response.data.message || `Stream '${camera.name}' started.`);
+    // Refresh the status to update the UI
+    await fetchCameras(); 
+  } catch (error) {
+    console.error('Failed to start stream:', error);
+    toast.error(error.response?.data?.error || `Failed to start stream for ${camera.name}.`);
+  }
+};
+
+const stopStream = async (camera: CCTVCamera) => {
+  if (!camera.streamName) {
+    toast.error('Stream name is missing for this camera.');
+    return;
+  }
+  try {
+    toast.info(`Sending stop command for ${camera.name}...`);
+    const response = await axios.post(`${STREAM_CONTROL_API_BASE}/stream/${camera.streamName}/stop`);
+    toast.success(response.data.message || `Stream '${camera.name}' stopped.`);
+    // Refresh the status to update the UI
+    await fetchCameras();
+  } catch (error) {
+    console.error('Failed to stop stream:', error);
+    toast.error(error.response?.data?.error || `Failed to stop stream for ${camera.name}.`);
+  }
+};
 // Toggle camera mode
 const toggleCameraMode = async (camera) => {
   const newMode = camera.mode === 'highquality' ? 'lowquality' : 'highquality';
@@ -429,7 +479,7 @@ const getModeBadgeVariant = (mode: string) => {
                   <Label for="location" class="text-right">Location</Label>
                   <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
                 </div>
-                <div class="grid grid-cols-4 items-center gap-4">
+                <!-- <div class="grid grid-cols-4 items-center gap-4">
                   <Label for="sourceType" class="text-right">Source Type</Label>
                   <Select v-model="newCamera.sourceType" class="col-span-3" @update:modelValue="handleSourceTypeChange">
                     <SelectTrigger>
@@ -440,10 +490,10 @@ const getModeBadgeVariant = (mode: string) => {
                       <SelectItem value="upload">Upload Video</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </div> -->
 
                 <!-- Conditional fields based on sourceType -->
-                <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
+                <!-- <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
                   <Label for="streamUrl" class="text-right">Stream URL</Label>
                   <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3"
                     placeholder="https://example.com/stream.m3u8" />
@@ -458,7 +508,7 @@ const getModeBadgeVariant = (mode: string) => {
                       Selected: {{ newCamera.videoFile.name }}
                     </p>
                   </div>
-                </div>
+                </div> -->
 
                 <div class="grid grid-cols-4 items-center gap-4">
                   <Label for="status" class="text-right">Status</Label>
@@ -555,6 +605,14 @@ const getModeBadgeVariant = (mode: string) => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem v-if="!camera.isRunning" @click="startStream(camera)">
+                      <Icon name="play" class="mr-2 h-4 w-4 text-green-500" />
+                      <span>Start Stream</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-if="camera.isRunning" @click="stopStream(camera)">
+                      <Icon name="square" class="mr-2 h-4 w-4 text-red-500" />
+                      <span>Stop Stream</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem @click="toggleCameraStatus(camera)">
                       <Icon name="refresh" class="mr-2 h-4 w-4" />
                       Change Status
