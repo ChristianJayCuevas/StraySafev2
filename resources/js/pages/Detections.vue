@@ -408,40 +408,50 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
 //   isPolling.value = false;
 // }
 async function pollExternalAPIAndStore() {
-  if (isPolling.value) return;
+  if (isPolling.value) return; 
   if (isLoadingRegisteredPets.value) {
     console.log('Polling paused: Registered pets data is still loading.');
     return;
   }
+  if (pollableCameras.value.length === 0) {
+    console.log("Polling skipped: No active cameras detected.");
+    return;
+  }
+  
   isPolling.value = true;
+  console.log(`Polling ${pollableCameras.value.length} active camera(s)...`);
 
-  const API_URL = 'https://straysafe.me/checknewimage';
+  for (const camera of pollableCameras.value) {
+    const cameraFolderName = camera.name;
+    const API_URL = `${STREAM_CONTROL_API_BASE}/check_new_image_from_camera?camera_folder=${cameraFolderName}`;
 
-  try {
-    const response = await axios.get<Detection>(API_URL);
-    const detectedAnimalData = response.data;
+    try {
+      const response = await axios.get<Detection>(API_URL);
+      const detectedAnimalData = response.data;
+      
+      if (detectedAnimalData && detectedAnimalData.pet_name) {
+        console.log(`[${cameraFolderName}] New detection received:`, detectedAnimalData);
 
-    if (detectedAnimalData && Object.keys(detectedAnimalData).length > 0 && detectedAnimalData.pet_name && detectedAnimalData.pet_type) {
-      console.log('Poll: New detection received:', detectedAnimalData);
-
-      const detectionPayload = {
-        external_api_id: String(detectedAnimalData.pet_name),
-        external_api_type: detectedAnimalData.pet_type,
-        breed: detectedAnimalData.breed || null,
-        contact_number: detectedAnimalData.contact_number === 'none' ? null : (detectedAnimalData.contact_number || null),
-        frame_base64: detectedAnimalData.frame_base64|| detectedAnimalData.frame_base64 || null,
-        reg_base64: detectedAnimalData.reg_base64  || detectedAnimalData.reg_base64 || null,
-        has_leash: typeof detectedAnimalData.has_leash === 'boolean' ? detectedAnimalData.has_leash : null,
-        is_registered: typeof detectedAnimalData.is_registered === 'boolean' ? detectedAnimalData.is_registered : null,
-        leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
-        pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null),
-        pet_type: detectedAnimalData.pet_type,
-        rtsp_url: detectedAnimalData.rtsp_url || null,
-        track_id: detectedAnimalData.track_id || null,
-        stable_class: detectedAnimalData.stable_class || null,
-        detection_timestamp: detectedAnimalData.timestamp || null,
-        similarity_score: typeof detectedAnimalData.similarity_score === 'number' ? detectedAnimalData.similarity_score : null,
-      };
+        const detectionPayload = {
+          // Keep existing payload structure
+          external_api_id: String(detectedAnimalData.pet_name),
+          external_api_type: detectedAnimalData.pet_type,
+          breed: detectedAnimalData.breed || null,
+          contact_number: detectedAnimalData.contact_number === 'none' ? null : (detectedAnimalData.contact_number || null),
+          frame_base64: detectedAnimalData.frame_base64 || null,
+          reg_base64: detectedAnimalData.reg_base64 || null,
+          has_leash: typeof detectedAnimalData.has_leash === 'boolean' ? detectedAnimalData.has_leash : null,
+          is_registered: typeof detectedAnimalData.is_registered === 'boolean' ? detectedAnimalData.is_registered : null,
+          leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
+          pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null),
+          pet_type: detectedAnimalData.pet_type,
+          camera_name: cameraFolderName, 
+          rtsp_url: detectedAnimalData.rtsp_url || camera.source,
+          track_id: detectedAnimalData.track_id || null,
+          stable_class: detectedAnimalData.stable_class || null,
+          detection_timestamp: detectedAnimalData.timestamp || null,
+          similarity_score: typeof detectedAnimalData.similarity_score === 'number' ? detectedAnimalData.similarity_score : null,
+        };
 
       // Save the detection to your backend
       try {
