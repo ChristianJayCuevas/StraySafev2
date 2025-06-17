@@ -68,7 +68,7 @@ Route::post('/api/mobilelogin', [UserController::class, 'login']);
 Route::get('/api/mobileusers', [UserController::class, 'fetchUsers']);
 Route::get('api/mobileuser/me', [UserController::class, 'fetchLoggedInUser']);
 Route::get('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'fetchRegisteredAnimals']);
-Route::post('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal']);
+Route::post('/api/mobileregisteredanimals', [MobileRegisteredAnimalController::class, 'storeRegisteredAnimal'])->name('mobileregisteredanimals.post');;
 
 Route::get('/registered-animals', [RegisteredAnimalController::class, 'index']);
 Route::post('/registered-animals', [RegisteredAnimalController::class, 'store']);

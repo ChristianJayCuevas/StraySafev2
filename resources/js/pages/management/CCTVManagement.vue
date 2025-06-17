@@ -4,25 +4,25 @@ import { ref, onMounted, computed } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import axios from 'axios';
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
+import {
+  Card,
+  CardHeader,
+  CardTitle,
   CardContent,
-  CardFooter 
+  CardFooter
 } from '@/components/ui/card';
 import CardData from '@/components/CardData.vue';
 import Icon from '@/components/Icon.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,11 +94,11 @@ const directCameras = computed(() => cameras.value.filter(cam => cam.mode === 'l
 // Filter cameras based on search query
 const filteredCameras = computed(() => {
   if (!searchQuery.value) return cameras.value;
-  
+
   const query = searchQuery.value.toLowerCase();
-  return cameras.value.filter(camera => 
-    camera.name.toLowerCase().includes(query) || 
-    camera.location.toLowerCase().includes(query) || 
+  return cameras.value.filter(camera =>
+    camera.name.toLowerCase().includes(query) ||
+    camera.location.toLowerCase().includes(query) ||
     camera.status.toLowerCase().includes(query) ||
     camera.mode.toLowerCase().includes(query)
   );
@@ -208,7 +208,8 @@ const fetchCameras = async () => {
   isLoading.value = true;
   try {
     const response = await axios.get('/cameras');
-    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     // Transform each camera from the API response
     cameras.value = response.data.map(camera => transformCameraData(camera));
   } catch (error) {
@@ -229,7 +230,7 @@ const addCamera = async () => {
     toast.error('Please fill all required fields');
     return;
   }
-  
+
   try {
     // Convert frontend property names to backend format
     const cameraData = {
@@ -239,16 +240,16 @@ const addCamera = async () => {
       status: newCamera.value.status,
       mode: newCamera.value.mode,
     };
-    
+
     const response = await axios.post('/cameras', cameraData);
-    
+
     // Transform the response data and add to local state
     if (response.data.camera) {
       cameras.value.push(transformCameraData(response.data.camera));
     }
-    
+
     toast.success('Camera added successfully');
-    
+
     showAddDialog.value = false;
     newCamera.value = {
       name: '',
@@ -267,10 +268,10 @@ const addCamera = async () => {
 const removeCamera = async (id) => {
   try {
     await axios.delete(`/cameras/${id}`);
-    
+
     // Filter out the camera from local state
     cameras.value = cameras.value.filter(camera => camera.id !== id);
-    
+
     toast.success('Camera removed successfully');
   } catch (error) {
     console.error('Failed to remove camera:', error);
@@ -285,18 +286,18 @@ const toggleCameraStatus = async (camera) => {
     'demo': 'offline',
     'offline': 'live'
   };
-  
+
   const newStatus = statusMap[camera.status];
-  
+
   try {
     await axios.patch(`/cameras/${camera.id}/status`, {
       status: newStatus
     });
-    
+
     // Update local state
     camera.status = newStatus;
     camera.last_updated = new Date().toLocaleString();
-    
+
     toast(`Camera ${camera.name} is now ${camera.status}`, {
       icon: camera.status === 'live' ? '🟢' : camera.status === 'demo' ? '🟡' : '🔴'
     });
@@ -309,16 +310,16 @@ const toggleCameraStatus = async (camera) => {
 // Toggle camera mode
 const toggleCameraMode = async (camera) => {
   const newMode = camera.mode === 'highquality' ? 'lowquality' : 'highquality';
-  
+
   try {
     await axios.patch(`/cameras/${camera.id}/mode`, {
       mode: newMode
     });
-    
+
     // Update local state
     camera.mode = newMode;
     camera.last_updated = new Date().toLocaleString();
-    
+
     toast.success(`Camera ${camera.name} mode changed to ${camera.mode === 'highquality' ? 'High Quality' : 'Low Quality'}`);
   } catch (error) {
     console.error('Failed to update camera mode:', error);
@@ -355,39 +356,23 @@ const getModeBadgeVariant = (mode: string) => {
 </script>
 
 <template>
+
   <Head title="CCTV Management" />
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-6 bg-background">
       <!-- Stats Cards -->
       <div class="grid auto-rows-min gap-4 md:grid-cols-4">
         <template v-if="isLoading">
-          <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 6" :key="i" />
+          <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 4" :key="i" />
         </template>
         <template v-else>
-          <CardData 
-            title="Total Cameras" 
-            :value="totalCameras" 
-            icon="video" 
-            description="All registered cameras" 
-          />
-          <CardData 
-            title="Online Cameras" 
-            :value="onlineCameras" 
-            icon="wifi" 
-            description="Currently accessible cameras" 
-          />
-          <CardData 
-            title="Offline Cameras" 
-            :value="offlineCameras" 
-            icon="wifiOff" 
-            description="Currently inaccessible cameras" 
-          />
-          <CardData 
-            title="Live Feeds" 
-            :value="liveCameras" 
-            icon="radioTower" 
-            description="Real-time streaming cameras" 
-          />
+          <CardData title="Total Cameras" :value="totalCameras" icon="video" description="All registered cameras" />
+          <CardData title="Online Cameras" :value="onlineCameras" icon="wifi"
+            description="Currently accessible cameras" />
+          <CardData title="Offline Cameras" :value="offlineCameras" icon="wifiOff"
+            description="Currently inaccessible cameras" />
+          <CardData title="Live Feeds" :value="liveCameras" icon="radioTower"
+            description="Real-time streaming cameras" />
         </template>
       </div>
 
@@ -398,20 +383,12 @@ const getModeBadgeVariant = (mode: string) => {
           <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Icon name="search" class="h-4 w-4 text-muted-foreground" />
           </div>
-          <Input 
-            v-model="searchQuery" 
-            placeholder="Search cameras..." 
-            class="pl-10 pr-10"
-          />
-          <button 
-            v-if="searchQuery" 
-            @click="clearSearch" 
-            class="absolute inset-y-0 right-0 flex items-center pr-3"
-          >
+          <Input v-model="searchQuery" placeholder="Search cameras..." class="pl-10 pr-10" />
+          <button v-if="searchQuery" @click="clearSearch" class="absolute inset-y-0 right-0 flex items-center pr-3">
             <Icon name="x" class="h-4 w-4 text-muted-foreground hover:text-foreground" />
           </button>
         </div>
-        
+
         <!-- Column Layout Control -->
         <div class="flex space-x-4 items-center">
           <div class="flex items-center space-x-2">
@@ -426,100 +403,96 @@ const getModeBadgeVariant = (mode: string) => {
               </SelectContent>
             </Select>
           </div>
-          
-        
-<Dialog v-model:open="showAddDialog">
-  <DialogTrigger asChild>
-    <Button variant="default" @click="showAddDialog = true">
-      <Icon name="plus" class="mr-2 h-4 w-4" />
-      Add Camera
-    </Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Add New Camera</DialogTitle>
-      <DialogDescription>
-        Add a new CCTV camera to your monitoring system.
-      </DialogDescription>
-    </DialogHeader>
-    
-    <div class="grid gap-4 py-4">
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="name" class="text-right">Name</Label>
-        <Input id="name" v-model="newCamera.name" class="col-span-3" placeholder="Main Entrance" />
-      </div>
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="location" class="text-right">Location</Label>
-        <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
-      </div>
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="sourceType" class="text-right">Source Type</Label>
-        <Select v-model="newCamera.sourceType" class="col-span-3" @update:modelValue="handleSourceTypeChange">
-          <SelectTrigger>
-            <SelectValue placeholder="Select source type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="stream">Stream URL</SelectItem>
-            <SelectItem value="upload">Upload Video</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <!-- Conditional fields based on sourceType -->
-      <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
-        <Label for="streamUrl" class="text-right">Stream URL</Label>
-        <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3" placeholder="https://example.com/stream.m3u8" />
-      </div>
-      
-      <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
-        <Label for="videoUpload" class="text-right">Upload Video</Label>
-        <div class="col-span-3">
-          <Input 
-            id="videoUpload" 
-            type="file" 
-            accept="video/*" 
-            @change="handleFileUpload"
-            class="col-span-3" 
-          />
-          <p v-if="newCamera.videoFile" class="text-sm text-gray-500 mt-1">
-            Selected: {{ newCamera.videoFile.name }}
-          </p>
-        </div>
-      </div>
-      
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="status" class="text-right">Status</Label>
-        <Select v-model="newCamera.status" class="col-span-3">
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="live">Live</SelectItem>
-            <SelectItem value="demo">Demo</SelectItem>
-            <SelectItem value="offline">Offline</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div class="grid grid-cols-4 items-center gap-4">
-        <Label for="mode" class="text-right">Camera Mode</Label>
-        <Select v-model="newCamera.mode" class="col-span-3">
-          <SelectTrigger>
-            <SelectValue placeholder="Select mode" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="highquality">High Quality CCTV</SelectItem>
-            <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-    
-    <DialogFooter>
-      <Button variant="outline" @click="showAddDialog = false">Cancel</Button>
-      <Button @click="addCamera">Add Camera</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+
+
+          <Dialog v-model:open="showAddDialog">
+            <DialogTrigger asChild>
+              <Button variant="default" @click="showAddDialog = true">
+                <Icon name="plus" class="mr-2 h-4 w-4" />
+                Add Camera
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Camera</DialogTitle>
+                <DialogDescription>
+                  Add a new CCTV camera to your monitoring system.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div class="grid gap-4 py-4">
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label for="name" class="text-right">Name</Label>
+                  <Input id="name" v-model="newCamera.name" class="col-span-3" placeholder="Main Entrance" />
+                </div>
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label for="location" class="text-right">Location</Label>
+                  <Input id="location" v-model="newCamera.location" class="col-span-3" placeholder="Front Gate" />
+                </div>
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label for="sourceType" class="text-right">Source Type</Label>
+                  <Select v-model="newCamera.sourceType" class="col-span-3" @update:modelValue="handleSourceTypeChange">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stream">Stream URL</SelectItem>
+                      <SelectItem value="upload">Upload Video</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <!-- Conditional fields based on sourceType -->
+                <div v-if="newCamera.sourceType === 'stream'" class="grid grid-cols-4 items-center gap-4">
+                  <Label for="streamUrl" class="text-right">Stream URL</Label>
+                  <Input id="streamUrl" v-model="newCamera.streamUrl" class="col-span-3"
+                    placeholder="https://example.com/stream.m3u8" />
+                </div>
+
+                <div v-if="newCamera.sourceType === 'upload'" class="grid grid-cols-4 items-center gap-4">
+                  <Label for="videoUpload" class="text-right">Upload Video</Label>
+                  <div class="col-span-3">
+                    <Input id="videoUpload" type="file" accept="video/*" @change="handleFileUpload"
+                      class="col-span-3" />
+                    <p v-if="newCamera.videoFile" class="text-sm text-gray-500 mt-1">
+                      Selected: {{ newCamera.videoFile.name }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label for="status" class="text-right">Status</Label>
+                  <Select v-model="newCamera.status" class="col-span-3">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="live">Live</SelectItem>
+                      <SelectItem value="demo">Demo</SelectItem>
+                      <SelectItem value="offline">Offline</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label for="mode" class="text-right">Camera Mode</Label>
+                  <Select v-model="newCamera.mode" class="col-span-3">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="highquality">High Quality CCTV</SelectItem>
+                      <SelectItem value="lowquality">Low Quality CCTV</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" @click="showAddDialog = false">Cancel</Button>
+                <Button @click="addCamera">Add Camera</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -533,8 +506,9 @@ const getModeBadgeVariant = (mode: string) => {
       <div v-if="isLoading" class="grid gap-4" :class="gridLayout">
         <Skeleton class="h-[300px] w-full rounded-xl" v-for="i in 4" :key="i" />
       </div>
-      
-      <div v-else-if="filteredCameras.length === 0" class="flex items-center justify-center h-64 bg-background/50 rounded-lg border border-dashed">
+
+      <div v-else-if="filteredCameras.length === 0"
+        class="flex items-center justify-center h-64 bg-background/50 rounded-lg border border-dashed">
         <div class="text-center p-8">
           <Icon name="video-off" class="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 class="text-lg font-medium">No Cameras Found</h3>
@@ -554,18 +528,16 @@ const getModeBadgeVariant = (mode: string) => {
           </div>
         </div>
       </div>
-      
+
       <div v-else class="grid gap-4" :class="gridLayout">
-        <Card 
-          v-for="camera in filteredCameras" 
-          :key="camera.id"
-          class="overflow-hidden hover:shadow-md hover:border-primary/30 dark:hover:border-primary/30 hover:-translate-y-1 transition-all duration-300"
-        >
+        <Card v-for="camera in filteredCameras" :key="camera.id"
+          class="overflow-hidden hover:shadow-md hover:border-primary/30 dark:hover:border-primary/30 hover:-translate-y-1 transition-all duration-300">
           <CardHeader class="p-3 space-y-0">
             <div class="flex items-center justify-between">
               <CardTitle class="text-lg flex items-center">
                 <div class="mr-2">
-                  <div :class="['h-2 w-2 rounded-full animate-pulse inline-block mr-1', getStatusColor(camera.status)]"></div>
+                  <div :class="['h-2 w-2 rounded-full animate-pulse inline-block mr-1', getStatusColor(camera.status)]">
+                  </div>
                 </div>
                 {{ camera.name }}
               </CardTitle>
@@ -600,7 +572,7 @@ const getModeBadgeVariant = (mode: string) => {
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent class="p-0">
             <div v-if="camera.status === 'offline'" class="h-56 bg-muted flex items-center justify-center">
               <div class="text-center p-4">
@@ -614,20 +586,19 @@ const getModeBadgeVariant = (mode: string) => {
             </div>
             <div v-else class="relative aspect-video bg-black">
               <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width:100%;">
-                <iframe 
-                  style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" 
-                  webkitAllowFullScreen mozallowfullscreen allowfullscreen 
-                  width="640" height="360" frameborder="0" allow="autoplay"
-                  :src="getPlayerUrl(camera)"
-                ></iframe>
+                <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" webkitAllowFullScreen
+                  mozallowfullscreen allowfullscreen width="640" height="360" frameborder="0" allow="autoplay"
+                  :src="getPlayerUrl(camera)"></iframe>
               </div>
               <div class="absolute top-2 right-2">
                 <div class="flex space-x-2">
-                  <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                  <div
+                    class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
                     <div :class="['h-2 w-2 rounded-full animate-pulse', getStatusColor(camera.status)]"></div>
                     <span>{{ camera.status === 'live' ? 'LIVE' : 'DEMO' }}</span>
                   </div>
-                  <div class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                  <div
+                    class="flex items-center space-x-1 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
                     <Icon :name="camera.mode === 'highquality' ? 'brain' : 'eye'" class="h-3 w-3 mr-1" />
                     <span>{{ camera.mode === 'highquality' ? 'High Quality' : 'Low Quality' }}</span>
                   </div>
@@ -635,7 +606,7 @@ const getModeBadgeVariant = (mode: string) => {
               </div>
             </div>
           </CardContent>
-          
+
           <CardFooter class="p-3 pt-2 flex flex-col items-start space-y-1">
             <div class="flex justify-between items-center w-full">
               <span class="flex items-center text-sm">
@@ -657,9 +628,12 @@ const getModeBadgeVariant = (mode: string) => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }

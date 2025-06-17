@@ -14,10 +14,14 @@ class RegisteredAnimal extends Model
         'owner',
         'contact',
         'animal_type',
-        'picture',
+        'pictures',
+        'collar',
         'status',
         'breed',
         'pet_name'
+    ];
+    protected $casts = [
+        'pictures' => 'array', // This is crucial!
     ];
      public function user()
     {

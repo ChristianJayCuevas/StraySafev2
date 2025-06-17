@@ -136,7 +136,7 @@ const initDraggable = () => {
         setTimeout(() => {
           cleanupPlayers();
           initializeVideoPlayers();
-        }, 300);
+        }, 500);
       }
     });
     
@@ -409,7 +409,7 @@ onBeforeUnmount(() => {
       
       <!-- Loading state -->
       <div v-if="isLoading" class="grid gap-2 p-6 pt-14" :class="gridCols">
-        <Skeleton class="aspect-video w-full rounded-md" v-for="i in 6" :key="i" />
+        <Skeleton class="aspect-video w-full rounded-md" v-for="i in 4" :key="i" />
       </div>
       
       <!-- Fullscreen mode -->

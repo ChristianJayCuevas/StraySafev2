@@ -60,41 +60,28 @@ const form = useForm({
   animal_type: '',
   breed: '',
   contact: '',
-  picture: null as string | null, // Main picture
-  picture_2: null as string | null, // Additional picture 1
-  picture_3: null as string | null, // Additional picture 2
-  location: '',
-  latitude: null as number | null,
-  longitude: null as number | null,
+  pictures: [] as File[], // This will hold the actual File objects
 });
 
 // UI state
 const isUploading = ref(false);
 const error = ref('');
 const showConfirmDialog = ref(false);
-const showLocationModal = ref(false);
-const imagePreview = ref('');
-const imagePreview2 = ref('');
-const imagePreview3 = ref('');
-const isLoadingLocation = ref(false);
+const imagePreviews = ref<string[]>([]);
 
-// Location picker state
-const searchQuery = ref('');
-const searchResults = ref<Array<{
-  display_name: string;
-  lat: string;
-  lon: string;
-  address: any;
-}>>([]);
-const isSearching = ref(false);
+const removeImage = (index: number) => {
+  // Remove from both the form data and the previews
+  form.pictures.splice(index, 1);
+  imagePreviews.value.splice(index, 1);
+};
+
 
 const isFormValid = computed(() => {
   return form.pet_name && 
          form.animal_type && 
          form.breed && 
          form.contact && 
-         form.picture &&
-         form.location;
+         form.pictures.length > 0; // Check if at least one picture exists
 });
 
 const isSubmitting = computed(() => {
@@ -102,202 +89,63 @@ const isSubmitting = computed(() => {
 });
 
 // Helper function to handle image selection
-const handleImageSelect = async (event: Event, imageType: 'main' | 'second' | 'third') => {
+const handleImageSelect = (event: Event) => {
   const input = event.target as HTMLInputElement;
   if (!input.files || input.files.length === 0) return;
-  
-  const file = input.files[0];
-  const maxSizeInBytes = 2 * 1024 * 1024; 
-  
-  if (file.size > maxSizeInBytes) {
-    error.value = 'Image is too large. Maximum size is 2MB.';
-    toast.error(error.value);
-    
-    // Reset the specific image
-    if (imageType === 'main') {
-      imagePreview.value = '';
-      form.picture = null;
-    } else if (imageType === 'second') {
-      imagePreview2.value = '';
-      form.picture_2 = null;
-    } else if (imageType === 'third') {
-      imagePreview3.value = '';
-      form.picture_3 = null;
+
+  const files = Array.from(input.files);
+
+  for (const file of files) {
+    if (form.pictures.length >= 3) {
+        toast.warning("You can only upload a maximum of 3 photos.");
+        break; // Stop processing more files
     }
     
-    if (input) input.value = '';
-    return;
+    const maxSizeInBytes = 2 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error(`Image "${file.name}" is too large. Maximum size is 2MB.`);
+      continue;
+    }
+    form.pictures.push(file);
+    imagePreviews.value.push(URL.createObjectURL(file));
   }
-  
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const result = e.target?.result as string;
-    const base64 = result.includes(',') ? result.split(',')[1] : result;
-    
-    if (imageType === 'main') {
-      imagePreview.value = result;
-      form.picture = base64;
-    } else if (imageType === 'second') {
-      imagePreview2.value = result;
-      form.picture_2 = base64;
-    } else if (imageType === 'third') {
-      imagePreview3.value = result;
-      form.picture_3 = base64;
-    }
-  };
-  
-  reader.onerror = () => {
-    error.value = "Could not read the image file.";
-    toast.error(error.value);
-    
-    if (imageType === 'main') {
-      form.picture = null;
-      imagePreview.value = '';
-    } else if (imageType === 'second') {
-      form.picture_2 = null;
-      imagePreview2.value = '';
-    } else if (imageType === 'third') {
-      form.picture_3 = null;
-      imagePreview3.value = '';
-    }
-  }
-  
-  reader.readAsDataURL(file);
-  error.value = ''; 
+  input.value = '';
 };
 
-// Location functions
-const getCurrentLocation = () => {
-  if (!navigator.geolocation) {
-    toast.error('Geolocation is not supported by this browser.');
-    return;
-  }
-  
-  isLoadingLocation.value = true;
-  
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const { latitude, longitude } = position.coords;
-      form.latitude = latitude;
-      form.longitude = longitude;
-      
-      try {
-        // Reverse geocoding to get address
-        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-        form.location = response.data.display_name;
-        toast.success('Location detected successfully!');
-      } catch (err) {
-        form.location = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-        toast.success('Location coordinates saved!');
-      }
-      
-      isLoadingLocation.value = false;
-    },
-    (error) => {
-      isLoadingLocation.value = false;
-      toast.error('Unable to retrieve your location. Please search manually.');
-    }
-  );
-};
-
-const searchLocation = async () => {
-  if (!searchQuery.value.trim()) return;
-  
-  isSearching.value = true;
-  
-  try {
-    const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery.value)}&limit=5`);
-    searchResults.value = response.data;
-  } catch (err) {
-    toast.error('Failed to search locations. Please try again.');
-  }
-  
-  isSearching.value = false;
-};
-
-const selectLocation = (location: any) => {
-  form.location = location.display_name;
-  form.latitude = parseFloat(location.lat);
-  form.longitude = parseFloat(location.lon);
-  showLocationModal.value = false;
-  searchQuery.value = '';
-  searchResults.value = [];
-  toast.success('Location selected successfully!');
-};
 
 const handleSubmit = () => {
   if (!isFormValid.value) {
-    error.value = 'Please fill in all required fields, upload at least one pet photo, and select a location.';
+    error.value = 'Please fill in all required fields and upload at least one pet photo.';
     toast.warning(error.value);
     return;
   }
   showConfirmDialog.value = true;
 };
 
-const confirmSubmit = async () => {
-  isUploading.value = true;
-  form.processing = true;
-  error.value = '';
-  
-  const payload = {
-    pet_name: form.pet_name,
-    animal_type: form.animal_type,
-    breed: form.breed,
-    contact: form.contact,
-    picture: form.picture,
-    picture_2: form.picture_2,
-    picture_3: form.picture_3,
-    location: form.location,
-    latitude: form.latitude,
-    longitude: form.longitude,
-  };
-
-  try {
-    const response = await axios.post('/api/mobileregisteredanimals', payload);
-
-    if (response.data && response.data.status === 'success') {
-      toast.success(response.data.message || "Your pet has been registered successfully.");
+// IMPORTANT: This now uses Inertia's form helper, not axios.
+const confirmSubmit = () => {
+  showConfirmDialog.value = false;
+  // Inertia's form helper automatically sets the correct `Content-Type` (multipart/form-data)
+  // because `form.pictures` contains File objects.
+  form.post(route('mobileregisteredanimals.post'), { // Assumes you named your route
+    // If not using named routes, use the URL: '/api/mobileregisteredanimals'
+    preserveScroll: true,
+    onSuccess: (page) => {
+      toast.success("Your pet has been registered successfully.");
       form.reset();
-      imagePreview.value = '';
-      imagePreview2.value = '';
-      imagePreview3.value = '';
-      showConfirmDialog.value = false;
-    } else {
-      const apiMessage = response.data?.message || "Registration failed with an unexpected server response.";
-      error.value = apiMessage;
-      toast.error(apiMessage);
-    }
-
-  } catch (axiosError: any) {
-    console.error('Registration Axios Error:', axiosError);
-    let errorMessage = "Failed to register pet. Please try again.";
-
-    if (axiosError.response) {
-      if (axiosError.response.data) {
-        if (axiosError.response.data.errors) {
-          errorMessage = Object.values(axiosError.response.data.errors).flat().join(' ');
-        } else if (axiosError.response.data.message) {
-          errorMessage = axiosError.response.data.message;
-        } else {
-          errorMessage = `Error ${axiosError.response.status}: An unexpected server error occurred.`;
-        }
-      } else {
-        errorMessage = `Error ${axiosError.response.status}: Server error.`;
-      }
-    } else if (axiosError.request) {
-      errorMessage = "No response from server. Please check your network connection.";
-    } else {
-      errorMessage = axiosError.message || "An unknown error occurred during registration.";
-    }
-    
-    error.value = errorMessage;
-    toast.error(errorMessage);
-  } finally {
-    isUploading.value = false;
-    form.processing = false;
-  }
+      imagePreviews.value = [];
+    },
+    onError: (errors) => {
+      // `errors` is an object with validation messages from Laravel
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError || 'An unknown error occurred.');
+    },
+    onFinish: () => {
+      // This runs regardless of success or error
+      // `form.processing` is automatically handled
+    },
+  });
 };
-
 const petTypes = [
   { value: 'Dog', label: 'Dog' },
   { value: 'Cat', label: 'Cat' },
@@ -317,125 +165,49 @@ const petTypes = [
             </CardDescription>
           </CardHeader>
           
-          <CardContent>
-            <Form @submit.prevent="handleSubmit">
-              <!-- Image Upload Section -->
+           <CardContent>
+            <form @submit.prevent="handleSubmit">
               <div class="mb-8">
-                <div class="flex flex-col items-center">
-                  <!-- Main Image Upload -->
-                  <div class="relative mb-4 group">
-                    <div 
-                      class="w-48 h-48 rounded-full flex items-center justify-center overflow-hidden border-4 border-primary shadow-lg hover:opacity-90 transition-opacity"
-                      :class="{ 'bg-muted': !imagePreview }"
+                <Label class="text-lg font-semibold mb-2 block text-center">Pet Photos</Label>
+                <div class="flex flex-wrap justify-center items-end gap-4">
+                  <div v-for="(preview, index) in imagePreviews" :key="index" class="relative group w-32 h-32">
+                    <img :src="preview" alt="Pet preview" class="w-full h-full object-cover rounded-lg border-2 border-muted shadow-md" />
+                    <button 
+                      type="button" 
+                      @click="removeImage(index)"
+                      class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 leading-none shadow-lg hover:bg-red-600"
+                      :disabled="form.processing"
                     >
-                      <img 
-                        v-if="imagePreview" 
-                        :src="imagePreview" 
-                        alt="Pet preview" 
-                        class="w-full h-full object-cover" 
-                      />
-                      <div v-else class="text-center p-4">
-                        <Icon name="Camera" class="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                        <span class="text-sm text-muted-foreground font-medium">Main Pet Photo</span>
-                      </div>
-                    </div>
+                      <Icon name="X" class="h-4 w-4" />
+                    </button>
+                    <div v-if="index === 0" class="absolute bottom-0 w-full bg-primary text-white text-xs text-center py-0.5 rounded-b-md">Main</div>
+                  </div>
+
+                  <!-- The 'Add Photo' button -->
+                  <div v-if="imagePreviews.length < 3">
                     <Label 
-                      for="pet-image-main" 
-                      class="absolute bottom-0 right-0 p-3 rounded-full bg-primary text-white shadow cursor-pointer"
+                      for="pet-image-upload"
+                      class="w-32 h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
+                      :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
                     >
-                      <Icon name="Plus" class="h-5 w-5" />
+                      <Icon name="PlusCircle" class="h-8 w-8 text-muted-foreground" />
+                      <span class="text-sm text-muted-foreground mt-1">Add Photo</span>
+                      <span class="text-xs text-muted-foreground">({{ imagePreviews.length }}/3)</span>
                     </Label>
                     <input 
                       type="file" 
-                      id="pet-image-main"
+                      id="pet-image-upload"
                       accept="image/jpeg, image/png, image/gif" 
                       class="hidden" 
-                      @change="(e) => handleImageSelect(e, 'main')" 
-                      :disabled="isSubmitting"
+                      multiple
+                      @change="handleImageSelect" 
+                      :disabled="form.processing"
                     />
                   </div>
-                  
-                  <!-- Additional Images -->
-                  <div class="flex gap-4 mb-4">
-                    <!-- Second Image -->
-                    <div class="relative group">
-                      <div 
-                        class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden border-2 border-muted shadow hover:opacity-90 transition-opacity"
-                        :class="{ 'bg-muted': !imagePreview2 }"
-                      >
-                        <img 
-                          v-if="imagePreview2" 
-                          :src="imagePreview2" 
-                          alt="Pet preview 2" 
-                          class="w-full h-full object-cover" 
-                        />
-                        <div v-else class="text-center p-2">
-                          <Icon name="Camera" class="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                          <span class="text-xs text-muted-foreground">Photo 2</span>
-                        </div>
-                      </div>
-                      <Label 
-                        for="pet-image-2" 
-                        class="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-white shadow cursor-pointer"
-                      >
-                        <Icon name="Plus" class="h-3 w-3" />
-                      </Label>
-                      <input 
-                        type="file" 
-                        id="pet-image-2"
-                        accept="image/jpeg, image/png, image/gif" 
-                        class="hidden" 
-                        @change="(e) => handleImageSelect(e, 'second')" 
-                        :disabled="isSubmitting"
-                      />
-                    </div>
-                    
-                    <!-- Third Image -->
-                    <div class="relative group">
-                      <div 
-                        class="w-24 h-24 rounded-lg flex items-center justify-center overflow-hidden border-2 border-muted shadow hover:opacity-90 transition-opacity"
-                        :class="{ 'bg-muted': !imagePreview3 }"
-                      >
-                        <img 
-                          v-if="imagePreview3" 
-                          :src="imagePreview3" 
-                          alt="Pet preview 3" 
-                          class="w-full h-full object-cover" 
-                        />
-                        <div v-else class="text-center p-2">
-                          <Icon name="Camera" class="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                          <span class="text-xs text-muted-foreground">Photo 3</span>
-                        </div>
-                      </div>
-                      <Label 
-                        for="pet-image-3" 
-                        class="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-white shadow cursor-pointer"
-                      >
-                        <Icon name="Plus" class="h-3 w-3" />
-                      </Label>
-                      <input 
-                        type="file" 
-                        id="pet-image-3"
-                        accept="image/jpeg, image/png, image/gif" 
-                        class="hidden" 
-                        @change="(e) => handleImageSelect(e, 'third')" 
-                        :disabled="isSubmitting"
-                      />
-                    </div>
-                  </div>
-                  
-                  <p class="text-sm text-muted-foreground text-center">
-                    Upload multiple photos to help identify your pet from different angles
-                  </p>
-                  
-                  <div v-if="error" class="w-full max-w-md mt-2">
-                    <Alert variant="destructive">
-                      <Icon name="AlertCircle" class="h-4 w-4" />
-                      <AlertTitle>Error</AlertTitle>
-                      <AlertDescription>{{ error }}</AlertDescription>
-                    </Alert>
-                  </div>
                 </div>
+                 <p class="text-sm text-muted-foreground text-center mt-4">
+                    The first photo will be the main profile picture. You can add up to 3 photos.
+                  </p>
               </div>
               
               <!-- Pet Information Form -->
@@ -514,51 +286,6 @@ const petTypes = [
                     </FormItem>
                   </FormField>
                 </div>
-                
-                <!-- Location Field -->
-                <FormField name="location" v-slot="{ componentField, meta }">
-                  <FormItem>
-                    <FormLabel>Location <span class="text-red-500">*</span></FormLabel>
-                    <div class="flex gap-2">
-                      <FormControl class="flex-1">
-                        <Input 
-                          type="text"
-                          placeholder="Pet's location" 
-                          v-model="form.location" 
-                          :disabled="isSubmitting"
-                          readonly
-                          required
-                          :aria-invalid="meta.touched && !meta.valid"
-                        />
-                      </FormControl>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        @click="getCurrentLocation"
-                        :disabled="isSubmitting || isLoadingLocation"
-                        class="shrink-0"
-                      >
-                        <Icon name="MapPin" class="h-4 w-4 mr-2" />
-                        <span v-if="isLoadingLocation">Getting...</span>
-                        <span v-else>Current</span>
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        @click="showLocationModal = true"
-                        :disabled="isSubmitting"
-                        class="shrink-0"
-                      >
-                        <Icon name="Search" class="h-4 w-4 mr-2" />
-                        Search
-                      </Button>
-                    </div>
-                    <FormDescription>
-                      Location helps others know where your pet was last seen
-                    </FormDescription>
-                    <FormMessage v-if="form.errors.location">{{ form.errors.location }}</FormMessage>
-                  </FormItem>
-                </FormField>
               </div>
             </Form>
           </CardContent>
@@ -580,67 +307,6 @@ const petTypes = [
         </Card>
       </div>
     </div>
-    
-    <!-- Location Picker Modal -->
-    <Dialog v-model:open="showLocationModal">
-      <DialogContent class="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Select Location</DialogTitle>
-          <DialogDescription>
-            Search for your pet's location or use current location
-          </DialogDescription>
-        </DialogHeader>
-        <div class="space-y-4">
-          <div class="flex gap-2">
-            <Input 
-              v-model="searchQuery" 
-              placeholder="Search for a location..." 
-              @keyup.enter="searchLocation"
-              class="flex-1"
-            />
-            <Button @click="searchLocation" :disabled="isSearching" variant="outline">
-              <Icon name="Search" class="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div class="text-center">
-            <Button 
-              @click="getCurrentLocation" 
-              :disabled="isLoadingLocation"
-              variant="outline"
-              class="w-full"
-            >
-              <Icon name="MapPin" class="h-4 w-4 mr-2" />
-              <span v-if="isLoadingLocation">Getting Current Location...</span>
-              <span v-else>Use Current Location</span>
-            </Button>
-          </div>
-          
-          <div v-if="searchResults.length > 0" class="max-h-60 overflow-y-auto space-y-2">
-            <div 
-              v-for="(result, index) in searchResults" 
-              :key="index"
-              @click="selectLocation(result)"
-              class="p-3 border rounded-lg cursor-pointer hover:bg-muted transition-colors"
-            >
-              <div class="font-medium text-sm">{{ result.display_name }}</div>
-            </div>
-          </div>
-          
-          <div v-if="isSearching" class="text-center py-4">
-            <Icon name="Loader2" class="h-6 w-6 animate-spin mx-auto mb-2" />
-            <p class="text-sm text-muted-foreground">Searching locations...</p>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" @click="showLocationModal = false">
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    
-    <!-- Confirmation Dialog -->
     <Dialog v-model:open="showConfirmDialog">
       <DialogContent>
         <DialogHeader>
@@ -665,26 +331,6 @@ const petTypes = [
           <div class="grid grid-cols-3 items-center gap-4">
             <span class="font-medium">Contact:</span>
             <span class="col-span-2">{{ form.contact }}</span>
-          </div>
-          <div class="grid grid-cols-3 items-center gap-4">
-            <span class="font-medium">Location:</span>
-            <span class="col-span-2 text-sm">{{ form.location }}</span>
-          </div>
-          <div class="flex justify-center mt-2 gap-2">
-            <div class="w-24 h-24 rounded-lg overflow-hidden border border-muted">
-              <img 
-                v-if="imagePreview" 
-                :src="imagePreview" 
-                alt="Pet preview" 
-                class="w-full h-full object-cover" 
-              />
-            </div>
-            <div v-if="imagePreview2" class="w-16 h-16 rounded overflow-hidden border border-muted">
-              <img :src="imagePreview2" alt="Pet preview 2" class="w-full h-full object-cover" />
-            </div>
-            <div v-if="imagePreview3" class="w-16 h-16 rounded overflow-hidden border border-muted">
-              <img :src="imagePreview3" alt="Pet preview 3" class="w-full h-full object-cover" />
-            </div>
           </div>
         </div>
         <DialogFooter>

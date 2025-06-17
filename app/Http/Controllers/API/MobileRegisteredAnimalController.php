@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\API;
-
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\RegisteredAnimal;
@@ -49,17 +49,17 @@ class MobileRegisteredAnimalController extends Controller
         ]);
     }
 
-    public function storeRegisteredAnimal(Request $request)
+     public function storeRegisteredAnimal(Request $request)
     {
+        // STEP 1: VALIDATE THE INCOMING DATA
         $validator = Validator::make($request->all(), [
-            // 'owner' => 'required|string|max:255',
-            'pet_name' => 'required|string|max:255',
+            'pet_name'    => 'required|string|max:255',
             'animal_type' => 'required|in:dog,cat,Dog,Cat,DOG,CAT',
-            'breed' => 'nullable|string|max:255',
-            'contact' => 'required|string|max:255',
-            // Now we expect 'picture' to be a Base64 encoded string from the frontend
-            'picture' => 'required|string', // Or you could add a custom validation rule for Base64
-            // 'status' => 'in:active,inactive',
+            'breed'       => 'nullable|string|max:255',
+            'contact'     => 'required|string|max:255',
+            // Validate that 'pictures' is an array and each item is an image
+            'pictures'    => 'required|array|min:1',
+            'pictures.*'  => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB max per image
         ]);
 
         if ($validator->fails()) {
@@ -69,37 +69,33 @@ class MobileRegisteredAnimalController extends Controller
             ], 422);
         }
 
-        // The request->picture is already the Base64 string sent from the frontend
-        $base64Image = $request->picture;
+        // STEP 2: HANDLE FILE UPLOADS
+        $picturePaths = [];
+        if ($request->hasFile('pictures')) {
+            foreach ($request->file('pictures') as $file) {
+                // Store the file in `storage/app/public/pet_pictures`
+                // The `store` method returns the path of the saved file
+                $path = $file->store('pet_pictures', 'public');
+                $picturePaths[] = $path;
+            }
+        }
 
-        // You might want to extract the mime type if you need to store it separately
-        // or if you want to prepend it when displaying (e.g., "data:image/jpeg;base64,")
-        // For simplicity, we'll assume the frontend will handle prepending the data URI prefix.
-        // If the frontend sends the full data URI, you might need to strip the prefix:
-        // if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
-        //     $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
-        //     $mimeType = strtolower($type[1]); // e.g., jpeg, png
-        // } else {
-        //     // Handle error: not a valid data URI
-        //     return response()->json(['status' => 'error', 'message' => 'Invalid image format.'], 400);
-        // }
-
-
+        // STEP 3: CREATE THE DATABASE RECORD
         $animal = RegisteredAnimal::create([
-            // 'owner' => $request->owner,
-            'owner' => $request->user() ? $request->user()->name : 'Unknown Owner',
-            'contact' => $request->contact,
+            'user_id'     => Auth::id(),
+            'owner'       => $request->user() ? $request->user()->name : 'Unknown Owner',
+            'pet_name'    => $request->pet_name,
             'animal_type' => strtolower($request->animal_type),
-            'picture' => $base64Image, // Store the Base64 string directly
-            'status' => $request->status ?? 'active',
-            'breed' => $request->breed,
-            'pet_name' => $request->pet_name,
+            'breed'       => $request->breed,
+            'contact'     => $request->contact,
+            'status'      => $request->status ?? 'active',
+            'pictures'    => $picturePaths, // Save the array of paths
         ]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Animal registered successfully.',
-            'data' => $animal, // 'picture' field in $animal will have the Base64 string
-        ], 201);
+        // When retrieving, Eloquent will automatically convert this JSON back to an array.
+        // To get the full URL in the frontend, you'd prepend your app URL + '/storage/'.
+        // e.g., 'http://yourapp.com/storage/pet_pictures/xxxxxxxx.jpg'
+
+        return redirect()->back()->with('success', 'Animal registered successfully.');
     }
 }

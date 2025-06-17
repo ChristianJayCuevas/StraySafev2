@@ -433,9 +433,9 @@ const selectedAreaId = ref('')
     <div v-else> 
       <div ref="mapContainer" class="h-[430px] xl:h-[550px] 2xl:h-[600px] rounded overflow-hidden" /> 
     </div>
-    <Button @click="simulateStrayDog" class="absolute top-4 right-4 z-10 bg-blue-500 text-white">
+   <!--<Button @click="simulateStrayDog" class="absolute top-4 right-4 z-10 bg-blue-500 text-white">
       Simulate Stray Dog
-    </Button>
+    </Button> -->
     <!-- Controls panel -->
     <div v-if="props.control" class="absolute top-6 left-6 z-10 w-[210px]">
       <MapControls 
