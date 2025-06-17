@@ -277,7 +277,7 @@ async function sendNewDetectionNotification(detectedAnimal: Detection) {
   const bodyMessage = bodyLines.join('\n');
 
   const payload = {
-    user_id: 3, // Send to a default admin user ID
+    user_id: 1, // Send to a default admin user ID
     title: `New Animal Detected: ${detectedAnimal.pet_type?.toUpperCase() || 'Unknown'}`,
     body: bodyMessage,
     action: '/mobilemap', // Or a different action URL for general alerts
