@@ -22,47 +22,46 @@ class NotificationController extends Controller
             'image' => 'nullable|string', // Add validation for image
         ]);
 
-        $compressedBase64 = null;
+        // $compressedBase64 = null;
 
-        // Only process image if it exists
-        if ($request->has('image') && !empty($request->image)) {
-            $manager = new ImageManager(new Driver());
-            $base64 = $request->image;
+        // // Only process image if it exists
+        // if ($request->has('image') && !empty($request->image)) {
+        //     $manager = new ImageManager(new Driver());
+        //     $base64 = $request->image;
 
-            // Remove data URI prefix if present
-            if (preg_match('/^data:image\/[^;]+;base64,/', $base64)) {
-                $base64 = preg_replace('/^data:image\/[^;]+;base64,/', '', $base64);
-            }
+        //     // Remove data URI prefix if present
+        //     if (preg_match('/^data:image\/[^;]+;base64,/', $base64)) {
+        //         $base64 = preg_replace('/^data:image\/[^;]+;base64,/', '', $base64);
+        //     }
 
-            // Validate & decode base64
-            $rawImage = base64_decode($base64);
-            if ($rawImage === false) {
-                return response()->json(['message' => 'Failed to decode base64 image'], 400);
-            }
+        //     // Validate & decode base64
+        //     $rawImage = base64_decode($base64);
+        //     if ($rawImage === false) {
+        //         return response()->json(['message' => 'Failed to decode base64 image'], 400);
+        //     }
 
-            try {
-                // Read image from raw data
-                $image = $manager->read($rawImage);
+        //     try {
+        //         // Read image from raw data
+        //         $image = $manager->read($rawImage);
                 
-                // For newer versions of Intervention Image (v3+)
-                $encoded = $image->toJpeg(50); // quality 50
+        //         // For newer versions of Intervention Image (v3+)
+        //         $encoded = $image->toJpeg(50); // quality 50
                 
-                // For older versions (v2), use this instead:
-                // $encoded = $image->encode('jpg', 50)->encoded;
+        //         // For older versions (v2), use this instead:
+        //         // $encoded = $image->encode('jpg', 50)->encoded;
 
-                // Create compressed base64 with correct data URI prefix
-                $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
-            } catch (\Exception $e) {
-                return response()->json(['message' => 'Image processing failed', 'error' => $e->getMessage()], 500);
-            }
-        }
+        //         // Create compressed base64 with correct data URI prefix
+        //         $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
+        //     } catch (\Exception $e) {
+        //         return response()->json(['message' => 'Image processing failed', 'error' => $e->getMessage()], 500);
+        //     }
+        // }
         
         $user = User::find($request->user_id);
         $user->notify(new PushNotification(
             $request->title,
             $request->body,
             $request->action,
-            $compressedBase64,
             false
         ));
         
