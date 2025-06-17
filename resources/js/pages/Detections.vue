@@ -752,7 +752,7 @@ import { h } from 'vue';
                             </div>
                             <div>
                               <p class="text-xs font-semibold text-center mb-1">Registered:</p>
-                              <img :src="isActualRegisteredMatch(animal)?.pictures?.[0] || placeholderImage" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                              <img :src="isActualRegisteredMatch(animal)?.pictures?.[0] ? `/storage/${isActualRegisteredMatch(animal).pictures[0]}` : placeholderImage"  alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
                             </div>
                           </div>
                           <div class="mt-auto pt-2 text-xs border-t">
