@@ -8,7 +8,7 @@ use App\Models\PushNotificationHistory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver; 
+use Intervention\Image\Drivers\Gd\Driver;
 
 class NotificationController extends Controller
 {
@@ -22,11 +22,15 @@ class NotificationController extends Controller
         ]);
         $manager = new ImageManager(new Driver());
 
-        $image = $manager->read(
-            base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->image))
-        );
+        $base64 = $request->image;
+        $rawImage = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64));
 
+        $image = $manager->read($rawImage);
+
+        // Correctly compress and encode
         $encoded = $image->encode('jpg', 50)->toString();
+
+        // Final compressed base64 string
         $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
         
         $user = User::find($request->user_id);
