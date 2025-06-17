@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('push_notification_histories', function (Blueprint $table) {
-            $table->string('image')->nullable()->after('action');
+            $table->longText('image')->nullable()->after('action');
         });
     }
 
