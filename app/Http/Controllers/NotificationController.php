@@ -22,25 +22,24 @@ class NotificationController extends Controller
         ]);
         $manager = new ImageManager(new Driver());
 
-        // Extract base64 data and format
         $base64 = $request->image;
 
-        // Match the mime type
-        if (preg_match('#^data:image/(\w+);base64,#i', $base64, $matches)) {
-            $format = strtolower($matches[1]); // e.g., "jpeg", "png"
-        } else {
-            return response()->json(['message' => 'Invalid base64 image format'], 400);
-        }
+        // Assume JPEG if no MIME prefix
+        $format = 'jpeg';
 
-        // Strip the base64 prefix and decode
-        $rawImage = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64));
+        // Try to decode raw base64
+        $rawImage = base64_decode($base64);
+
+        if ($rawImage === false) {
+            return response()->json(['message' => 'Failed to decode base64 image'], 400);
+        }
 
         $image = $manager->read($rawImage);
 
-        // Encode using correct format (e.g. 'jpeg', 'png') and quality
+        // Compress to 50% quality
         $encoded = $image->encode($format, 50)->toString();
 
-        // Return compressed base64
+        // Rewrap as base64 string
         $compressedBase64 = 'data:image/' . $format . ';base64,' . base64_encode($encoded);
         
         $user = User::find($request->user_id);
