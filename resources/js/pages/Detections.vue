@@ -28,6 +28,8 @@ import {toast} from 'vue-sonner';
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Detections', href: '/detections' },
 ];
+const NOTIFICATION_LATITUDE = "14.5995"; // Example: Manila, Philippines
+const NOTIFICATION_LONGITUDE = "120.9842"; 
 const pollableCameras = ref<{ name: string; source: string; }[]>([]);
 const STREAM_CONTROL_API_BASE = 'https://straysafe.me/streamcontrol';
 interface Detection {
@@ -79,7 +81,7 @@ const notifiedMatches = ref<Set<string>>(new Set());
 const isLoading = ref(true);
 const isPolling = ref(false);
 let pollingIntervalId: number | undefined = undefined;
-const POLLING_INTERVAL_MS = 3000; // Keep it higher for production (e.g., 10-30 seconds)
+const POLLING_INTERVAL_MS = 6000; // Keep it higher for production (e.g., 10-30 seconds)
 const isMonitoringActive = ref(false);
 
 const detections = ref<Detection[]>([]);
@@ -245,39 +247,53 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
   );
 }
 // --- Notification Sending ---
-
-async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet, savedDetectionPaths?: { frame_path?: string, reg_path?: string }) {
+async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet) {
   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
-  // ---- START Notification Limiting Logic ----
-  const matchKey = `${detectedAnimal.external_api_id || detectedAnimal.pet_name}-${matchedRegisteredPet.id}`;
-
+  // --- Notification Limiting Logic (No changes needed here) ---
+  const matchKey = `${detectedAnimal.camera_name}-${detectedAnimal.track_id}-${matchedRegisteredPet.id}`;
   if (notifiedMatches.value.has(matchKey)) {
     console.log(`Notification for matchKey ${matchKey} already sent this session. Skipping.`);
     return;
   }
-  // ---- END Notification Limiting Logic ----
 
-  let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
-  // ... (rest of bodyMessage construction) ...
+  // --- MODIFIED: Build a more detailed notification body ---
+  let bodyLines = [
+    `A pet similar to your registered pet, ${matchedRegisteredPet.pet_name}, was detected.`,
+    `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`
+  ];
+  
+  // Add details about the detected animal if they exist
+  if (detectedAnimal.breed) {
+    bodyLines.push(`Detected Breed: ${detectedAnimal.breed}`);
+  }
+  if (detectedAnimal.has_leash) {
+    bodyLines.push(`Detected Collar/Leash: Yes (Color: ${detectedAnimal.leash_color || 'Unknown'})`);
+  } else {
+    bodyLines.push(`Detected Collar/Leash: No`);
+  }
 
-  // Determine the best image to use for the notification
-  let notificationImage = savedDetectionPaths?.frame_path || 
-                         savedDetectionPaths?.reg_path || 
-                         detectedAnimal.frame_base64 || 
+  const bodyMessage = bodyLines.join('\n');
+  
+  // --- Determine the best image to use (No changes needed here) ---
+  let notificationImage = detectedAnimal.frame_base64 || 
                          detectedAnimal.reg_base64 || 
                          'https://straysafe.me/images/default-pet-notification.png';
 
+  // --- MODIFIED: Add latitude and longitude to the payload ---
   const payload = {
-    user_id: 1, // Use the actual user_id parameter
+    user_id: userId, // Use the correct user_id from the matched pet
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
+    // Add the static coordinates to the payload
+    latitude: NOTIFICATION_LATITUDE,
+    longitude: NOTIFICATION_LONGITUDE,
+    // The action URL for when the user taps the notification
     action: '/mobilemap',
     image: notificationImage,
   };
 
   console.log('Sending notification payload:', payload);
-  console.log('Using image:', notificationImage);
 
   try {
     const response = await axios.post(NOTIFICATION_URL, payload);
@@ -285,6 +301,7 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
     toast.success("Match Notification Sent!", { 
       description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` 
     });
+    // Add the key to the set to prevent re-notifying for this specific detection
     notifiedMatches.value.add(matchKey);
   } catch (error: any) {
     console.error('Failed to send notification:', error.response?.data || error.message);
@@ -293,6 +310,53 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
     });
   }
 }
+// async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet, savedDetectionPaths?: { frame_path?: string, reg_path?: string }) {
+//   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
+
+//   // ---- START Notification Limiting Logic ----
+//   const matchKey = `${detectedAnimal.external_api_id || detectedAnimal.pet_name}-${matchedRegisteredPet.id}`;
+
+//   if (notifiedMatches.value.has(matchKey)) {
+//     console.log(`Notification for matchKey ${matchKey} already sent this session. Skipping.`);
+//     return;
+//   }
+//   // ---- END Notification Limiting Logic ----
+
+//   let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
+//   // ... (rest of bodyMessage construction) ...
+
+//   // Determine the best image to use for the notification
+//   let notificationImage = savedDetectionPaths?.frame_path || 
+//                          savedDetectionPaths?.reg_path || 
+//                          detectedAnimal.frame_base64 || 
+//                          detectedAnimal.reg_base64 || 
+//                          'https://straysafe.me/images/default-pet-notification.png';
+
+//   const payload = {
+//     user_id: 1, // Use the actual user_id parameter
+//     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
+//     body: bodyMessage,
+//     action: '/mobilemap',
+//     image: notificationImage,
+//   };
+
+//   console.log('Sending notification payload:', payload);
+//   console.log('Using image:', notificationImage);
+
+//   try {
+//     const response = await axios.post(NOTIFICATION_URL, payload);
+//     console.log('Notification sent successfully:', response.data);
+//     toast.success("Match Notification Sent!", { 
+//       description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` 
+//     });
+//     notifiedMatches.value.add(matchKey);
+//   } catch (error: any) {
+//     console.error('Failed to send notification:', error.response?.data || error.message);
+//     toast.error("Notification Failed", { 
+//       description: `Could not notify owner of ${matchedRegisteredPet.pet_name}` 
+//     });
+//   }
+// }
 
 
 // --- Enhanced Polling Logic ---
