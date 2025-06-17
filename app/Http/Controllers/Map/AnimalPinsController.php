@@ -149,13 +149,33 @@ class AnimalPinsController extends Controller
             // Find camera by matching the identifier in the HLS URL
             // $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
             // $camera = CameraPins::first();
-            $cameraId = $validated['camera']; // e.g. "/home/straysafe/venv/sample_video.avi"
-
-            // Extract base name (e.g. "sample_video")
-            $basename = pathinfo($cameraId, PATHINFO_FILENAME);
-
-            // Search for a camera whose HLS URL contains the basename
-            $camera = CameraPins::where('hls_url', 'LIKE', "%{$basename}%")->first();
+            $cameraId = $validated['camera'];
+            Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
+            
+            // Try multiple matching strategies
+            $camera = null;
+            
+            // Strategy 1: Extract filename and match in HLS URL
+            $baseFilename = pathinfo($cameraId, PATHINFO_FILENAME);
+            $camera = CameraPins::where('hls_url', 'LIKE', "%{$baseFilename}%")->first();
+            
+            // Strategy 2: If not found, try matching the full path in rtsp_url
+            if (!$camera) {
+                $camera = CameraPins::where('rtsp_url', $cameraId)->first();
+            }
+            
+            // Strategy 3: If still not found, try matching just the filename in rtsp_url
+            if (!$camera) {
+                $filename = basename($cameraId);
+                $camera = CameraPins::where('rtsp_url', 'LIKE', "%{$filename}%")->first();
+            }
+            
+            if ($camera) {
+                Log::debug('Camera found:', ['camera' => $camera->toArray()]);
+            } else {
+                Log::error('Camera not found with any matching strategy for: ' . $cameraId);
+                return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
+            }
             if ($camera) {
                 Log::debug('Camera found:', ['camera' => $camera->toArray()]);
             } else {
