@@ -21,6 +21,7 @@ const props = defineProps<{
   hasLeash?: boolean | null
   leashColor?: string | null
   time?: string
+  footerText?: string 
 }>()
 
 const emit = defineEmits(['delete']) // Define a delete event
@@ -93,8 +94,18 @@ function handleDelete() {
     </CardHeader>
 
     <!-- Footer -->
-   <CardFooter class="px-4 py-2 mt-auto justify-center text-md text-muted-foreground border-t">
-      Time: <span class="font-semibold">{{ time }}</span>
+   <CardFooter class="px-4 py-2 mt-auto text-xs text-muted-foreground border-t flex flex-col items-start space-y-1">
+      <!-- Display the camera name if footerText is provided -->
+      <div v-if="footerText" class="flex items-center gap-1.5 w-full">
+        <Icon name="video" class="h-3 w-3" />
+        <span>{{ footerText }}</span>
+      </div>
+
+      <!-- Display the detection time -->
+      <div v-if="time" class="flex items-center gap-1.5 w-full">
+        <Icon name="clock" class="h-3 w-3" />
+        <span>{{ time }}</span>
+      </div>
     </CardFooter>
   </Card>
 </template>
