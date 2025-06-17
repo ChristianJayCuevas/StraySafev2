@@ -22,16 +22,26 @@ class NotificationController extends Controller
         ]);
         $manager = new ImageManager(new Driver());
 
+        // Extract base64 data and format
         $base64 = $request->image;
+
+        // Match the mime type
+        if (preg_match('#^data:image/(\w+);base64,#i', $base64, $matches)) {
+            $format = strtolower($matches[1]); // e.g., "jpeg", "png"
+        } else {
+            return response()->json(['message' => 'Invalid base64 image format'], 400);
+        }
+
+        // Strip the base64 prefix and decode
         $rawImage = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64));
 
         $image = $manager->read($rawImage);
 
-        // Correctly compress and encode
-        $encoded = $image->encode('jpg', 50)->toString();
+        // Encode using correct format (e.g. 'jpeg', 'png') and quality
+        $encoded = $image->encode($format, 50)->toString();
 
-        // Final compressed base64 string
-        $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
+        // Return compressed base64
+        $compressedBase64 = 'data:image/' . $format . ';base64,' . base64_encode($encoded);
         
         $user = User::find($request->user_id);
         $user->notify(new PushNotification(
