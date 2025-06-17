@@ -7,8 +7,6 @@ use App\Notifications\PushNotification;
 use App\Models\PushNotificationHistory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
 
 class NotificationController extends Controller
 {
@@ -19,50 +17,16 @@ class NotificationController extends Controller
             'title' => 'required|string|max:255',
             'body' => 'required|string',
             'action' => 'nullable|string',
-            'image' => 'nullable|string', // Add validation for image
         ]);
-
-        // $compressedBase64 = null;
-
-        // // Only process image if it exists
-        // if ($request->has('image') && !empty($request->image)) {
-        //     $manager = new ImageManager(new Driver());
-        //     $base64 = $request->image;
-
-        //     // Remove data URI prefix if present
-        //     if (preg_match('/^data:image\/[^;]+;base64,/', $base64)) {
-        //         $base64 = preg_replace('/^data:image\/[^;]+;base64,/', '', $base64);
-        //     }
-
-        //     // Validate & decode base64
-        //     $rawImage = base64_decode($base64);
-        //     if ($rawImage === false) {
-        //         return response()->json(['message' => 'Failed to decode base64 image'], 400);
-        //     }
-
-        //     try {
-        //         // Read image from raw data
-        //         $image = $manager->read($rawImage);
-                
-        //         // For newer versions of Intervention Image (v3+)
-        //         $encoded = $image->toJpeg(50); // quality 50
-                
-        //         // For older versions (v2), use this instead:
-        //         // $encoded = $image->encode('jpg', 50)->encoded;
-
-        //         // Create compressed base64 with correct data URI prefix
-        //         $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
-        //     } catch (\Exception $e) {
-        //         return response()->json(['message' => 'Image processing failed', 'error' => $e->getMessage()], 500);
-        //     }
-        // }
         
         $user = User::find($request->user_id);
         $user->notify(new PushNotification(
             $request->title,
             $request->body,
             $request->action,
+            $request->image,
             false
+
         ));
         
         return response()->json(['message' => 'Notification sent successfully']);
@@ -73,8 +37,7 @@ class NotificationController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'body' => 'required|string',
-            'action' => 'nullable|string',
-            'image' => 'nullable|string'
+            'action' => 'nullable|string'
         ]);
         
         $users = User::whereNotNull('id')->get();
@@ -93,59 +56,59 @@ class NotificationController extends Controller
     }
 
     public function index()
-    {
-        $user = auth()->user();
-        $notifications = PushNotificationHistory::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-        
-        return Inertia::render('mobile/NotificationPage', [
-            'notifications' => $notifications
-        ]);
+{
+    $user = auth()->user();
+    $notifications = PushNotificationHistory::where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->paginate(10);
+    
+    return Inertia::render('mobile/NotificationPage', [
+        'notifications' => $notifications
+    ]);
+}
+    
+public function markAsRead($id)
+{
+    $notification = PushNotificationHistory::findOrFail($id);
+    
+    // Check if notification belongs to the authenticated user
+    if ($notification->user_id !== auth()->id()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
-        
-    public function markAsRead($id)
-    {
-        $notification = PushNotificationHistory::findOrFail($id);
-        
-        // Check if notification belongs to the authenticated user
-        if ($notification->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-        
-        $notification->update([
+    
+    $notification->update([
+        'is_read' => true,
+        'read_at' => now(),
+    ]);
+    
+    return response()->json(['message' => 'Notification marked as read']);
+}
+
+public function markAllAsRead()
+{
+    $user = auth()->user();
+    
+    PushNotificationHistory::where('user_id', $user->id)
+        ->where('is_read', false)
+        ->update([
             'is_read' => true,
             'read_at' => now(),
         ]);
-        
-        return response()->json(['message' => 'Notification marked as read']);
+    
+    return response()->json(['message' => 'All notifications marked as read']);
+}
+public function delete($id)
+{
+    $notification = PushNotificationHistory::findOrFail($id);
+    
+    // Check if notification belongs to the authenticated user
+    if ($notification->user_id !== auth()->id()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
+    
+    $notification->delete();
+    
+    return response()->json(['message' => 'Notification deleted successfully']);
+}
 
-    public function markAllAsRead()
-    {
-        $user = auth()->user();
-        
-        PushNotificationHistory::where('user_id', $user->id)
-            ->where('is_read', false)
-            ->update([
-                'is_read' => true,
-                'read_at' => now(),
-            ]);
-        
-        return response()->json(['message' => 'All notifications marked as read']);
-    }
-
-    public function delete($id)
-    {
-        $notification = PushNotificationHistory::findOrFail($id);
-        
-        // Check if notification belongs to the authenticated user
-        if ($notification->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-        
-        $notification->delete();
-        
-        return response()->json(['message' => 'Notification deleted successfully']);
-    }
 }
