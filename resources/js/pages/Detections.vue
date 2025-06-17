@@ -247,6 +247,60 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
   );
 }
 // --- Notification Sending ---
+async function sendNewDetectionNotification(detectedAnimal: Detection) {
+  const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
+
+  // --- Notification Limiting Logic for General Detections ---
+  // We use a key based on the camera and track ID to avoid spamming for the same animal.
+  const detectionKey = `${detectedAnimal.camera_name}-${detectedAnimal.track_id}`;
+  if (notifiedMatches.value.has(detectionKey)) {
+    console.log(`General notification for detectionKey ${detectionKey} already sent. Skipping.`);
+    return;
+  }
+
+  // --- Build a generic notification body ---
+  let bodyLines = [
+    `A ${detectedAnimal.pet_type || 'new animal'} was detected.`,
+    `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`
+  ];
+
+  if (detectedAnimal.breed) {
+    bodyLines.push(`Detected Breed: ${detectedAnimal.breed}`);
+  }
+  if (detectedAnimal.has_leash) {
+    bodyLines.push(`Collar/Leash: Yes (Color: ${detectedAnimal.leash_color || 'Unknown'})`);
+  } else {
+    bodyLines.push(`Collar/Leash: No`);
+  }
+  
+  const bodyMessage = bodyLines.join('\n');
+
+  const payload = {
+    user_id: 3, // Send to a default admin user ID
+    title: `New Animal Detected: ${detectedAnimal.pet_type?.toUpperCase() || 'Unknown'}`,
+    body: bodyMessage,
+    latitude: NOTIFICATION_LATITUDE,
+    longitude: NOTIFICATION_LONGITUDE,
+    action: '/mobilemap', // Or a different action URL for general alerts
+    image: detectedAnimal.frame_base64 || 'https://straysafe.me/images/default-pet-notification.png',
+  };
+
+  console.log('Sending generic detection notification:', payload);
+
+  try {
+    await axios.post(NOTIFICATION_URL, payload);
+    toast.success("New Detection Alert Sent!", {
+      description: `Notified admin about the new ${detectedAnimal.pet_type}.`
+    });
+    // Add the key to the set to prevent re-notifying
+    notifiedMatches.value.add(detectionKey);
+  } catch (error: any) {
+    console.error('Failed to send generic detection notification:', error.response?.data || error.message);
+    toast.error("Generic Notification Failed", {
+      description: `Could not send alert for the new detection.`
+    });
+  }
+}
 async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet) {
   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
@@ -434,18 +488,26 @@ async function pollExternalAPIAndStore() {
 }
 
 // Helper function to contain the saving/notification logic to keep poll function cleaner
-async function handleNewDetection(detectionPayload: any) {
+async function handleNewDetection(detectionPayload: Detection) {
     try {
+        // --- 1. Save the detection to your Laravel backend ---
         const backendResponse = await axios.post('/animal-detections', detectionPayload);
+        
         if (backendResponse.status === 201 || backendResponse.status === 200) {
             toast.success("New Detection Saved!", { 
               description: `From camera: ${detectionPayload.camera_name}` 
             });
+            // Refresh the UI list with the new data
             await loadDetectionsFromBackend();
+
+            // --- 2. Send the generic "New Detection" notification to admins ---
+            // We use the full payload which now includes the camera_name etc.
+            await sendNewDetectionNotification(detectionPayload);
             
-            // Match against registered pets and send notification
+            // --- 3. Check for a match with a registered pet ---
             const matchedPet = isActualRegisteredMatch(detectionPayload);
             if (matchedPet) {
+                // If a match is found, send a specific notification to the owner
                 console.log(`MATCH FOUND: Detected ${detectionPayload.pet_name} matches registered ${matchedPet.pet_name}`);
                 await sendPetMatchNotification(matchedPet.user_id, detectionPayload, matchedPet);
             }
