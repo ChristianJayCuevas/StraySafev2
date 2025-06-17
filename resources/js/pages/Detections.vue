@@ -59,6 +59,8 @@ interface Detection {
   latitude?: string | null;
   longitude?: string | null;
   camera_name?: string | null;
+  frame_path?: string | null; // Path to the frame image in your storage
+  reg_path?: string | null; // Path to the registered image in your storage
 }
 // NEW: Interface for Registered Pet
 interface RegisteredPet {
@@ -281,7 +283,7 @@ async function sendNewDetectionNotification(detectedAnimal: Detection) {
     title: `New Animal Detected: ${detectedAnimal.pet_type?.toUpperCase() || 'Unknown'}`,
     body: bodyMessage,
     action: '/mobilemap', // Or a different action URL for general alerts
-    image: detectedAnimal.frame_base64 || 'https://straysafe.me/images/default-pet-notification.png',
+    image: detectedAnimal.frame_path || 'https://straysafe.me/images/default-pet-notification.png',
   };
 
   console.log('Sending generic detection notification:', payload);
@@ -330,8 +332,8 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
   const bodyMessage = bodyLines.join('\n');
   
   // --- Determine the best image to use (No changes needed here) ---
-  let notificationImage = detectedAnimal.frame_base64 || 
-                         detectedAnimal.reg_base64 || 
+  let notificationImage = detectedAnimal.frame_path || 
+                         detectedAnimal.reg_path || 
                          'https://straysafe.me/images/default-pet-notification.png';
 
   // --- MODIFIED: Add latitude and longitude to the payload ---
@@ -572,6 +574,8 @@ async function loadDetectionsFromBackend() {
       stable_class: item.stable_class || null,
       detection_timestamp: item.detection_timestamp ? formatBackendTimestamp(item.detection_timestamp) : null,
       similarity_score: item.similarity_score ? Number(item.similarity_score) : null,
+      frame_path: item.frame_path || null,
+      reg_path: item.reg_path || null,
     }));
     backendPaginationData.value = paginationInfo;
   } catch (error) {
