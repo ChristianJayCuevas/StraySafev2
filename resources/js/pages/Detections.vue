@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
+import { h } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
@@ -533,7 +535,7 @@ async function pollExternalAPIAndStore() {
   } finally {
     isPolling.value = false;
   }
-}
+}}
 // ** NEW: Helper function implementing the POST -> GET -> Notify flow **
 // async function handleNewDetection(detectionPayload: any) {
 //     try {
@@ -704,8 +706,6 @@ const getPageNumbers = computed(() => {
     return range.filter((item, index, self) => item !== '...' || (item === '...' && self[index-1] !== '...'));
 });
 
-const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
-import { h } from 'vue';
 </script>
 
 
