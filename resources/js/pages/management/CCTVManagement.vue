@@ -126,17 +126,25 @@ const filteredCameras = computed(() => {
 //   const encodedUrl = encodeURIComponent(streamUrl);
 //   return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
 // };
-const getPlayerUrl = (camera: CCTVCamera) => {
-  // Use the hlsPlaylistUri if the stream is running, otherwise use the stored streamUrl as a fallback
-  const urlToPlay = camera.isRunning && camera.hlsPlaylistUri ? camera.hlsPlaylistUri : camera.streamUrl;
+// const getPlayerUrl = (camera: CCTVCamera) => {
+//   // Use the hlsPlaylistUri if the stream is running, otherwise use the stored streamUrl as a fallback
+//   const urlToPlay = camera.isRunning && camera.hlsPlaylistUri ? camera.hlsPlaylistUri : camera.streamUrl;
   
-  if (!urlToPlay) return '';
+//   if (!urlToPlay) return '';
+
+//   const encodedUrl = encodeURIComponent(urlToPlay);
+//   return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
+// };
+const STREAM_CONTROL_API_BASE = 'https://straysafe.me/streamcontrol'; // Or http://localhost:5000 for local dev
+const getPlayerUrl = (camera: CCTVCamera) => {
+  // The hlsPlaylistUri now contains the best available URL from the merge logic.
+  const urlToPlay = camera.streamUrl;
+  
+  if (!urlToPlay || urlToPlay === 'N/A') return '';
 
   const encodedUrl = encodeURIComponent(urlToPlay);
   return `https://anym3u8player.com/ultimate-player-generator/player.php?player=videojs&url=${encodedUrl}&autoplay=1&muted=1&loop=1&controls=auto&theme=dark&buffer=30&quality=1&speed=1&pip=1&fullscreen=1&no_download=1&width=responsive&aspect=16%3A9`;
 };
-const STREAM_CONTROL_API_BASE = 'https://straysafe.me/streamcontrol'; // Or http://localhost:5000 for local dev
-
 // Clear search query
 const clearSearch = () => {
   searchQuery.value = '';
