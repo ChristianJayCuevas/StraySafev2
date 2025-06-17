@@ -1,6 +1,4 @@
 <script setup lang="ts">
-const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
-import { h } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
@@ -61,9 +59,6 @@ interface Detection {
   latitude?: string | null;
   longitude?: string | null;
   camera_name?: string | null;
-  // For notifications with saved images
-  frame_path?: string | null; 
-  reg_path?: string | null;
 }
 // NEW: Interface for Registered Pet
 interface RegisteredPet {
@@ -209,15 +204,18 @@ watch(searchQuery, () => { /* Client-side search on current page */ });
 async function fetchRegisteredPets() {
   isLoadingRegisteredPets.value = true;
   try {
+    // Define a type for the expected backend response structure
     interface RegisteredPetsApiResponse {
       status: string;
-      data: RegisteredPet[]; 
+      data: RegisteredPet[]; // The array of pets
     }
-    const response = await axios.get<RegisteredPetsApiResponse>('/api/mobileregisteredanimals'); 
+
+    // Use this type with axios.get
+    const response = await axios.get<RegisteredPetsApiResponse>('/api/mobileregisteredanimals'); // Adjust endpoint if needed
 
     if (response.data && response.data.status === 'success' && Array.isArray(response.data.data)) {
-      registeredPets.value = response.data.data;
-      console.log('Registered pets loaded:', registeredPets.value.length);
+      registeredPets.value = response.data.data; // Access the nested 'data' array
+      console.log('Registered pets loaded:', registeredPets.value.length); // Now this will be correct
     } else {
       console.error('Failed to fetch registered pets or unexpected response structure:', response.data);
       toast.error("Error Loading Registered Pets", { description: "Received an invalid response from the server." });
@@ -240,55 +238,60 @@ function isActualRegisteredMatch(detectedAnimal: Detection): RegisteredPet | und
   }
 
   const detectedNameLower = detectedAnimal.pet_name.toLowerCase().trim();
+  // const detectedBreedLower = detectedAnimal.breed.toLowerCase().trim();
+
 
   return registeredPets.value.find(regPet =>
     regPet.pet_name.toLowerCase().trim() === detectedNameLower
+    // regPet.breed.toLowerCase().trim() === detectedBreedLower
   );
 }
 // --- Notification Sending ---
-async function sendNewDetectionNotification(detectedAnimal: Detection, savedDetectionPaths?: { frame_path?: string; reg_path?: string; }) {
+async function sendNewDetectionNotification(detectedAnimal: Detection) {
   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
+  // --- Notification Limiting Logic for General Detections ---
+  // We use a key based on the camera and track ID to avoid spamming for the same animal.
   const detectionKey = `${detectedAnimal.camera_name}-${detectedAnimal.track_id}`;
   if (notifiedMatches.value.has(detectionKey)) {
     console.log(`General notification for detectionKey ${detectionKey} already sent. Skipping.`);
     return;
   }
 
+  // --- Build a generic notification body ---
   let bodyLines = [
     `A ${detectedAnimal.pet_type || 'new animal'} was detected.`,
     `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`,
     `Latitude: ${NOTIFICATION_LATITUDE}, Longitude: ${NOTIFICATION_LONGITUDE}`,
   ];
 
-  if (detectedAnimal.breed) bodyLines.push(`Detected Breed: ${detectedAnimal.breed}`);
-  if (detectedAnimal.has_leash) bodyLines.push(`Collar/Leash: Yes (Color: ${detectedAnimal.leash_color || 'Unknown'})`);
-  else bodyLines.push(`Collar/Leash: No`);
+  if (detectedAnimal.breed) {
+    bodyLines.push(`Detected Breed: ${detectedAnimal.breed}`);
+  }
+  if (detectedAnimal.has_leash) {
+    bodyLines.push(`Collar/Leash: Yes (Color: ${detectedAnimal.leash_color || 'Unknown'})`);
+  } else {
+    bodyLines.push(`Collar/Leash: No`);
+  }
   
   const bodyMessage = bodyLines.join('\n');
-
-  // Prioritize server-side URL over base64
-  const notificationImage = savedDetectionPaths?.frame_path ||
-                         savedDetectionPaths?.reg_path ||
-                         detectedAnimal.frame_base64 || 
-                         'https://straysafe.me/images/default-pet-notification.png';
 
   const payload = {
     user_id: 3, // Send to a default admin user ID
     title: `New Animal Detected: ${detectedAnimal.pet_type?.toUpperCase() || 'Unknown'}`,
     body: bodyMessage,
-    action: '/mobilemap',
-    image: notificationImage,
+    action: '/mobilemap', // Or a different action URL for general alerts
+    image: detectedAnimal.frame_base64 || 'https://straysafe.me/images/default-pet-notification.png',
   };
 
   console.log('Sending generic detection notification:', payload);
-  console.log('Using image:', notificationImage);
 
   try {
     await axios.post(NOTIFICATION_URL, payload);
     toast.success("New Detection Alert Sent!", {
       description: `Notified admin about the new ${detectedAnimal.pet_type}.`
     });
+    // Add the key to the set to prevent re-notifying
     notifiedMatches.value.add(detectionKey);
   } catch (error: any) {
     console.error('Failed to send generic detection notification:', error.response?.data || error.message);
@@ -297,36 +300,43 @@ async function sendNewDetectionNotification(detectedAnimal: Detection, savedDete
     });
   }
 }
-async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet, savedDetectionPaths?: { frame_path?: string, reg_path?: string }) {
+async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet) {
   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
 
+  // --- Notification Limiting Logic (No changes needed here) ---
   const matchKey = `${detectedAnimal.camera_name}-${detectedAnimal.track_id}-${matchedRegisteredPet.id}`;
   if (notifiedMatches.value.has(matchKey)) {
     console.log(`Notification for matchKey ${matchKey} already sent this session. Skipping.`);
     return;
   }
 
+  // --- MODIFIED: Build a more detailed notification body ---
   let bodyLines = [
     `A pet similar to your registered pet, ${matchedRegisteredPet.pet_name}, was detected.`,
     `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`,
     `Latitude: ${NOTIFICATION_LATITUDE}, Longitude: ${NOTIFICATION_LONGITUDE}`,
   ];
   
-  if (detectedAnimal.breed) bodyLines.push(`Detected Breed: ${detectedAnimal.breed}`);
-  if (detectedAnimal.has_leash) bodyLines.push(`Detected Collar/Leash: Yes (Color: ${detectedAnimal.leash_color || 'Unknown'})`);
-  else bodyLines.push(`Detected Collar/Leash: No`);
+  // Add details about the detected animal if they exist
+  if (detectedAnimal.breed) {
+    bodyLines.push(`Detected Breed: ${detectedAnimal.breed}`);
+  }
+  if (detectedAnimal.has_leash) {
+    bodyLines.push(`Detected Collar/Leash: Yes (Color: ${detectedAnimal.leash_color || 'Unknown'})`);
+  } else {
+    bodyLines.push(`Detected Collar/Leash: No`);
+  }
 
   const bodyMessage = bodyLines.join('\n');
   
-  // Apply the same image sending logic as origdetection.vue
-  let notificationImage = savedDetectionPaths?.frame_path || 
-                         savedDetectionPaths?.reg_path || 
-                         detectedAnimal.frame_base64 || 
+  // --- Determine the best image to use (No changes needed here) ---
+  let notificationImage = detectedAnimal.frame_base64 || 
                          detectedAnimal.reg_base64 || 
                          'https://straysafe.me/images/default-pet-notification.png';
 
+  // --- MODIFIED: Add latitude and longitude to the payload ---
   const payload = {
-    user_id: userId,
+    user_id: userId, // Use the correct user_id from the matched pet
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
     action: '/mobilemap',
@@ -334,7 +344,6 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
   };
 
   console.log('Sending notification payload:', payload);
-  console.log('Using image:', notificationImage);
 
   try {
     const response = await axios.post(NOTIFICATION_URL, payload);
@@ -342,6 +351,7 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
     toast.success("Match Notification Sent!", { 
       description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` 
     });
+    // Add the key to the set to prevent re-notifying for this specific detection
     notifiedMatches.value.add(matchKey);
   } catch (error: any) {
     console.error('Failed to send notification:', error.response?.data || error.message);
@@ -350,249 +360,162 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
     });
   }
 }
+// async function sendPetMatchNotification(userId: number, detectedAnimal: Detection, matchedRegisteredPet: RegisteredPet, savedDetectionPaths?: { frame_path?: string, reg_path?: string }) {
+//   const NOTIFICATION_URL = 'https://straysafe.me/send-notification';
+
+//   // ---- START Notification Limiting Logic ----
+//   const matchKey = `${detectedAnimal.external_api_id || detectedAnimal.pet_name}-${matchedRegisteredPet.id}`;
+
+//   if (notifiedMatches.value.has(matchKey)) {
+//     console.log(`Notification for matchKey ${matchKey} already sent this session. Skipping.`);
+//     return;
+//   }
+//   // ---- END Notification Limiting Logic ----
+
+//   let bodyMessage = `A pet matching the description of your registered pet, ${matchedRegisteredPet.pet_name} (${matchedRegisteredPet.breed}), has been detected.\n`;
+//   // ... (rest of bodyMessage construction) ...
+
+//   // Determine the best image to use for the notification
+//   let notificationImage = savedDetectionPaths?.frame_path || 
+//                          savedDetectionPaths?.reg_path || 
+//                          detectedAnimal.frame_base64 || 
+//                          detectedAnimal.reg_base64 || 
+//                          'https://straysafe.me/images/default-pet-notification.png';
+
+//   const payload = {
+//     user_id: 1, // Use the actual user_id parameter
+//     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
+//     body: bodyMessage,
+//     action: '/mobilemap',
+//     image: notificationImage,
+//   };
+
+//   console.log('Sending notification payload:', payload);
+//   console.log('Using image:', notificationImage);
+
+//   try {
+//     const response = await axios.post(NOTIFICATION_URL, payload);
+//     console.log('Notification sent successfully:', response.data);
+//     toast.success("Match Notification Sent!", { 
+//       description: `Owner of ${matchedRegisteredPet.pet_name} has been notified.` 
+//     });
+//     notifiedMatches.value.add(matchKey);
+//   } catch (error: any) {
+//     console.error('Failed to send notification:', error.response?.data || error.message);
+//     toast.error("Notification Failed", { 
+//       description: `Could not notify owner of ${matchedRegisteredPet.pet_name}` 
+//     });
+//   }
+// }
+
 
 // --- Enhanced Polling Logic ---
-// async function pollExternalAPIAndStore() {
-//   if (isPolling.value) return; 
-//   if (isLoadingRegisteredPets.value) {
-//     console.log('Polling paused: Registered pets data is still loading.');
-//     return;
-//   }
-//   if (pollableCameras.value.length === 0) {
-//     console.log("Polling skipped: No active cameras detected.");
-//     return;
-//   }
-  
-//   isPolling.value = true;
-//   console.log(`Polling ${pollableCameras.value.length} active camera(s)...`);
+// In <script setup>
 
-//   for (const camera of pollableCameras.value) {
-//     const cameraFolderName = camera.name;
-//     const API_URL = `${STREAM_CONTROL_API_BASE}/check_new_image_from_camera?camera_folder=${cameraFolderName}`;
-
-//     try {
-//       const response = await axios.get<Detection>(API_URL);
-//       const detectedAnimalData = response.data;
-      
-//       if (detectedAnimalData && detectedAnimalData.pet_name) {
-//         console.log(`[${cameraFolderName}] New detection received:`, detectedAnimalData);
-
-//         const detectionPayload = {
-//           // Keep existing payload structure
-//           external_api_id: String(detectedAnimalData.pet_name),
-//           external_api_type: detectedAnimalData.pet_type,
-//           breed: detectedAnimalData.breed || null,
-//           contact_number: detectedAnimalData.contact_number === 'none' ? null : (detectedAnimalData.contact_number || null),
-//           frame_base64: detectedAnimalData.frame_base64 || null,
-//           reg_base64: detectedAnimalData.reg_base64 || null,
-//           has_leash: typeof detectedAnimalData.has_leash === 'boolean' ? detectedAnimalData.has_leash : null,
-//           is_registered: typeof detectedAnimalData.is_registered === 'boolean' ? detectedAnimalData.is_registered : null,
-//           leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
-//           pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null),
-//           pet_type: detectedAnimalData.pet_type,
-//           camera_name: cameraFolderName, 
-//           rtsp_url: detectedAnimalData.rtsp_url || camera.source,
-//           track_id: detectedAnimalData.track_id || null,
-//           stable_class: detectedAnimalData.stable_class || null,
-//           detection_timestamp: detectedAnimalData.timestamp || null,
-//           similarity_score: typeof detectedAnimalData.similarity_score === 'number' ? detectedAnimalData.similarity_score : null,
-//         };
-//         await handleNewDetection(detectionPayload); 
-//       }
-//     } catch (error: any) {
-//       if (error.response && error.response.status === 200 && error.response.data.message) {
-//         // console.log(`[${cameraFolderName}] No new matches.`);
-//       } else {
-//         console.warn(`[${cameraFolderName}] Error polling:`, error.message);
-//       }
-//     }
-//   }
-//   isPolling.value = false;
-// }
 async function pollExternalAPIAndStore() {
-  if (isPolling.value) return; 
+  if (isPolling.value) return; // Prevent multiple polls from running at once
   if (isLoadingRegisteredPets.value) {
     console.log('Polling paused: Registered pets data is still loading.');
     return;
   }
+  // If there are no active cameras to poll, don't do anything.
   if (pollableCameras.value.length === 0) {
     console.log("Polling skipped: No active cameras detected.");
     return;
   }
   
   isPolling.value = true;
+
   console.log(`Polling ${pollableCameras.value.length} active camera(s)...`);
 
+  // Loop through each active camera and check for new images
   for (const camera of pollableCameras.value) {
     const cameraFolderName = camera.name;
     const API_URL = `${STREAM_CONTROL_API_BASE}/check_new_image_from_camera?camera_folder=${cameraFolderName}`;
 
     try {
       const response = await axios.get<Detection>(API_URL);
+
+      // The rest of the logic is the same, but it now runs for EACH camera
       const detectedAnimalData = response.data;
       
+      // Check for a valid detection object (not an empty message)
       if (detectedAnimalData && detectedAnimalData.pet_name) {
         console.log(`[${cameraFolderName}] New detection received:`, detectedAnimalData);
 
+        // --- All your existing logic for saving to backend and sending notifications goes here ---
+        // I will copy it over but no changes are needed inside this block.
         const detectionPayload = {
-          // Keep existing payload structure
           external_api_id: String(detectedAnimalData.pet_name),
           external_api_type: detectedAnimalData.pet_type,
           breed: detectedAnimalData.breed || null,
           contact_number: detectedAnimalData.contact_number === 'none' ? null : (detectedAnimalData.contact_number || null),
-          frame_base64: detectedAnimalData.frame_base64 || null,
-          reg_base64: detectedAnimalData.reg_base64 || null,
+          frame_base64: detectedAnimalData.detected_image_base64 || detectedAnimalData.frame_base64 || null,
+          reg_base64: detectedAnimalData.registered_image_base64 || detectedAnimalData.reg_base64 || null,
           has_leash: typeof detectedAnimalData.has_leash === 'boolean' ? detectedAnimalData.has_leash : null,
           is_registered: typeof detectedAnimalData.is_registered === 'boolean' ? detectedAnimalData.is_registered : null,
           leash_color: detectedAnimalData.leash_color === 'none' ? null : (detectedAnimalData.leash_color || null),
           pet_name: detectedAnimalData.pet_name === 'none' ? null : (detectedAnimalData.pet_name || null),
           pet_type: detectedAnimalData.pet_type,
+          // --- IMPORTANT: Add the camera name to the payload ---
           camera_name: cameraFolderName, 
-          rtsp_url: detectedAnimalData.rtsp_url || camera.source,
+          rtsp_url: detectedAnimalData.rtsp_url || camera.source, // Use the source as a fallback
           track_id: detectedAnimalData.track_id || null,
           stable_class: detectedAnimalData.stable_class || null,
           detection_timestamp: detectedAnimalData.timestamp || null,
           similarity_score: typeof detectedAnimalData.similarity_score === 'number' ? detectedAnimalData.similarity_score : null,
         };
 
-      // Save the detection to your backend
-      try {
-        const backendResponse = await axios.post('/animal-detections', detectionPayload);
-        let refreshedList = false;
-        let savedDetection = null;
-
-        if (backendResponse.status === 201 || backendResponse.status === 200) {
-          // Get the saved detection with file paths
-          const savedDetectionId = backendResponse.data.data.id; // Assuming your Laravel response includes the ID
-          
-          try {
-            const getResponse = await axios.get(`/animal-detections/${savedDetectionId}`);
-            savedDetection = getResponse.data;
-            
-            console.log('Retrieved saved detection with paths:', {
-              id: savedDetection.id,
-              frame_path: savedDetection.frame_path,
-              reg_path: savedDetection.reg_path,
-              external_api_id: savedDetection.external_api_id
-            });
-            
-            // Now you have access to the file paths:
-            // savedDetection.frame_path - path to the saved frame image
-            // savedDetection.reg_path - path to the saved registration image
-            
-          } catch (getError) {
-            console.error('Failed to retrieve saved detection:', getError);
-            // Continue with the original flow even if GET fails
-            savedDetection = backendResponse.data.data;
-          }
-
-          if (backendResponse.status === 201) {
-            toast.success("New Detection Saved!", { 
-              description: `From ${detectionPayload.rtsp_url || 'camera'}` 
-            });
-          }
-          refreshedList = true;
-        }
-
-        if (refreshedList) {
-          await loadDetectionsFromBackend(); // Refresh the displayed list of detections
-        }
-
-        // Use savedDetection for further processing if needed
-        // For example, you could pass the file paths to the notification function
-        if (savedDetection && detectedAnimalData.pet_name && detectedAnimalData.breed) {
-          const detectedNameLower = detectedAnimalData.pet_name.toLowerCase();
-
-          for (const regPet of registeredPets.value) {
-            if (
-              regPet.pet_name.toLowerCase() === detectedNameLower
-            ) {
-              console.log(`MATCH FOUND: Detected ${detectedAnimalData.pet_name} (${detectedAnimalData.breed}) matches registered ${regPet.pet_name} (${regPet.breed}) owned by user ${regPet.id}`);
-              
-              // Now you can pass the file paths to the notification function
-              await sendPetMatchNotification(regPet.id, detectedAnimalData, regPet, {
-                frame_path: savedDetection.frame_path,
-                reg_path: savedDetection.reg_path
-              });
-            }
-          }
-        }
-
-      } catch (postError: any) {
-        console.error('Poll: Failed POST to backend /animal-detections:', postError.response?.data || postError.message, 'Payload:', detectionPayload);
-        toast.error("Error Saving Detection", { description: postError.response?.data?.message || postError.message });
+        // ... (The rest of your saving and notification logic remains unchanged)
+        // This is just a placeholder to show where it goes.
+        await handleNewDetection(detectionPayload); 
       }
-
-    } else {
-       console.log('Poll: No new valid data from /checknewimage. Data:', detectedAnimalData);
+    } catch (error: any) {
+      if (error.response && error.response.status === 200 && error.response.data.message) {
+        // This is the expected "No new match" response, not an error.
+        // console.log(`[${cameraFolderName}] No new matches.`);
+      } else {
+        console.warn(`[${cameraFolderName}] Error polling:`, error.message);
+      }
     }
-  } catch (error: any) {
-    if (error.response && error.response.status === 204) {
-      // console.log('Poll: No new image data (204 No Content).');
-    } else {
-      console.warn(`Poll: Failed to fetch from /checknewimage:`, error.response?.status, error.message);
+  } // End of for...of loop
+
+  isPolling.value = false;
+}
+
+// Helper function to contain the saving/notification logic to keep poll function cleaner
+async function handleNewDetection(detectionPayload: Detection) {
+    try {
+        // --- 1. Save the detection to your Laravel backend ---
+        const backendResponse = await axios.post('/animal-detections', detectionPayload);
+        
+        if (backendResponse.status === 201 || backendResponse.status === 200) {
+            toast.success("New Detection Saved!", { 
+              description: `From camera: ${detectionPayload.camera_name}` 
+            });
+            // Refresh the UI list with the new data
+            await loadDetectionsFromBackend();
+
+            // --- 2. Send the generic "New Detection" notification to admins ---
+            // We use the full payload which now includes the camera_name etc.
+            await sendNewDetectionNotification(detectionPayload);
+            
+            // --- 3. Check for a match with a registered pet ---
+            const matchedPet = isActualRegisteredMatch(detectionPayload);
+            if (matchedPet) {
+                // If a match is found, send a specific notification to the owner
+                console.log(`MATCH FOUND: Detected ${detectionPayload.pet_name} matches registered ${matchedPet.pet_name}`);
+                await sendPetMatchNotification(matchedPet.user_id, detectionPayload, matchedPet);
+            }
+        }
+    } catch (postError: any) {
+        console.error('Failed to save detection:', postError.response?.data || postError.message);
+        toast.error("Error Saving Detection", { description: postError.response?.data?.message });
     }
-  } finally {
-    isPolling.value = false;
-  }
-}}
-// ** NEW: Helper function implementing the POST -> GET -> Notify flow **
-// async function handleNewDetection(detectionPayload: any) {
-//     try {
-//         // --- 1. Save the detection to your Laravel backend ---
-//         const backendResponse = await axios.post('/animal-detections', detectionPayload);
-//         let savedDetection = null;
-
-//         if (backendResponse.status === 201 || backendResponse.status === 200) {
-//             await loadDetectionsFromBackend(); // Refresh the UI list
-//             toast.success("New Detection Saved!", { 
-//               description: `From camera: ${detectionPayload.camera_name}` 
-//             });
-
-//             // Get the ID from the POST response, which is nested under 'data'
-//             const savedDetectionId = backendResponse.data?.data?.id;
-
-//             if (!savedDetectionId) {
-//                 console.error("Backend response did not include an ID. Using base64 for notifications.");
-//                 savedDetection = detectionPayload;
-//             } else {
-//                 try {
-//                     // --- 2. GET the record back to retrieve server-side image paths ---
-//                     const getResponse = await axios.get(`/animal-detections/${savedDetectionId}`);
-//                     // The 'show' endpoint in Laravel often returns the object directly, not nested
-//                     savedDetection = getResponse.data;
-//                     console.log('Retrieved saved detection with server paths:', {
-//                         frame_path: savedDetection.frame_path,
-//                         reg_path: savedDetection.reg_path,
-//                     });
-//                 } catch (getError) {
-//                     console.error('Failed to retrieve saved detection after POST, using base64 for notifications:', getError);
-//                     savedDetection = detectionPayload; // Fallback
-//                 }
-//             }
-            
-//             // Prepare image paths for notification functions
-//             const imagePaths = {
-//                 frame_path: savedDetection?.frame_path,
-//                 reg_path: savedDetection?.reg_path,
-//             };
-
-//             // --- 3. Send notifications with the best available image ---
-//             await sendNewDetectionNotification(detectionPayload, imagePaths);
-            
-//             const matchedPet = isActualRegisteredMatch(detectionPayload);
-//             if (matchedPet) {
-//                 console.log(`MATCH FOUND: Detected ${detectionPayload.pet_name} matches registered ${matchedPet.pet_name}`);
-//                 await sendPetMatchNotification(matchedPet.user_id, detectionPayload, matchedPet, imagePaths);
-//             }
-//         }
-//     } catch (postError: any) {
-//         console.error('Failed to save detection:', postError.response?.data || postError.message);
-//         toast.error("Error Saving Detection", { description: postError.response?.data?.message || "An error occurred." });
-//     }
-// }
+}
 
 function startMonitoring() {
+  // First, fetch the list of which cameras are actually running
   fetchPollableCameras().then(() => {
     if (pollableCameras.value.length === 0) {
         toast.info("Monitoring Not Started", { description: "No active camera streams were found." });
@@ -635,9 +558,20 @@ async function loadDetectionsFromBackend() {
     detections.value = data.map((item: any) => ({
       ...item,
       id: Number(item.id),
-      timestamp: formatBackendTimestamp(item.detected_at || item.created_at),
-      frame_base64: formatBase64Image(item.frame_base64),
-      reg_base64: formatBase64Image(item.reg_base64),
+      external_api_id: item.external_api_id || null,
+      external_api_type: item.external_api_type || null,
+      api_id: item.api_id || null,
+      api_type: item.api_type || null,
+      timestamp: formatBackendTimestamp(item.detected_at),
+      external_data_timestamp: formatBackendTimestamp(item.external_data_updated_at),
+      frame_base64: formatBase64Image(item.frame_base64, item.pet_type === 'dog' ? 'jpeg' : 'png'),
+      reg_base64: formatBase64Image(item.reg_base64, item.pet_type === 'dog' ? 'jpeg' : 'png'),
+      // NEW FIELDS: Add the meta data fields
+      rtsp_url: item.rtsp_url || null,
+      track_id: item.track_id || null,
+      stable_class: item.stable_class || null,
+      detection_timestamp: item.detection_timestamp ? formatBackendTimestamp(item.detection_timestamp) : null,
+      similarity_score: item.similarity_score ? Number(item.similarity_score) : null,
     }));
     backendPaginationData.value = paginationInfo;
   } catch (error) {
@@ -671,6 +605,7 @@ onMounted(async () => {
   ]);
   isLoading.value = false;
   
+  // Automatically start monitoring on page load
   startMonitoring();
 });
 
@@ -706,6 +641,8 @@ const getPageNumbers = computed(() => {
     return range.filter((item, index, self) => item !== '...' || (item === '...' && self[index-1] !== '...'));
 });
 
+const placeholderImage = 'https://placehold.co/600x400/4f6642/FFFFFF/png?text=No+Image';
+import { h } from 'vue';
 </script>
 
 
@@ -721,6 +658,15 @@ const getPageNumbers = computed(() => {
           {{ isMonitoringActive ? 'Stop Monitoring' : 'Start Monitoring' }}
         </Button>
       </div>
+
+       <!-- Polling Warning Banner -->
+      <!-- <div v-if="isMonitoringActive && POLLING_INTERVAL_MS > 0 && POLLING_INTERVAL_MS <= 5000"
+           class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm" role="alert">
+        <p>
+          <Icon name="AlertTriangle" class="inline h-5 w-5 mr-2" />
+          <strong class="font-semibold">Aggressive Polling Active:</strong> External API is being checked every {{ POLLING_INTERVAL_MS / 1000 }} second(s).
+        </p>
+      </div> -->
 
       <div class="flex flex-col gap-6">
         <div v-if="isLoading" class="flex justify-center items-center h-64">
@@ -757,11 +703,13 @@ const getPageNumbers = computed(() => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent class="flex-grow flex flex-col gap-2">
+                          <!-- ... existing content for matched card ... -->
                           <div class="text-center">
                             <Badge :variant="animal.has_leash === true ? 'default' : 'destructive'">
                               {{ animal.has_leash === true ? 'Collar/Leashed' : 'No Collar/Leash' }}
                             </Badge>
                           </div>
+                           <!-- Display owner info if available from the match -->
                           <div v-if="isActualRegisteredMatch(animal)?.user_id" class="text-xs text-center mt-1">
                             Owned by User ID: {{ isActualRegisteredMatch(animal)?.user_id }}
                           </div>
@@ -789,6 +737,7 @@ const getPageNumbers = computed(() => {
                             <p><strong>Time Stored:</strong> {{ animal.timestamp }}</p>
                           </div>
                         </CardContent>
+                        <!-- Delete Button Overlay -->
                         <div class="absolute top-2 right-2">
                             <Button @click="confirmDeleteDetection(animal)" variant="destructive" size="icon" class="h-8 w-8 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <Icon name="Trash2" class="h-4 w-4" />
@@ -796,7 +745,7 @@ const getPageNumbers = computed(() => {
                             </Button>
                         </div>
                       </Card>
-                      <!-- Card for Single Detection -->
+                      <!-- Card for Single Detection (Not a confirmed registered match OR missing an image) -->
                       <CardAnimal
                         v-else
                         :id="animal.id" 
@@ -812,8 +761,9 @@ const getPageNumbers = computed(() => {
                         @delete="() => confirmDeleteDetection(animal)"
                         class="h-auto min-h-[280px] 2xl:min-h-[320px]"
                       >
-                        <template #actions>
-                           <div class="absolute top-2 right-2 z-10">
+                        <!-- Delete Button Overlay for CardAnimal -->
+                        <template #actions> <!-- Or add directly if CardAnimal doesn't have a slot -->
+                           <div class="absolute top-2 right-2 z-10"> <!-- Ensure z-index if needed -->
                                 <Button @click="confirmDeleteDetection(animal)" variant="destructive" size="icon" class="h-8 w-8 opacity-50 group-hover:opacity-100 transition-opacity">
                                     <Icon name="Trash2" class="h-4 w-4" />
                                     <span class="sr-only">Delete Detection</span>
@@ -868,6 +818,7 @@ const getPageNumbers = computed(() => {
                       <TableBody>
                         <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
                           <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" class="text-center">
+                            <!-- Custom rendering for action buttons in table -->
                              <template v-if="cell.column.id === 'actions'">
                                 <component :is="cell.renderValue()"></component>
                             </template>
