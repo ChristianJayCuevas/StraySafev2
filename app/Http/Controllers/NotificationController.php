@@ -24,23 +24,22 @@ class NotificationController extends Controller
 
         $base64 = $request->image;
 
-        // Assume JPEG if no MIME prefix
-        $format = 'jpeg';
-
-        // Try to decode raw base64
+        // Validate & decode base64
         $rawImage = base64_decode($base64);
-
         if ($rawImage === false) {
             return response()->json(['message' => 'Failed to decode base64 image'], 400);
         }
 
-        $image = $manager->read($rawImage);
+        try {
+            // Read and compress image to JPEG format, quality 50
+            $image = $manager->read($rawImage);
+            $encoded = $image->encode('jpeg', 50)->toString();
 
-        // Compress to 50% quality
-        $encoded = $image->encode($format, 50)->toString();
-
-        // Rewrap as base64 string
-        $compressedBase64 = 'data:image/' . $format . ';base64,' . base64_encode($encoded);
+            // Create compressed base64 with correct data URI prefix
+            $compressedBase64 = 'data:image/jpeg;base64,' . base64_encode($encoded);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Image processing failed', 'error' => $e->getMessage()], 500);
+        }
         
         $user = User::find($request->user_id);
         $user->notify(new PushNotification(
