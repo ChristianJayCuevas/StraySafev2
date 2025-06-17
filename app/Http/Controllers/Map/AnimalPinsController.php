@@ -144,47 +144,68 @@ class AnimalPinsController extends Controller
         // Check if camera is provided
         if (!empty($validated['camera'])) {
             $cameraId = $validated['camera'];
-            Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
+            // Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
             
-            // Find camera by matching the identifier in the HLS URL
-            // $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
-            // $camera = CameraPins::first();
-            $cameraId = $validated['camera'];
-            Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
+            // // Find camera by matching the identifier in the HLS URL
+            // // $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
+            // // $camera = CameraPins::first();
+            // $cameraId = $validated['camera'];
+            // Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
             
-            // Try multiple matching strategies
-            $camera = null;
+            // // Try multiple matching strategies
+            // $camera = null;
             
-            // Strategy 1: Extract filename and match in HLS URL
-            $baseFilename = pathinfo($cameraId, PATHINFO_FILENAME);
-            $camera = CameraPins::where('hls_url', 'LIKE', "%{$baseFilename}%")->first();
+            // // Strategy 1: Extract filename and match in HLS URL
+            // $baseFilename = pathinfo($cameraId, PATHINFO_FILENAME);
+            // $camera = CameraPins::where('hls_url', 'LIKE', "%{$baseFilename}%")->first();
             
-            // Strategy 2: If not found, try matching the full path in rtsp_url
-            if (!$camera) {
-                $camera = CameraPins::where('rtsp_url', $cameraId)->first();
+            // // Strategy 2: If not found, try matching the full path in rtsp_url
+            // if (!$camera) {
+            //     $camera = CameraPins::where('rtsp_url', $cameraId)->first();
+            // }
+            
+            // // Strategy 3: If still not found, try matching just the filename in rtsp_url
+            // if (!$camera) {
+            //     $filename = basename($cameraId);
+            //     $camera = CameraPins::where('rtsp_url', 'LIKE', "%{$filename}%")->first();
+            // }
+            
+            // if ($camera) {
+            //     Log::debug('Camera found:', ['camera' => $camera->toArray()]);
+            // } else {
+            //     Log::error('Camera not found with any matching strategy for: ' . $cameraId);
+            //     return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
+            // }
+            // if ($camera) {
+            //     Log::debug('Camera found:', ['camera' => $camera->toArray()]);
+            // } else {
+            //     Log::error('Camera not found with identifier in HLS URL: ' . $cameraId);
+            //     return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
+            // }
+            $fallbackCameras = CameraPins::where('id', '>=', $camera->id)
+                ->orderBy('id')
+                ->take(4) // initial + next 3
+                ->get();
+
+            $selectedCamera = null;
+
+            foreach ($fallbackCameras as $candidate) {
+                $isUsed = AnimalPins::where('camera_pin_id', $candidate->id)->exists();
+
+                if (!$isUsed) {
+                    $selectedCamera = $candidate;
+                    Log::debug("Selected unused camera:", ['camera_id' => $candidate->id]);
+                    break;
+                }
             }
-            
-            // Strategy 3: If still not found, try matching just the filename in rtsp_url
-            if (!$camera) {
-                $filename = basename($cameraId);
-                $camera = CameraPins::where('rtsp_url', 'LIKE', "%{$filename}%")->first();
-            }
-            
-            if ($camera) {
-                Log::debug('Camera found:', ['camera' => $camera->toArray()]);
-            } else {
-                Log::error('Camera not found with any matching strategy for: ' . $cameraId);
-                return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
-            }
-            if ($camera) {
-                Log::debug('Camera found:', ['camera' => $camera->toArray()]);
-            } else {
-                Log::error('Camera not found with identifier in HLS URL: ' . $cameraId);
-                return response()->json(['success' => false, 'message' => 'Camera not found.'], 404);
+
+            if (!$selectedCamera) {
+                Log::warning('All fallback cameras are already used. Using the first one anyway.');
+                $selectedCamera = $camera; // fallback to first even if used
             }
         
-            $animalData['camera_pin_id'] = $camera->id;
-            $animalData['user_map_id'] = $camera->user_map_id;
+            $animalData['camera_pin_id'] = $selectedCamera->id;
+            $animalData['user_map_id'] = $selectedCamera->user_map_id;
             
             // Get existing pins for this camera
             $existingPins = AnimalPins::where('camera_pin_id', $camera->id)->get();
