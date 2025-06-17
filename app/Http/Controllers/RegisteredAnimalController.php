@@ -14,7 +14,7 @@ class RegisteredAnimalController extends Controller
     public function index()
     {
         // Retrieve all registered animals from the database
-        $animals = RegisteredAnimal::select('id', 'owner', 'contact', 'animal_type', 'picture', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')->get();
+        $animals = RegisteredAnimal::select('id', 'owner', 'contact', 'animal_type', 'pictures', 'status', 'created_at', 'updated_at', 'breed', 'pet_name')->get();
 
         return response()->json([
             'status' => 'success',

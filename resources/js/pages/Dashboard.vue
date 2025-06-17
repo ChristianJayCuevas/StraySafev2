@@ -67,10 +67,10 @@ onMounted(() => {
           <Skeleton class="h-[180px] w-full rounded-xl" v-for="i in 4" :key="i" />
         </template>
         <template v-else>
-          <CardData title="Stray Dog Detected" value="10" icon="dog" description="Stray dogs detected" />
-  <CardData title="Stray Cat Detected" value="8" icon="cat" description="Stray cats detected" />
-  <CardData title="Total Stray Detected" value="18" icon="pawPrint" description="Total strays detected" />
-  <CardData title="Total Registered Pets" value="2" icon="shieldCheck" description="Total registered pets" />
+          <CardData title="Stray Dog Detected" :value="stats.dog_pins" icon="dog" description="Stray dogs detected" />
+  <CardData title="Stray Cat Detected" :value="stats.cat_pins" icon="cat" description="Stray cats detected" />
+  <CardData title="Total Stray Detected" :value="stats.animal_pins" icon="pawPrint" description="Total strays detected" />
+  <CardData title="Total Registered Pets" :value="stats.registered_pets" icon="shieldCheck" description="Total registered pets" />
         </template>
       </div>
       <div class="grid auto-rows-min gap-4 md:grid-cols-2">
