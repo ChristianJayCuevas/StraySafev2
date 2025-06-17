@@ -261,7 +261,8 @@ async function sendNewDetectionNotification(detectedAnimal: Detection) {
   // --- Build a generic notification body ---
   let bodyLines = [
     `A ${detectedAnimal.pet_type || 'new animal'} was detected.`,
-    `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`
+    `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`,
+    `Latitude: ${NOTIFICATION_LATITUDE}, Longitude: ${NOTIFICATION_LONGITUDE}`,
   ];
 
   if (detectedAnimal.breed) {
@@ -279,8 +280,6 @@ async function sendNewDetectionNotification(detectedAnimal: Detection) {
     user_id: 3, // Send to a default admin user ID
     title: `New Animal Detected: ${detectedAnimal.pet_type?.toUpperCase() || 'Unknown'}`,
     body: bodyMessage,
-    latitude: NOTIFICATION_LATITUDE,
-    longitude: NOTIFICATION_LONGITUDE,
     action: '/mobilemap', // Or a different action URL for general alerts
     image: detectedAnimal.frame_base64 || 'https://straysafe.me/images/default-pet-notification.png',
   };
@@ -314,7 +313,8 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
   // --- MODIFIED: Build a more detailed notification body ---
   let bodyLines = [
     `A pet similar to your registered pet, ${matchedRegisteredPet.pet_name}, was detected.`,
-    `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`
+    `Location: Near Camera "${detectedAnimal.camera_name || 'unnamed'}"`,
+    `Latitude: ${NOTIFICATION_LATITUDE}, Longitude: ${NOTIFICATION_LONGITUDE}`,
   ];
   
   // Add details about the detected animal if they exist
@@ -339,10 +339,6 @@ async function sendPetMatchNotification(userId: number, detectedAnimal: Detectio
     user_id: userId, // Use the correct user_id from the matched pet
     title: `Potential Match Found for Your Pet: ${matchedRegisteredPet.pet_name}!`,
     body: bodyMessage,
-    // Add the static coordinates to the payload
-    latitude: NOTIFICATION_LATITUDE,
-    longitude: NOTIFICATION_LONGITUDE,
-    // The action URL for when the user taps the notification
     action: '/mobilemap',
     image: notificationImage,
   };

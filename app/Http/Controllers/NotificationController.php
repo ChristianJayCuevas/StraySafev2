@@ -17,7 +17,6 @@ class NotificationController extends Controller
             'title' => 'required|string|max:255',
             'body' => 'required|string',
             'action' => 'nullable|string',
-            'image' => 'nullable|url', 
         ]);
         
         $user = User::find($request->user_id);
