@@ -147,8 +147,15 @@ class AnimalPinsController extends Controller
             Log::debug('Camera identifier provided:', ['camera' => $cameraId]);
             
             // Find camera by matching the identifier in the HLS URL
-            $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
+            // $camera = CameraPins::where('hls_url', 'LIKE', "%{$cameraId}%")->first();
             // $camera = CameraPins::first();
+            $cameraId = $validated['camera']; // e.g. "/home/straysafe/venv/sample_video.avi"
+
+            // Extract base name (e.g. "sample_video")
+            $basename = pathinfo($cameraId, PATHINFO_FILENAME);
+
+            // Search for a camera whose HLS URL contains the basename
+            $camera = CameraPins::where('hls_url', 'LIKE', "%{$basename}%")->first();
             if ($camera) {
                 Log::debug('Camera found:', ['camera' => $camera->toArray()]);
             } else {
