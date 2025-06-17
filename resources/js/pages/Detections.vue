@@ -68,7 +68,9 @@ interface RegisteredPet {
   user_id: number;    // Owner's User ID
   pet_name: string;
   breed: string;
-  pet_type: string; // e.g., 'dog', 'cat'
+  pet_type: string; 
+  pictures: string[]; 
+  contact: number;// e.g., 'dog', 'cat'
   // ... any other relevant fields from your registered_pets table
 }
 
@@ -750,7 +752,7 @@ import { h } from 'vue';
                             </div>
                             <div>
                               <p class="text-xs font-semibold text-center mb-1">Registered:</p>
-                              <img :src="animal.reg_base64 || placeholderImage" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
+                              <img :src="isActualRegisteredMatch(animal)?.pictures?.[0] || placeholderImage" alt="Registered Pet" class="w-full h-auto aspect-square rounded object-contain border p-0.5" />
                             </div>
                           </div>
                           <div class="mt-auto pt-2 text-xs border-t">
@@ -763,7 +765,7 @@ import { h } from 'vue';
                             <p><strong>Breed:</strong> {{ animal.breed || 'N/A' }}</p>
                             <p v-if="animal.has_leash === true"><strong>Leash Color:</strong> {{ animal.leash_color || 'Unknown' }}</p>
                             <p><strong>Registered Database Match:</strong> Yes</p>
-                            <p v-if="animal.contact_number"><strong>Original Contact (if any):</strong> {{ animal.contact_number }}</p>
+                            <p v-if="animal.contact_number"><strong>Original Contact (if any):</strong> {{ isActualRegisteredMatch(animal)?.contact }}</p>
                             <p><strong>Time Stored:</strong> {{ animal.timestamp }}</p>
                           </div>
                         </CardContent>
