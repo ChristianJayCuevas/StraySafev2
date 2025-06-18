@@ -380,11 +380,11 @@ const navigateToRegisterPet = () => {
                 >
                   <div class="relative">
                     <img 
-                      :src="pet.pictures && pet.pictures.length > 0 ? pet.pictures[0] : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
-                      :alt="pet.pet_name" 
-                      class="w-full aspect-square object-cover bg-muted" 
-                      @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/E0E0E0/BDBDBD?text=Load+Error'"
-                    />
+  :src="pet.pictures && pet.pictures.length > 0 ? `/storage/${pet.pictures[0]}` : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
+  :alt="pet.pet_name" 
+  class="w-full aspect-square object-cover bg-muted" 
+  @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/E0E0E0/BDBDBD?text=Load+Error'"
+/>
                     <div class="absolute top-2 right-2">
                       <Badge :class="getStatusColor(pet.status)" class="capitalize shadow-sm">
                         {{ pet.status }}
