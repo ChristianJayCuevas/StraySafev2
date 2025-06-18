@@ -19,7 +19,8 @@
                     }
                 }
             })();
-            window.vapidPublicKey = "{{ env('VAPID_PUBLIC_KEY') }}";
+            // window.vapidPublicKey = "{{ env('VAPID_PUBLIC_KEY') }}";
+            window.vapidPublicKey = '{{ config('webpush.vapid.public_key') }}';
         </script>
 
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
