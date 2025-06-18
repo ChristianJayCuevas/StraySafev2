@@ -24,7 +24,7 @@ interface ApiPet {
   id: number;
   pet_name: string;
   animal_type: string;
-  picture: string | null; // Base64 string
+  pictures: string[]; // Base64 string
   status: string;
   owner: string; // User's name, kept for display if needed
   breed: string;
@@ -185,7 +185,7 @@ const getPageNumbers = computed(() => {
               >
                 <div class="relative">
                   <img 
-                    :src="pet.picture ? `data:image/jpeg;base64,${pet.picture}` : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
+                    :src="pet.pictures && pet.pictures.length > 0 ? pet.pictures[0] : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
                     :alt="pet.pet_name" 
                     class="w-full aspect-square object-cover bg-muted" 
                     @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/E0E0E0/BDBDBD?text=Load+Error'"

@@ -64,7 +64,7 @@ interface PetDisplayData {
   contact: string;
   status: string;
   registered_date: string;
-  image_base64: string | null; // Store the raw Base64 string
+  pictures: string[]; // Store the raw Base64 string
 }
 
 // API response structure
@@ -72,7 +72,7 @@ interface ApiPet {
   id: number;
   pet_name: string;
   animal_type: string;
-  picture: string | null; // This is the Base64 string from API
+  pictures: string[];  // This is the Base64 string from API
   status: string;
   owner: string;
   breed: string;
@@ -128,12 +128,16 @@ const paginatedCardsData = computed(() => {
 const columnHelper = createColumnHelper<PetDisplayData>();
 
 const columns: ColumnDef<PetDisplayData, any>[] = [
-  columnHelper.display({ // Using display for custom rendering
+  columnHelper.display({
     id: 'image',
     header: 'Image',
     cell: ({ row }) => h('div', { class: 'flex justify-center items-center' }, [
+        // This 'h' function creates the <img> element
         h('img', { 
-            src: row.original.image_base64 ? `data:image/jpeg;base64,${row.original.image_base64}` : 'https://placehold.co/60x60?text=N/A',
+            // CHANGE THE SRC LOGIC HERE:
+            src: row.original.pictures && row.original.pictures.length > 0 
+                 ? row.original.pictures[0] // Use the first URL from the array
+                 : 'https://placehold.co/60x60?text=N/A', // Fallback
             alt: row.original.name,
             class: 'w-12 h-12 object-cover rounded',
             onError: (e: Event) => { (e.target as HTMLImageElement).src = 'https://placehold.co/60x60?text=Error'; }
@@ -181,7 +185,8 @@ const tableData = computed<PetDisplayData[]>(() => {
     contact: apiPet.contact,
     status: apiPet.status,
     registered_date: new Date(apiPet.created_at).toLocaleDateString(),
-    image_base64: apiPet.picture, // This is the raw Base64 string
+    // CHANGE THIS LINE:
+    pictures: apiPet.pictures, // From: image_base64: apiPet.picture
   }));
 });
 
@@ -375,7 +380,7 @@ const navigateToRegisterPet = () => {
                 >
                   <div class="relative">
                     <img 
-                      :src="pet.picture ? `data:image/jpeg;base64,${pet.picture}` : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
+                      :src="pet.pictures && pet.pictures.length > 0 ? pet.pictures[0] : 'https://placehold.co/300x300/E0E0E0/757575?text=No+Image'" 
                       :alt="pet.pet_name" 
                       class="w-full aspect-square object-cover bg-muted" 
                       @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/300x300/E0E0E0/BDBDBD?text=Load+Error'"
